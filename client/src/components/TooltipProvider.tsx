@@ -12,6 +12,7 @@ interface TooltipState {
   left: number;
   top: number;
   placement: "above" | "below";
+  accentBorder: string;
 }
 
 const TOOLTIP_ID = "app-control-tooltip";
@@ -100,11 +101,15 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         target.setAttribute("aria-describedby", TOOLTIP_ID);
         const rect = target.getBoundingClientRect();
         const placement = rect.top > 90 ? "above" : "below";
+        const accentBorder = getComputedStyle(target)
+          .getPropertyValue("--accent-border")
+          .trim() || "#f97316";
         setTooltip({
           text,
           left: rect.left + rect.width / 2,
           top: placement === "above" ? rect.top - 8 : rect.bottom + 8,
           placement,
+          accentBorder,
         });
       };
       if (delayed) showTimer.current = window.setTimeout(display, 350);
@@ -160,7 +165,11 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
             id={TOOLTIP_ID}
             role="tooltip"
             className={`app-tooltip app-tooltip--${tooltip.placement}`}
-            style={{ left: tooltip.left, top: tooltip.top }}
+            style={{
+              left: tooltip.left,
+              top: tooltip.top,
+              borderColor: tooltip.accentBorder,
+            }}
           >
             {tooltip.text}
           </div>,
