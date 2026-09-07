@@ -1057,6 +1057,7 @@ button {
   accent-color: var(--accent-border);
 }
 .chat-emote-setting--motion {
+  gap: 8px;
   padding-top: 5px;
   padding-bottom: 5px;
 }

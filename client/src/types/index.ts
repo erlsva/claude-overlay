@@ -98,6 +98,7 @@ export interface ChatEmoteSettings {
   maxVisible: number;
   blacklist: string[];
   additionalEmotes: string[];
+  blockedEmotes: string[];
 }
 export interface ChatEmoteSpawn {
   id: string;

@@ -53,6 +53,7 @@ if (storedChatEmoteSettings) {
     ...storedChatEmoteSettings,
     blacklist: Array.isArray(storedChatEmoteSettings.blacklist) ? storedChatEmoteSettings.blacklist : [],
     additionalEmotes: Array.isArray(storedChatEmoteSettings.additionalEmotes) ? storedChatEmoteSettings.additionalEmotes : [],
+    blockedEmotes: Array.isArray(storedChatEmoteSettings.blockedEmotes) ? storedChatEmoteSettings.blockedEmotes : [],
   };
 }
 app.use(createEventRoutes(emitTwitchEvent));
@@ -429,6 +430,16 @@ configureTwitchEvents((eventType, event) => {
         if (item.isZeroWidth && stacks.length) stacks.at(-1)!.overlays.push(item);
         else if (item.isZeroWidth) leadingOverlays.push(item);
         else if (!item.isZeroWidth) stacks.push({ base: item, overlays: [] });
+      }
+      // Filter after stacking so modifiers of a blocked base cannot migrate
+      // onto a different emote in the message.
+      const blocked = new Set(canvasStore.chatEmoteSettings.blockedEmotes.map((name) => name.toLowerCase()));
+      for (let index = stacks.length - 1; index >= 0; index--) {
+        if (blocked.has(stacks[index].base.name.toLowerCase())) stacks.splice(index, 1);
+        else stacks[index].overlays = stacks[index].overlays.filter((item) => !blocked.has(item.name.toLowerCase()));
+      }
+      for (let index = leadingOverlays.length - 1; index >= 0; index--) {
+        if (blocked.has(leadingOverlays[index].name.toLowerCase())) leadingOverlays.splice(index, 1);
       }
       const emote = stacks[0]?.base ?? leadingOverlays[0];
       if (emote && canSpawnChatEmote()) {

@@ -165,6 +165,7 @@ export function StudioPanel(props: StudioPanelProps) {
   const [uploading, setUploading] = useState(false);
   const [emotePreview, setEmotePreview] = useState<ChatEmoteSpawn | null>(null);
   const [blacklistName, setBlacklistName] = useState("");
+  const [blockedEmoteName, setBlockedEmoteName] = useState("");
   const [additionalEmoteName, setAdditionalEmoteName] = useState("");
   const [listSearch, setListSearch] = useState("");
   const pendingStepBeforeChainEdit = useRef<TriggerStep | null>(null);
@@ -1584,7 +1585,7 @@ export function StudioPanel(props: StudioPanelProps) {
               <label className="chat-emote-setting chat-emote-setting--motion">
                 <span>Movement</span>
                 <select
-                  style={fieldStyle}
+                  style={{ ...fieldStyle, width: 132, maxWidth: "65%", minWidth: 0 }}
                   value={props.chatEmoteSettings.motion}
                   onChange={(event) => {
                     const motion = event.target.value as ChatEmoteSettings["motion"];
@@ -1605,10 +1606,10 @@ export function StudioPanel(props: StudioPanelProps) {
                 </select>
               </label>
               {(props.chatEmoteSettings.motion === "parade" || props.chatEmoteSettings.motion === "corners") && (
-                <label className="chat-emote-setting">
+                <label className="chat-emote-setting chat-emote-setting--motion">
                   <span>Direction</span>
                   <select
-                    style={fieldStyle}
+                    style={{ ...fieldStyle, width: 132, maxWidth: "65%", minWidth: 0 }}
                     value={props.chatEmoteSettings.direction}
                     onChange={(event) => {
                       const direction = event.target.value as ChatEmoteSettings["direction"];
@@ -1617,13 +1618,13 @@ export function StudioPanel(props: StudioPanelProps) {
                     }}
                     title={props.chatEmoteSettings.motion === "parade"
                       ? "Choose whether the parade travels left or right"
-                      : "Choose which bottom corner the route starts from"}
+                      : "Start left: bottom-left → top-left → top-right → bottom-right. Start right mirrors that route."}
                   >
                     <option value="left">
-                      {props.chatEmoteSettings.motion === "corners" ? "Counter-clockwise · start right" : "Right to left"}
+                      {props.chatEmoteSettings.motion === "corners" ? "Start right" : "Right to left"}
                     </option>
                     <option value="right">
-                      {props.chatEmoteSettings.motion === "corners" ? "Clockwise · start left" : "Left to right"}
+                      {props.chatEmoteSettings.motion === "corners" ? "Start left" : "Left to right"}
                     </option>
                   </select>
                 </label>
@@ -1747,6 +1748,37 @@ export function StudioPanel(props: StudioPanelProps) {
               ) : (
                 <span className="chat-emote-blacklist__empty">No additional emotes allowed</span>
               )}
+            </div>
+            <div className="chat-emote-card">
+              <strong className="chat-emote-card__title">
+                Blocked emotes
+              </strong>
+              <span className="chat-emote-card__description">
+                Block Twitch subscriber/global or 7TV emotes by name. Case-insensitive; overrides additional emotes. Applies to new messages.
+              </span>
+              <form className="chat-emote-blacklist__add" onSubmit={(event) => {
+                event.preventDefault();
+                const name = blockedEmoteName.trim();
+                const current = props.chatEmoteSettings.blockedEmotes ?? [];
+                if (!/^\S{1,64}$/.test(name) || current.length >= 100 || current.some((item) => item.toLowerCase() === name.toLowerCase())) return;
+                props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, blockedEmotes: [...current, name] });
+                setBlockedEmoteName("");
+                toast.success(`${name} blocked from chat emotes`);
+              }}>
+                <input style={fieldStyle} value={blockedEmoteName} onChange={(event) => setBlockedEmoteName(event.target.value)} maxLength={64} placeholder="Exact emote name" aria-label="Emote name to block" title="Enter a Twitch or 7TV emote name, including its channel prefix if present" />
+                <button type="submit" className="ui-button ui-button--compact" title="Block this emote from future chat messages" disabled={!/^\S{1,64}$/.test(blockedEmoteName.trim()) || (props.chatEmoteSettings.blockedEmotes ?? []).length >= 100 || (props.chatEmoteSettings.blockedEmotes ?? []).some((name) => name.toLowerCase() === blockedEmoteName.trim().toLowerCase())}>
+                  <Plus size={13} /> Block
+                </button>
+              </form>
+              <div className="chat-emote-blacklist">
+                {(props.chatEmoteSettings.blockedEmotes ?? []).map((name) => (
+                  <span key={name}>{name}<button type="button" aria-label={`Unblock ${name}`} title={`Allow ${name} again`} onClick={() => {
+                    props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, blockedEmotes: props.chatEmoteSettings.blockedEmotes.filter((item) => item !== name) });
+                    toast.success(`${name} unblocked`);
+                  }}><X size={11} /></button></span>
+                ))}
+                {!(props.chatEmoteSettings.blockedEmotes ?? []).length && <span className="chat-emote-blacklist__empty">No blocked emotes</span>}
+              </div>
             </div>
             <div className="chat-emote-card">
               <strong className="chat-emote-card__title">

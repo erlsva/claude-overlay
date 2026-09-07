@@ -55,6 +55,9 @@ export const canvasStore: CanvasStore = {
       additionalEmotes: Array.isArray(stored?.additionalEmotes)
         ? stored.additionalEmotes.filter((name) => /^[a-z0-9_]{1,64}$/i.test(name)).slice(0, 100)
         : [],
+      blockedEmotes: Array.isArray(stored?.blockedEmotes)
+        ? stored.blockedEmotes.filter((name) => typeof name === "string" && /^\S{1,64}$/.test(name)).slice(0, 100)
+        : [],
     };
   })(),
   ...studio,

@@ -79,6 +79,7 @@ export function useSocket({
       maxVisible: 20,
       blacklist: [],
       additionalEmotes: [],
+      blockedEmotes: [],
     });
   const [chatEmoteSpawn, setChatEmoteSpawn] =
     useState<ChatEmoteSpawn | null>(null);
