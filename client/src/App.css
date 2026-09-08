@@ -979,14 +979,15 @@ button {
   gap: 0;
 }
 .chat-emote-stack img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
   display: block;
-  width: 100%;
-  height: 100%;
   object-fit: contain;
 }
 .chat-emote-stack .chat-emote-stack__overlay {
-  position: absolute;
-  inset: 0;
+  right: 0;
+  bottom: 0;
 }
 .chat-emote-particle span {
   box-sizing: border-box;
