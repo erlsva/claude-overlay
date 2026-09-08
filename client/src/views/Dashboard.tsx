@@ -48,6 +48,7 @@ import {
   loadStoredTheme,
   type DashboardTheme,
 } from "../theme";
+import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
@@ -579,11 +580,11 @@ export function Dashboard({
           >
             {showTwitchEmbed ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
-          <button
+          {CAN_SWITCH_TWITCH_CHANNEL && <button
             className="ui-icon-button"
             onClick={() => {
-              const nextChannel =
-                twitchChannel === "vicksy" ? "wixels" : "vicksy";
+              const currentIndex = TWITCH_CHANNELS.indexOf(twitchChannel);
+              const nextChannel = TWITCH_CHANNELS[(currentIndex + 1) % TWITCH_CHANNELS.length];
               setTwitchChannel(nextChannel);
               toast.info(
                 `Switching preview and chat listener to ${nextChannel}`,
@@ -591,18 +592,18 @@ export function Dashboard({
             }}
             style={{
               background:
-                twitchChannel === "wixels" ? "var(--accent-surface)" : "none",
+                twitchChannel === TWITCH_CHANNELS[1] ? "var(--accent-surface)" : "none",
               border:
-                twitchChannel === "wixels"
+                twitchChannel === TWITCH_CHANNELS[1]
                   ? "1px solid var(--accent-border)"
                   : "1px solid #333",
-              color: twitchChannel === "wixels" ? "var(--accent-text)" : "#ccc",
+              color: twitchChannel === TWITCH_CHANNELS[1] ? "var(--accent-text)" : "#ccc",
               cursor: "pointer",
             }}
-            title={`Switch preview from ${twitchChannel} to ${twitchChannel === "vicksy" ? "wixels" : "vicksy"} (This will change the preview/layout for everyone)`}
+            title={`Switch preview from ${twitchChannel} to ${TWITCH_CHANNELS[(TWITCH_CHANNELS.indexOf(twitchChannel) + 1) % TWITCH_CHANNELS.length]} (This will change the preview/layout for everyone)`}
           >
             <Repeat2 size={15} />
-          </button>
+          </button>}
           <button
             className="ui-icon-button"
             onClick={() => {

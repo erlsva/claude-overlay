@@ -6,6 +6,7 @@ import {
 import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
+import TileController from "../components/TileController";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
@@ -16,7 +17,7 @@ export function Overlay() {
     stageRef.current?.applyControl(payload);
   }, []);
 
-  const { elements, cursors, dvdCelebrationSettings, chatEmoteSettings, chatEmoteSpawn, strokes, liveStrokes, notifyMediaEnded } = useSocket({
+  const { elements, cursors, dvdCelebrationSettings, chatEmoteSettings, chatEmoteSpawn, strokes, liveStrokes, notifyMediaEnded, chatChannel } = useSocket({
     mode: "overlay",
     onMediaControl: handleMediaControl,
   });
@@ -31,6 +32,7 @@ export function Overlay() {
 
   return (
     <>
+      <TileController channel={chatChannel} />
       <OverlayStage ref={stageRef} elements={elements} cursors={cursors} dvdCelebrationSettings={dvdCelebrationSettings} strokes={strokes} liveStrokes={liveStrokes} onMediaEnded={notifyMediaEnded} />
       <ChatEmoteLayer spawn={chatEmoteSpawn} settings={chatEmoteSettings} />
     </>

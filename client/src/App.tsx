@@ -6,7 +6,6 @@ import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
 import { ToastProvider, useToast } from "./components/ToastProvider";
 import vicksySpin from "./assets/vicksySpin.gif";
-import TileController from "./components/TileController";
 import { customAccentVariables, loadStoredAccent, loadStoredTheme } from "./theme";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -15,7 +14,6 @@ export default function App() {
     return (
       <ToastProvider>
         <ErrorBoundary>
-          <TileController channel="vicksy" />
           <Overlay />
         </ErrorBoundary>
       </ToastProvider>

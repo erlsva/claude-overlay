@@ -1,6 +1,7 @@
 import * as tmi from 'tmi.js';
 import type { TriggerEventType } from '../types.js';
 import type { ChatPermission } from '../types.js';
+import { getConfiguredTwitchChannels, getDefaultTwitchChannel } from './channels.js';
 
 type ChatCommandEvent = {
   channel?: string;
@@ -17,8 +18,8 @@ type ChatCommandEvent = {
 };
 type EventHandler = (type: TriggerEventType, event: ChatCommandEvent) => void;
 
-let channel = 'vicksy';
-const allowedChannels = new Set(['vicksy', 'wixels']);
+let channel = getDefaultTwitchChannel();
+const allowedChannels = new Set(getConfiguredTwitchChannels());
 
 let handler: EventHandler | null = null;
 let statusHandler: ((connected: boolean) => void) | null = null;

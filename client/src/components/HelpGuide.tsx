@@ -96,7 +96,7 @@ const sections = [
       ["Preview eye", "Show or hide the Twitch preview only on the dashboard."],
       [
         "Switch preview",
-        "Switch both the preview and chat command listener between Vicksy and Wixels. This will change the preview for all connected users.",
+        "When multiple production channels are configured, switch both the preview and chat command listener. Local development is locked to EPLE7.",
       ],
       ["Refresh overlay", "Ask connected overlay browser sources to reload."],
       [

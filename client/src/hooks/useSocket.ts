@@ -19,6 +19,7 @@ import type {
 } from "../types";
 import { getAuthToken } from "./useAuth";
 import { useToast } from "../components/ToastProvider";
+import { DEFAULT_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -95,7 +96,7 @@ export function useSocket({
     canUndo: false,
     canRedo: false,
   });
-  const [chatChannel, setChatChannelState] = useState("vicksy");
+  const [chatChannel, setChatChannelState] = useState(DEFAULT_TWITCH_CHANNEL);
 
   // Use refs for callbacks so the socket listener closure always has the latest version
   const onRoleUpdatedRef = useRef(onRoleUpdated);
@@ -343,7 +344,14 @@ export function useSocket({
     socket.on("chat-emote:spawn", setChatEmoteSpawn);
     socket.on("studio:sync", setStudio);
     socket.on("history:status", setHistoryStatus);
-    socket.on("chat:channel", ({ channel }) => setChatChannelState(channel));
+    socket.on("chat:channel", ({ channel }) => {
+      const normalized = channel.trim().toLowerCase();
+      setChatChannelState(
+        TWITCH_CHANNELS.includes(normalized)
+          ? normalized
+          : DEFAULT_TWITCH_CHANNEL,
+      );
+    });
     socket.on("sound:play", (item) => {
       if (mode !== "overlay") return;
       startSound(item, true, false);

@@ -10,6 +10,7 @@ import {
 import { getWhitelistEntry } from "../db/index.js";
 import { signToken, verifyToken } from "./jwt.js";
 import { loginRateLimit } from "../middleware/rateLimits.js";
+import { getConfiguredTwitchChannels, getDefaultTwitchChannel } from "../twitch/channels.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();
 const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:5173";
@@ -154,8 +155,10 @@ authRouter.post("/logout", (_req, res) => {
 
 authRouter.get("/live", async (req, res) => {
   try {
-    const requestedChannel = String(req.query.channel ?? "vicksy").toLowerCase();
-    const channel = requestedChannel === "wixels" ? "wixels" : "vicksy";
+    const requestedChannel = String(req.query.channel ?? getDefaultTwitchChannel()).toLowerCase();
+    const channel = getConfiguredTwitchChannels().includes(requestedChannel)
+      ? requestedChannel
+      : getDefaultTwitchChannel();
     const live = await isStreamerLive(channel);
     res.json({ live });
   } catch (err) {

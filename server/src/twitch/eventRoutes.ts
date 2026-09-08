@@ -5,11 +5,10 @@ import { exchangeCodeForRedirect, getTwitchEventsAuthUrl, getTwitchUserFromToken
 import { deleteEventAuth, eventDatabaseConfigured, getEventAuth, saveEventAuth, type EventChannel } from "./eventAuthStore.js";
 import type { TriggerEventType } from "../types.js";
 import { registerEventSubscriptions } from "./eventWebhook.js";
+import { getConfiguredTwitchChannels } from "./channels.js";
 
-const twitchLoginPattern = /^[a-z0-9_]{3,25}$/;
 export function getEventChannels(): EventChannel[] {
-  const configured = process.env.EVENT_CHANNELS ?? "vicksy,wixels";
-  return [...new Set(configured.split(",").map((value) => value.trim().toLowerCase()).filter((value) => twitchLoginPattern.test(value)))];
+  return getConfiguredTwitchChannels();
 }
 function isEventChannel(channel: string): channel is EventChannel {
   return getEventChannels().includes(channel);
