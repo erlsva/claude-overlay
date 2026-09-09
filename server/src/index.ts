@@ -22,7 +22,7 @@ import { getValidEventAuth, initializeEventAuthStore } from "./twitch/eventAuthS
 import { twitchClientId } from "./auth/twitch.js";
 import { CHATBOT_AUTH_KEY, createEventRoutes } from "./twitch/eventRoutes.js";
 import { createEventWebhook } from "./twitch/eventWebhook.js";
-import { resolveSevenTvEmotes } from "./seventv/emotes.js";
+import { resolveSevenTvEmotes, stackEmotes } from "./seventv/emotes.js";
 import { initializeChatEmoteSettingsStore, initializeWhitelistStore } from "./db/index.js";
 import { myinstantsRouter } from "./uploads/myinstants.js";
 
@@ -424,13 +424,7 @@ configureTwitchEvents((eventType, event) => {
         ...nativeEmotes.map((item) => ({ ...item, isZeroWidth: false })),
         ...emotes.filter((item) => !nativePositions.has(item.position ?? -1)),
       ].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const stacks: Array<{ base: PositionedEmote; overlays: PositionedEmote[] }> = [];
-      const leadingOverlays: PositionedEmote[] = [];
-      for (const item of orderedEmotes) {
-        if (item.isZeroWidth && stacks.length) stacks.at(-1)!.overlays.push(item);
-        else if (item.isZeroWidth) leadingOverlays.push(item);
-        else if (!item.isZeroWidth) stacks.push({ base: item, overlays: [] });
-      }
+      const { stacks, leadingOverlays } = stackEmotes(orderedEmotes);
       // Filter after stacking so modifiers of a blocked base cannot migrate
       // onto a different emote in the message.
       const blocked = new Set(canvasStore.chatEmoteSettings.blockedEmotes.map((name) => name.toLowerCase()));

@@ -1,11 +1,21 @@
 interface SevenTvEmote {
   id?: string;
   name?: string;
-  flags?: number | { zero_width?: boolean; zeroWidth?: boolean };
+  flags?: number | {
+    zero_width?: boolean;
+    zeroWidth?: boolean;
+    default_zero_width?: boolean;
+    defaultZeroWidth?: boolean;
+  };
   data?: {
     id?: string;
     name?: string;
-    flags?: number | { default_zero_width?: boolean; defaultZeroWidth?: boolean };
+    flags?: number | {
+      zero_width?: boolean;
+      zeroWidth?: boolean;
+      default_zero_width?: boolean;
+      defaultZeroWidth?: boolean;
+    };
   };
 }
 
@@ -30,6 +40,26 @@ interface CachedEmoteSet {
   emotes: Map<string, ResolvedSevenTvEmote>;
 }
 
+export function stackEmotes<T extends { isZeroWidth: boolean }>(items: T[]) {
+  const stacks: Array<{ base: T; overlays: T[] }> = [];
+  const leadingOverlays: T[] = [];
+
+  for (const item of items) {
+    if (item.isZeroWidth && stacks.length) {
+      stacks.at(-1)!.overlays.push(item);
+    } else if (item.isZeroWidth) {
+      leadingOverlays.push(item);
+    } else {
+      // Chatters sometimes enter a modifier before its base. Associate an
+      // initial modifier run with the first regular emote rather than letting
+      // it take up its own horizontal space.
+      stacks.push({ base: item, overlays: leadingOverlays.splice(0) });
+    }
+  }
+
+  return { stacks, leadingOverlays };
+}
+
 const CACHE_MS = 5 * 60 * 1000;
 const caches = new Map<string, CachedEmoteSet>();
 const pendingLoads = new Map<string, Promise<Map<string, ResolvedSevenTvEmote>>>();
@@ -50,10 +80,23 @@ function mapEmotes(entries: SevenTvEmote[]) {
       // across API generations. Supporting both keeps cached channel sets
       // compatible while 7TV rolls out its newer schema.
       isZeroWidth:
-        (typeof entry.flags === "number" && (entry.flags & 1) !== 0) ||
+        (typeof entry.flags === "number" &&
+          ((entry.flags & 1) !== 0 || (entry.flags & 256) !== 0)) ||
         (typeof entry.data?.flags === "number" && (entry.data.flags & 256) !== 0) ||
-        (typeof entry.flags === "object" && !!(entry.flags.zero_width ?? entry.flags.zeroWidth)) ||
-        (typeof entry.data?.flags === "object" && !!(entry.data.flags.default_zero_width ?? entry.data.flags.defaultZeroWidth)),
+        (typeof entry.flags === "object" &&
+          !!(
+            entry.flags.zero_width ??
+            entry.flags.zeroWidth ??
+            entry.flags.default_zero_width ??
+            entry.flags.defaultZeroWidth
+          )) ||
+        (typeof entry.data?.flags === "object" &&
+          !!(
+            entry.data.flags.zero_width ??
+            entry.data.flags.zeroWidth ??
+            entry.data.flags.default_zero_width ??
+            entry.data.flags.defaultZeroWidth
+          )),
     });
   }
   return emotes;
