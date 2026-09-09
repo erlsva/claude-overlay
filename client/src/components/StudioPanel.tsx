@@ -11,6 +11,7 @@ import {
   Trash2,
   X,
   BellRing,
+  AlertTriangle,
   Link2,
   Search,
 } from "lucide-react";
@@ -169,8 +170,19 @@ export function StudioPanel(props: StudioPanelProps) {
   const [additionalEmoteName, setAdditionalEmoteName] = useState("");
   const [listSearch, setListSearch] = useState("");
   const pendingStepBeforeChainEdit = useRef<TriggerStep | null>(null);
-  const twitchEvents = useTwitchEvents(tab === "events");
+  const twitchEvents = useTwitchEvents(tab === "events" || tab === "triggers");
   const eventStatus = twitchEvents.status;
+  const chatbotHasWriteAccess = !!(
+    eventStatus?.chatbot?.connected &&
+    eventStatus.chatbot.scopes.includes("user:write:chat")
+  );
+  const unavailableChatChannels =
+    eventStatus?.channels.filter((channel) => !channel.connected) ?? [];
+  const chatConnectionWarning = !!eventStatus && (
+    !eventStatus.configured ||
+    !chatbotHasWriteAccess ||
+    unavailableChatChannels.length > 0
+  );
 
   const currentTriggerStep = (): TriggerStep => ({
     action: triggerAction,
@@ -702,6 +714,54 @@ export function StudioPanel(props: StudioPanelProps) {
                   : "Connecting to public Twitch chat automatically…"
             }
           >
+            {tab === "triggers" && chatConnectionWarning && (
+              <div
+                className="command-chat-warning"
+                role="status"
+                aria-live="polite"
+              >
+                <AlertTriangle size={16} aria-hidden="true" />
+                <div>
+                  <strong>Chat-message actions are not fully connected</strong>
+                  {!eventStatus.configured ? (
+                    <span>
+                      Event storage is unavailable, so chat authorization
+                      cannot be read.
+                    </span>
+                  ) : (
+                    <>
+                      {!chatbotHasWriteAccess && (
+                        <span>
+                          {eventStatus.chatbot?.displayName ??
+                            eventStatus.chatbot?.login ??
+                            "DankChapBot"} needs to be connected with
+                          permission to send chat messages.
+                        </span>
+                      )}
+                      {unavailableChatChannels.length > 0 && (
+                        <span>
+                          Connect{" "}
+                          {unavailableChatChannels
+                            .map((item) => item.displayName ?? item.channel)
+                            .join(" and ")} so commands can target{" "}
+                          {unavailableChatChannels.length === 1
+                            ? "that channel"
+                            : "those channels"}.
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="ui-button ui-button--compact"
+                  onClick={() => setTab("events")}
+                  title="Open Twitch account and chatbot connections"
+                >
+                  <Link2 size={12} /> Open Events
+                </button>
+              </div>
+            )}
             <input
               style={fieldStyle}
               value={name}

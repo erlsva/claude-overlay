@@ -2325,6 +2325,10 @@ export function CanvasStage({
         node.addEventListener(
           "click",
           (e) => {
+            if (node!.dataset.justDragged) {
+              delete node!.dataset.justDragged;
+              return;
+            }
             if ((e.target as HTMLElement).closest("button, input, audio, .rh"))
               return;
             onSelect(el.id, e.shiftKey || e.metaKey || e.ctrlKey);
@@ -2332,10 +2336,20 @@ export function CanvasStage({
           true,
         );
 
-        // Drag start/end callbacks to suppress React's DOM position override during group drag
+        // Capture the drag cohort once so selection or socket echoes cannot
+        // change which elements move halfway through a gesture.
+        let activeDragIds = new Set<string>();
         const onDragStart = () => {
-          draggingRef.current.add(el.id);
           const thisEl = elementsRef.current.find((e) => e.id === el.id);
+          const selected = selectedIdsRef.current;
+          activeDragIds = new Set([el.id]);
+          if (selected.has(el.id)) selected.forEach((id) => activeDragIds.add(id));
+          if (thisEl?.groupId) {
+            for (const member of elementsRef.current) {
+              if (member.groupId === thisEl.groupId) activeDragIds.add(member.id);
+            }
+          }
+          activeDragIds.forEach((id) => draggingRef.current.add(id));
           if (thisEl?.dvdEnabled) {
             const position = getDvdPosition(thisEl);
             onElementChange(el.id, {
@@ -2344,14 +2358,9 @@ export function CanvasStage({
               y: position.y,
             });
           }
-          if (thisEl?.groupId) {
-            for (const member of elementsRef.current) {
-              if (member.groupId === thisEl.groupId)
-                draggingRef.current.add(member.id);
-            }
-          }
         };
         const onDragEnd = () => {
+          activeDragIds.clear();
           draggingRef.current.clear();
         };
 
@@ -2371,18 +2380,18 @@ export function CanvasStage({
           getZoom,
           (changes) => onElementChange(el.id, changes),
           (dx, dy, final) => {
-            // Move all other group members
-            const thisEl = elementsRef.current.find((e) => e.id === el.id);
-            if (!thisEl?.groupId) return;
-            const groupBox = groupBoxMapRef.current.get(thisEl.groupId);
-            if (groupBox) {
+            if (activeDragIds.size <= 1) return;
+            const activeGroupIds = new Set(
+              elementsRef.current
+                .filter((item) => activeDragIds.has(item.id) && item.groupId)
+                .map((item) => item.groupId!),
+            );
+            for (const groupId of activeGroupIds) {
+              const groupBox = groupBoxMapRef.current.get(groupId);
+              if (!groupBox) continue;
               if (!groupBox.dataset.dragStartLeft) {
-                groupBox.dataset.dragStartLeft = String(
-                  parseFloat(groupBox.style.left) || 0,
-                );
-                groupBox.dataset.dragStartTop = String(
-                  parseFloat(groupBox.style.top) || 0,
-                );
+                groupBox.dataset.dragStartLeft = String(parseFloat(groupBox.style.left) || 0);
+                groupBox.dataset.dragStartTop = String(parseFloat(groupBox.style.top) || 0);
               }
               groupBox.style.left = `${Number(groupBox.dataset.dragStartLeft) + dx}px`;
               groupBox.style.top = `${Number(groupBox.dataset.dragStartTop) + dy}px`;
@@ -2392,7 +2401,7 @@ export function CanvasStage({
               }
             }
             for (const other of elementsRef.current) {
-              if (other.id === el.id || other.groupId !== thisEl.groupId || other.locked)
+              if (other.id === el.id || !activeDragIds.has(other.id) || other.locked)
                 continue;
               const otherNode = nodeMapRef.current.get(other.id);
               if (!otherNode) continue;
@@ -2426,7 +2435,10 @@ export function CanvasStage({
           el.type === "text" ? () => onEditText?.(el.id) : null,
           {
             onDragStart,
-            onDragEnd,
+            onDragEnd: () => {
+              node!.dataset.justDragged = "true";
+              onDragEnd();
+            },
             canInteract: () => !elementsRef.current.find((element) => element.id === el.id)?.locked,
             onSnapGuides: (guideX, guideY) => {
               const xGuide = snapXGuideRef.current;

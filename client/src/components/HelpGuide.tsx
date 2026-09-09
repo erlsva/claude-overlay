@@ -7,7 +7,7 @@ const sections = [
     items: [
       [
         "Left-drag an element",
-        "Move it. Selected grouped elements move together.",
+        "Move it. If it belongs to the current multi-selection or a group, every selected or grouped element moves with it.",
       ],
       ["Alt + drag", "Temporarily disable edge and center snapping."],
       ["Drag a resize handle", "Resize from that edge or corner."],
@@ -44,7 +44,10 @@ const sections = [
       ["Ctrl / Cmd + Shift + Z", "Redo the latest undone change."],
       ["Ctrl / Cmd + Y", "Redo on Windows."],
       ["Ctrl / Cmd + C", "Copy the selected elements."],
-      ["Ctrl / Cmd + V", "Paste copies with a small position offset."],
+      [
+        "Ctrl / Cmd + V",
+        "Paste copied layers with a small offset, clipboard text as a text layer, or clipboard image/GIF data as uploaded media.",
+      ],
     ],
   },
   {

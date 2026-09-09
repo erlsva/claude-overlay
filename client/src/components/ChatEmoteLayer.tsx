@@ -81,9 +81,8 @@ export function ChatEmoteLayer({ spawn, settings, preview = false }: ChatEmoteLa
         ),
       ]);
       // Zero-width emotes may use a much wider canvas than their base emote.
-      // Include that canvas in the particle bounds while keeping the images
-      // right-aligned, which matches how a zero-width emote follows its base in
-      // an inline chat message.
+      // Include that canvas in the particle bounds. Every image is centered in
+      // the shared stack below, matching 7TV's own grid-cell composition.
       const stackAspectRatios = sequenceAspectRatios.map((baseRatio, index) =>
         Math.max(baseRatio, ...(overlayAspectRatios[index] ?? [])),
       );

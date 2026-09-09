@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import { randomUUID } from "../utils";
 import { TextDialog, encodeTextSrc } from "./TextDialog";
 import type { TextConfig } from "./TextDialog";
@@ -49,6 +49,7 @@ const PRESET_COLORS = [
 
 interface ToolbarProps {
   onAdd: (element: CanvasElement) => void;
+  mediaUploadRef?: MutableRefObject<((file: File) => Promise<void>) | null>;
   onSaveSound: (item: { id: string; name: string; url: string; volume: number }) => void;
   drawMode: boolean;
   onDrawModeToggle: () => void;
@@ -126,6 +127,7 @@ async function getVisualMediaSize(file: File) {
 
 export function Toolbar({
   onAdd,
+  mediaUploadRef,
   onSaveSound,
   drawMode,
   onDrawModeToggle,
@@ -256,6 +258,16 @@ export function Toolbar({
     }
   };
   uploadMediaFileRef.current = uploadMediaFile;
+
+  useEffect(() => {
+    if (!mediaUploadRef) return;
+    const uploadFromClipboard = (file: File) => uploadMediaFileRef.current(file);
+    mediaUploadRef.current = uploadFromClipboard;
+    return () => {
+      if (mediaUploadRef.current === uploadFromClipboard)
+        mediaUploadRef.current = null;
+    };
+  }, [mediaUploadRef]);
 
   const uploadGiphyUrl = async (url: string) => {
     try {

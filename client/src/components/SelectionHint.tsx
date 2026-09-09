@@ -56,7 +56,7 @@ export function SelectionHint({
         : kind === "text"
           ? "Double-click to edit text"
           : kind === "multiple"
-            ? "Use Group in Layers to keep these items together"
+            ? "Drag any selected item to move the whole selection · Group to keep them together"
             : "Drag to move · Use the handles to resize or rotate";
 
   const dismissForever = () => {

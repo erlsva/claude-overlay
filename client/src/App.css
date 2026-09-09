@@ -980,14 +980,15 @@ button {
 }
 .chat-emote-stack img {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  top: 50%;
+  left: 50%;
   display: block;
   object-fit: contain;
+  transform: translate(-50%, -50%);
 }
 .chat-emote-stack .chat-emote-stack__overlay {
-  right: 0;
-  bottom: 0;
+  top: 50%;
+  left: 50%;
 }
 .chat-emote-particle span {
   box-sizing: border-box;
@@ -1430,5 +1431,41 @@ button {
 .readiness-item--warning { border-color: #633035; background: #25191c; }
 .readiness-item--warning > svg { color: #fb7185; }
 .readiness-item--info > svg { color: var(--accent-text); }
+
+.command-chat-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid #854d0e;
+  border-radius: 6px;
+  background: #2a1d0b;
+  color: #fde68a;
+}
+.command-chat-warning > svg {
+  margin-top: 1px;
+  color: #f59e0b;
+}
+.command-chat-warning > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.command-chat-warning strong {
+  color: #fef3c7;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.command-chat-warning span {
+  color: #d6b978;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.command-chat-warning .ui-button {
+  border-color: #a16207;
+  background: #3b290f;
+  color: #fef3c7;
+}
 .spin { animation: readiness-spin 800ms linear infinite; }
 @keyframes readiness-spin { to { transform: rotate(360deg); } }

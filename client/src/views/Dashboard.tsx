@@ -51,6 +51,26 @@ import {
 import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
+const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
+
+function isEditingTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement &&
+    (target.matches("input, textarea, select") || target.isContentEditable);
+}
+
+function validClipboardElement(value: unknown): value is CanvasElement {
+  if (!value || typeof value !== "object") return false;
+  const element = value as Partial<CanvasElement>;
+  return (
+    typeof element.id === "string" &&
+    ["image", "gif", "video", "audio", "text"].includes(element.type ?? "") &&
+    typeof element.src === "string" &&
+    typeof element.x === "number" &&
+    typeof element.y === "number" &&
+    typeof element.width === "number" &&
+    typeof element.height === "number"
+  );
+}
 
 interface DashboardProps {
   user: AuthUser;
@@ -148,6 +168,7 @@ export function Dashboard({
       ? elements.find((element) => selectedIds.has(element.id))
       : undefined;
   const copiedElementsRef = useRef<CanvasElement[]>([]);
+  const mediaUploadRef = useRef<((file: File) => Promise<void>) | null>(null);
   const [showWhitelist, setShowWhitelist] = useState(false);
   const [drawMode, setDrawMode] = useState(false);
   const [drawColor, setDrawColor] = useState("#ff4444");
@@ -258,14 +279,43 @@ export function Dashboard({
     [addElement],
   );
 
+  const pasteElementCopies = useCallback(
+    (source: CanvasElement[]) => {
+      if (!source.length) return;
+      const groupIds = new Map<string, string>();
+      const topZ = elements.reduce(
+        (highest, element) => Math.max(highest, element.zIndex),
+        Date.now(),
+      );
+      const copies = source.map((element, index) => {
+        let groupId = element.groupId;
+        if (groupId) {
+          if (!groupIds.has(groupId)) groupIds.set(groupId, randomUUID());
+          groupId = groupIds.get(groupId)!;
+        }
+        return {
+          ...element,
+          id: randomUUID(),
+          x: element.x + 32,
+          y: element.y + 32,
+          zIndex: topZ + index + 1,
+          groupId,
+          dvdEnabled: false,
+        } satisfies CanvasElement;
+      });
+      copies.forEach(addElement);
+      copiedElementsRef.current = copies.map((element) => ({ ...element }));
+      setSelectedIds(new Set(copies.map((element) => element.id)));
+      toast.success(
+        `Pasted ${copies.length} element${copies.length === 1 ? "" : "s"}`,
+      );
+    },
+    [addElement, elements, toast],
+  );
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.matches("input, textarea, select") ||
-        target?.isContentEditable
-      )
+      if (!(event.ctrlKey || event.metaKey) || isEditingTarget(event.target))
         return;
 
       if (event.key.toLowerCase() === "z") {
@@ -279,53 +329,100 @@ export function Dashboard({
         return;
       }
 
-      if (event.key.toLowerCase() === "c") {
-        const selected = elements.filter((element) =>
-          selectedIds.has(element.id),
-        );
-        if (!selected.length) return;
-        copiedElementsRef.current = selected.map((element) => ({ ...element }));
+    };
+    const onCopy = (event: ClipboardEvent) => {
+      if (isEditingTarget(event.target)) return;
+      const selected = elements.filter((element) => selectedIds.has(element.id));
+      if (!selected.length || !event.clipboardData) return;
+      copiedElementsRef.current = selected.map((element) => ({ ...element }));
+      event.clipboardData.setData(
+        OVERLAY_CLIPBOARD_TYPE,
+        JSON.stringify(copiedElementsRef.current),
+      );
+      event.preventDefault();
+      toast.success(
+        `Copied ${selected.length} element${selected.length === 1 ? "" : "s"}`,
+      );
+    };
+    const onPaste = (event: ClipboardEvent) => {
+      if (isEditingTarget(event.target) || !event.clipboardData) return;
+
+      const internal = event.clipboardData.getData(OVERLAY_CLIPBOARD_TYPE);
+      if (internal) {
+        try {
+          const parsed = JSON.parse(internal) as unknown;
+          const source = Array.isArray(parsed)
+            ? parsed.filter(validClipboardElement)
+            : [];
+          if (source.length) {
+            event.preventDefault();
+            pasteElementCopies(source);
+            return;
+          }
+        } catch {
+          toast.error("The copied overlay elements could not be read");
+          return;
+        }
+      }
+
+      const mediaItem = Array.from(event.clipboardData.items).find(
+        (item) => item.kind === "file" && /^(image|video|audio)\//.test(item.type),
+      );
+      const file = mediaItem?.getAsFile();
+      if (file) {
         event.preventDefault();
-        toast.success(
-          `Copied ${selected.length} element${selected.length === 1 ? "" : "s"}`,
-        );
+        if (!mediaUploadRef.current) {
+          toast.error("The media uploader is not ready yet");
+          return;
+        }
+        void mediaUploadRef.current(file);
         return;
       }
 
-      if (event.key.toLowerCase() === "v" && copiedElementsRef.current.length) {
-        event.preventDefault();
-        const groupIds = new Map<string, string>();
-        const topZ = elements.reduce(
-          (highest, element) => Math.max(highest, element.zIndex),
-          Date.now(),
-        );
-        const copies = copiedElementsRef.current.map((element, index) => {
-          let groupId = element.groupId;
-          if (groupId) {
-            if (!groupIds.has(groupId)) groupIds.set(groupId, randomUUID());
-            groupId = groupIds.get(groupId)!;
-          }
-          return {
-            ...element,
-            id: randomUUID(),
-            x: element.x + 32,
-            y: element.y + 32,
-            zIndex: topZ + index + 1,
-            groupId,
-            dvdEnabled: false,
-          } satisfies CanvasElement;
-        });
-        copies.forEach(addElement);
-        copiedElementsRef.current = copies.map((element) => ({ ...element }));
-        setSelectedIds(new Set(copies.map((element) => element.id)));
-        toast.success(
-          `Pasted ${copies.length} element${copies.length === 1 ? "" : "s"}`,
-        );
-      }
+      const text = event.clipboardData.getData("text/plain");
+      if (!text.trim()) return;
+      event.preventDefault();
+      const safeText = text.slice(0, 9_500);
+      const estimatedLines = safeText.split("\n").reduce(
+        (count, line) => count + Math.max(1, Math.ceil(line.length / 22)),
+        0,
+      );
+      const element: CanvasElement = {
+        id: randomUUID(),
+        type: "text",
+        src: encodeTextSrc({
+          text: safeText,
+          color: "#ffffff",
+          fontSize: 48,
+          fontFamily: "Inter",
+        }),
+        x: SPAWN_X,
+        y: SPAWN_Y,
+        width: 520,
+        height: Math.min(700, Math.max(80, estimatedLines * 58)),
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        visible: true,
+        zIndex: Date.now(),
+      };
+      addElement(element);
+      setSelectedIds(new Set([element.id]));
+      toast.success(
+        safeText.length < text.length
+          ? "Text pasted and shortened to the layer limit"
+          : "Clipboard text added to the canvas",
+      );
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [addElement, elements, selectedIds, toast, undo, redo]);
+    window.addEventListener("copy", onCopy);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("copy", onCopy);
+      window.removeEventListener("paste", onPaste);
+    };
+  }, [addElement, elements, pasteElementCopies, selectedIds, toast, undo, redo]);
 
   const handleGroup = useCallback(() => {
     const groupId = randomUUID();
@@ -652,6 +749,7 @@ export function Dashboard({
 
       <Toolbar
         onAdd={handleAdd}
+        mediaUploadRef={mediaUploadRef}
         onSaveSound={saveSound}
         drawMode={drawMode}
         onDrawModeToggle={() => setDrawMode((v) => !v)}
