@@ -17,6 +17,9 @@ Konva is not used by the current application code.
 - Supports dragging, resizing, rotation, snapping, fit/fill placement,
   horizontal and vertical flips, grouping, duplication, visibility, locking,
   opacity, and undo/redo.
+- Includes first-run onboarding, a complete controls guide, stream-readiness
+  checks, persistent session notification history, and privacy-safe copyable
+  support diagnostics.
 - Animates media with adjustable DVD movement, corner celebrations, sound, and
   a shared corner-hit counter.
 - Provides a Soundboard and chained commands for showing, hiding, playing, or
@@ -210,6 +213,8 @@ controls are:
 | Middle-mouse drag | Pan the workspace, including over the Twitch preview |
 | Mouse wheel | Zoom toward or away from the pointer |
 | Double-click text | Edit the text element |
+| Ctrl/Cmd + Enter in the text editor | Save the text layer |
+| Escape in the text editor | Close without saving |
 | Delete / Backspace | Delete selected unlocked elements |
 | Ctrl/Cmd + Z | Undo the latest shared canvas change |
 | Ctrl/Cmd + Shift + Z | Redo the latest undone change |

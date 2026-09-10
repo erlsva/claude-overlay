@@ -8,10 +8,12 @@ import {
   Plus,
   Radio,
   Save,
+  Square,
   Trash2,
   X,
   BellRing,
   AlertTriangle,
+  ArrowRight,
   Link2,
   Search,
 } from "lucide-react";
@@ -35,6 +37,7 @@ import { ChatEmoteLayer } from "./ChatEmoteLayer";
 import previewEmote from "../assets/vicksyW.png";
 import { useTwitchEvents } from "../hooks/useTwitchEvents";
 import { useConfirm } from "./ConfirmProvider";
+import { ActionScopeBadge } from "./ActionScopeBadge";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
@@ -67,6 +70,7 @@ interface StudioPanelProps {
   onDeleteSound: (id: string) => void;
   onPreviewSound: (id: string) => void;
   onPlaySound: (id: string) => void;
+  onStopSound: (id: string) => void;
   onSaveTrigger: (trigger: OverlayTrigger) => void;
   onDeleteTrigger: (id: string) => void;
   onPreviewFly: (
@@ -672,6 +676,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   >
                     <Headphones size={13} />
                     Preview
+                    <ActionScopeBadge scope="dashboard" />
                   </button>
                   <button
                     className="ui-button ui-button--compact soundboard-action soundboard-action--obs"
@@ -680,6 +685,16 @@ export function StudioPanel(props: StudioPanelProps) {
                   >
                     <Play size={12} />
                     Play on Overlay
+                    <ActionScopeBadge scope="obs" />
+                  </button>
+                  <button
+                    className="ui-button ui-button--compact soundboard-action soundboard-action--stop"
+                    onClick={() => props.onStopSound(item.id)}
+                    title={`Immediately stop every instance of ${item.name} currently playing on OBS`}
+                  >
+                    <Square size={11} fill="currentColor" />
+                    Stop on Overlay
+                    <ActionScopeBadge scope="obs" />
                   </button>
                   <button
                     className="ui-button ui-button--compact ui-danger soundboard-action"
@@ -762,6 +777,41 @@ export function StudioPanel(props: StudioPanelProps) {
                 </button>
               </div>
             )}
+            <div className="command-builder-map" aria-label="Automation workflow">
+              <span>
+                <b>WHEN</b>
+                <strong>
+                  {tab === "events"
+                    ? "Twitch event"
+                    : triggerMatch.trim() || "Chat command"}
+                </strong>
+              </span>
+              <ArrowRight size={13} aria-hidden="true" />
+              <span>
+                <b>DO</b>
+                <strong>{triggerActionLabel(triggerAction)}</strong>
+              </span>
+              <ArrowRight size={13} aria-hidden="true" />
+              <span>
+                <b>THEN</b>
+                <strong>
+                  {chainedSteps.length + 1}{" "}
+                  {chainedSteps.length === 0 ? "action" : "actions"}
+                </strong>
+              </span>
+            </div>
+            <div className="command-builder-card">
+              <header>
+                <b>1</b>
+                <span>
+                  <strong>When this happens</strong>
+                  <small>
+                    {tab === "events"
+                      ? "Choose the Twitch event that starts the workflow."
+                      : "Choose the public chat command that starts the workflow."}
+                  </small>
+                </span>
+              </header>
             <input
               style={fieldStyle}
               value={name}
@@ -854,6 +904,19 @@ export function StudioPanel(props: StudioPanelProps) {
                 placeholder="Chat command, for example <fox"
               />
             )}
+            </div>
+            <div className="command-builder-connector" aria-hidden="true">
+              <span />
+              <ArrowRight size={12} />
+            </div>
+            <div className="command-builder-card">
+              <header>
+                <b>2</b>
+                <span>
+                  <strong>Do this</strong>
+                  <small>Choose one action, then optionally chain more.</small>
+                </span>
+              </header>
             <select
               style={fieldStyle}
               value={triggerAction}
@@ -1101,7 +1164,8 @@ export function StudioPanel(props: StudioPanelProps) {
                   cursor: targetId ? "pointer" : "not-allowed",
                 }}
               >
-                <Play size={12} /> Preview flight on dashboard
+                <Play size={12} /> Preview flight
+                <ActionScopeBadge scope="dashboard" />
               </button>
             )}
             {!currentStepIsFirst && (
@@ -1230,6 +1294,21 @@ export function StudioPanel(props: StudioPanelProps) {
                 ? "Update action"
                 : "Add another action"}
             </button>
+            </div>
+            <div className="command-builder-connector" aria-hidden="true">
+              <span />
+              <ArrowRight size={12} />
+            </div>
+            <div className="command-builder-card">
+              <header>
+                <b>3</b>
+                <span>
+                  <strong>Control & save</strong>
+                  <small>
+                    Set access and cooldown, then make the workflow available.
+                  </small>
+                </span>
+              </header>
             {tab === "triggers" && (
               <label
                 style={{
@@ -1310,6 +1389,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 <X size={14} /> Cancel editing
               </button>
             )}
+            </div>
             {props.studio.triggers.some((item) =>
               tab === "events" ? item.event !== "chat-command" : item.event === "chat-command",
             ) && (
@@ -1566,6 +1646,7 @@ export function StudioPanel(props: StudioPanelProps) {
               title="Preview the selected emote movement locally without showing anything on OBS"
             >
               <Play size={13} /> Preview movement
+              <ActionScopeBadge scope="dashboard" />
             </button>
             <div className="chat-emote-card">
               <strong className="chat-emote-card__title">Behavior</strong>

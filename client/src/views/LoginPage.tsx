@@ -1,10 +1,13 @@
 import { useEffect } from "react";
+import { CircleAlert, RefreshCw } from "lucide-react";
 import { useToast } from "../components/ToastProvider";
 import campfireFoxes from "../assets/foxsittingverycomfortablearoundacampfirewithitsfriends-4x.gif";
 
 interface LoginPageProps {
   onLogin: () => void;
   error?: string | null;
+  connectionError?: boolean;
+  onRetry?: () => void;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -15,7 +18,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   session_revoked: 'Your access was revoked. Ask the owner to re-add you if this is a mistake.',
 };
 
-export function LoginPage({ onLogin, error }: LoginPageProps) {
+export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPageProps) {
   const toast = useToast();
   useEffect(() => {
     if (error) toast.error(ERROR_MESSAGES[error] ?? 'Something went wrong.');
@@ -32,6 +35,13 @@ export function LoginPage({ onLogin, error }: LoginPageProps) {
           <p>A cozy little control room for bringing the stream to life.</p>
         </div>
         <img className="login-card__art" src={campfireFoxes} alt="Fox friends relaxing around a campfire" />
+        {connectionError && (
+          <div className="login-connection-error" role="alert">
+            <CircleAlert size={17} />
+            <span><strong>The dashboard server did not respond</strong><small>Render may still be waking up. Wait a moment, then try again.</small></span>
+            <button className="ui-button ui-button--compact" onClick={onRetry}><RefreshCw size={12} /> Retry</button>
+          </div>
+        )}
         <button
           onClick={onLogin}
           title="Authenticate with Twitch to open the dashboard"

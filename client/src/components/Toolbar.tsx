@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 import { randomUUID } from "../utils";
-import { TextDialog, encodeTextSrc } from "./TextDialog";
+import { TextDialog, encodeTextSrc, estimateTextElementSize } from "./TextDialog";
 import type { TextConfig } from "./TextDialog";
 import type { CanvasElement, MediaType } from "../types";
 import { authHeaders } from "../hooks/useAuth";
@@ -358,14 +358,15 @@ export function Toolbar({
   }, [toast]);
 
   const handleTextConfirm = (config: TextConfig) => {
+    const { width, height } = estimateTextElementSize(config);
     onAdd({
       id: randomUUID(),
       type: "text",
       src: encodeTextSrc(config),
-      x: 200,
-      y: 200,
-      width: 400,
-      height: 80,
+      x: STREAM_OFFSET_X + (STREAM_W - width) / 2,
+      y: STREAM_OFFSET_Y + (STREAM_H - height) / 2,
+      width,
+      height,
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
@@ -413,6 +414,7 @@ export function Toolbar({
   ) => (
     <button
       className="ui-button"
+      data-onboarding-action={title === "Add text" ? "add-text" : undefined}
       onClick={onClick}
       title={title}
       style={{

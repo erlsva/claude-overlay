@@ -315,6 +315,10 @@ export function registerSocketHandlers(
   });
   socket.on("sound:delete", async ({ id }) => { store.sounds = store.sounds.filter((item) => item.id !== id); await saveStudioData({ sounds: store.sounds }); syncStudio(); });
   socket.on("sound:play", ({ id }) => { const item = store.sounds.find((sound) => sound.id === id); if (item) io.to("overlay").emit("sound:play", item); });
+  socket.on("sound:stop", ({ id }) => {
+    if (!validLabel(id, 100) || !store.sounds.some((sound) => sound.id === id)) return;
+    io.to("overlay").emit("sound:stop", { id });
+  });
   socket.on("trigger:save", async (trigger) => {
     if (!validTrigger(trigger)) return; store.triggers = [...store.triggers.filter((item) => item.id !== trigger.id), trigger].slice(-100); await saveStudioData({ triggers: store.triggers }); syncStudio();
   });

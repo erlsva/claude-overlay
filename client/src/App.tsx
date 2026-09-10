@@ -30,7 +30,7 @@ export default function App() {
 
 function DashboardApp() {
   const toast = useToast();
-  const { user, loading, login, logout, refreshUser } = useAuth();
+  const { user, loading, login, logout, refreshUser, connectionError, retryConnection } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   const error = searchParams.get("error");
   const previewLoading = searchParams.get("preview") === "loading";
@@ -82,7 +82,7 @@ function DashboardApp() {
 
   if (loading || previewLoading) return themedScreen(<LoadingScreen />);
 
-  if (!user) return themedScreen(<LoginPage onLogin={login} error={error} />);
+  if (!user) return themedScreen(<LoginPage onLogin={login} error={error} connectionError={connectionError} onRetry={retryConnection} />);
 
   return (
     <>

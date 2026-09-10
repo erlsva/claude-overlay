@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HelpCircle, X } from "lucide-react";
+import { GraduationCap, HelpCircle, X } from "lucide-react";
 
 const sections = [
   {
@@ -25,7 +25,9 @@ const sections = [
         "Draw a selection box around multiple elements.",
       ],
       ["Click empty background", "Clear the current selection."],
-      ["Double-click text", "Open the text editor."],
+      ["Double-click text", "Open the text editor. You can also select the layer and use Edit text and style in Layers."],
+      ["Ctrl / Cmd + Enter in text editor", "Save the text layer without reaching for the mouse."],
+      ["Escape in text editor", "Close the editor without saving changes."],
       ["Delete / Backspace", "Delete selected unlocked elements."],
     ],
   },
@@ -54,7 +56,7 @@ const sections = [
     title: "Top toolbar",
     items: [
       ["Add media", "Upload an image, GIF, video, or audio file."],
-      ["Text", "Create a styled text element."],
+      ["Text", "Create centered overlay text with font, weight, alignment, color, outline, shadow, background, spacing, and size controls."],
       ["Draw", "Open Pen, Erase, Fill, brush size, and drawing controls."],
       ["Add as Element", "Turn the current drawing into movable media."],
       ["Fit / Fill", "Fit inside the stream area, or cover it completely."],
@@ -107,8 +109,16 @@ const sections = [
         "Verify the dashboard server, OBS connection, Twitch listeners, broadcaster Events, command targets, and visible media placement before a stream.",
       ],
       [
+        "Lifebuoy support button",
+        "Review notifications from this browser session and copy a safe diagnostic report containing build and connection details when asking for help.",
+      ],
+      [
         "Studio",
         "Open the Soundboard, commands, Twitch events, and chat emotes.",
+      ],
+      [
+        "Dashboard / OBS badges",
+        "Dashboard only is a private local preview; Plays on OBS reaches the stream; Dashboard + OBS runs in both places.",
       ],
       [
         "Selection hints",
@@ -125,7 +135,7 @@ const sections = [
     items: [
       [
         "Soundboard vs media",
-        "Soundboard clips play through OBS without a canvas layer. Play video/audio layer targets uploaded media in Layers.",
+        "Soundboard clips play through OBS without a canvas layer. Use Stop on Overlay to immediately silence every playing instance of that clip. Play video/audio layer targets uploaded media in Layers.",
       ],
       [
         "Myinstants links",
@@ -134,6 +144,10 @@ const sections = [
       [
         "Add another action",
         "Chain up to 10 editable actions to one chat command or Twitch event, such as showing an image, playing a sound, and sending a chat message.",
+      ],
+      [
+        "When → Do → Then",
+        "Use the three command-builder stages to choose the trigger, configure one or more actions, then set access and save.",
       ],
       [
         "Twitch event filters",
@@ -161,7 +175,7 @@ const sections = [
       ],
       [
         "Selected media animation",
-        "Select an image, GIF, or video in Layers, choose a directional slide, Pop, Pulse, Spin, or Shake, set its duration, and press Play. It runs on the dashboard and OBS; slides restore the previous position afterward.",
+        "Select an image, GIF, or video in Layers, choose a reaction or travel animation, set its duration with the slider or presets, and press Play. It runs on the dashboard and OBS; travel animations restore the previous position afterward.",
       ],
       [
         "Studio · Emotes",
@@ -175,7 +189,7 @@ const sections = [
   },
 ];
 
-export function HelpGuide() {
+export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -190,7 +204,7 @@ export function HelpGuide() {
   return (
     <>
       <button
-        className="ui-icon-button"
+        className="ui-icon-button canvas-corner-button"
         onClick={() => setOpen(true)}
         title="Open controls and shortcuts guide"
         aria-label="Open controls and shortcuts guide"
@@ -198,10 +212,7 @@ export function HelpGuide() {
           position: "absolute",
           right: 14,
           bottom: 12,
-          width: 34,
-          height: 34,
           zIndex: 2500,
-          borderRadius: "50%",
           border: "1px solid var(--accent-border)",
           background: "var(--accent-solid)",
           color: "var(--accent-contrast)",
@@ -266,6 +277,19 @@ export function HelpGuide() {
                   A quick guide to editing the Vicksy overlay
                 </div>
               </div>
+              {onOpenTour && (
+                <button
+                  className="ui-button ui-button--compact"
+                  onClick={() => {
+                    setOpen(false);
+                    onOpenTour();
+                  }}
+                  title="Replay the introductory dashboard tour"
+                  style={{ marginRight: 7 }}
+                >
+                  <GraduationCap size={14} /> Quick tour
+                </button>
+              )}
               <button
                 className="ui-icon-button"
                 onClick={() => setOpen(false)}

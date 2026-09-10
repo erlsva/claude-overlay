@@ -29,6 +29,7 @@ import type {
   MediaControlPayload,
   DvdCelebrationSettings,
   FlyDirection,
+  ElementEffectAnimation,
 } from "../types";
 import { renderAction } from "./DrawingCanvas";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -79,6 +80,7 @@ import { createDvdMotion, getDvdPosition } from "../canvas/dvdMotion";
 import { DvdCelebrationControls } from "./DvdCelebrationControls";
 import { useToast } from "./ToastProvider";
 import { randomUUID } from "../utils";
+import { ActionScopeBadge } from "./ActionScopeBadge";
 
 /** Renders a Lucide icon to an SVG string for use in imperatively-built DOM nodes. */
 function iconHTML(Icon: LucideIcon, size = 14): string {
@@ -96,7 +98,50 @@ function animationFrames(name: CanvasElement['enterAnimation']): Keyframe[] {
   return [starts[name ?? 'fade'] ?? starts.fade, end];
 }
 
+function applyTextStyles(span: HTMLSpanElement, src: string) {
+  const config = parseTextSrc(src);
+  span.textContent = config.text;
+  span.style.color = config.color;
+  span.style.fontSize = `${config.fontSize}px`;
+  span.style.fontFamily = `${config.fontFamily}, sans-serif`;
+  span.style.fontWeight = String(config.fontWeight);
+  span.style.textAlign = config.textAlign;
+  span.style.lineHeight = String(config.lineHeight);
+  span.style.letterSpacing = `${config.letterSpacing}px`;
+  span.style.webkitTextStroke = config.strokeWidth ? `${config.strokeWidth}px ${config.strokeColor}` : "0 transparent";
+  span.style.textShadow = config.shadowEnabled ? `1px 2px 5px ${config.shadowColor}` : "none";
+  span.style.background = config.backgroundEnabled ? config.backgroundColor : "transparent";
+}
+
 function effectAnimationFrames(name: CanvasElement['effectAnimation']): Keyframe[] {
+  if (name === 'bounce') return [
+    { transform: 'translateY(0) scaleY(1)' },
+    { transform: 'translateY(-28px) scaleY(1.02)', offset: 0.32 },
+    { transform: 'translateY(0) scaleY(.94)', offset: 0.55 },
+    { transform: 'translateY(-11px) scaleY(1)', offset: 0.72 },
+    { transform: 'translateY(0) scaleY(1)' },
+  ];
+  if (name === 'float') return [
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-18px)', offset: 0.25 },
+    { transform: 'translateY(0)', offset: 0.5 },
+    { transform: 'translateY(-10px)', offset: 0.75 },
+    { transform: 'translateY(0)' },
+  ];
+  if (name === 'sway') return [
+    { transform: 'rotate(0deg)' },
+    { transform: 'rotate(-7deg)', offset: 0.22 },
+    { transform: 'rotate(6deg)', offset: 0.48 },
+    { transform: 'rotate(-3deg)', offset: 0.72 },
+    { transform: 'rotate(0deg)' },
+  ];
+  if (name === 'heartbeat') return [
+    { transform: 'scale(1)' },
+    { transform: 'scale(1.16)', offset: 0.2 },
+    { transform: 'scale(1)', offset: 0.36 },
+    { transform: 'scale(1.1)', offset: 0.53 },
+    { transform: 'scale(1)' },
+  ];
   if (name === 'pulse') return [
     { transform: 'scale(1)' },
     { transform: 'scale(1.18)' },
@@ -131,7 +176,9 @@ function playRequestedEffect(node: HTMLElement, element: CanvasElement) {
   const surface = node.querySelector<HTMLElement>('.element-content') ?? node.firstElementChild as HTMLElement | null;
   surface?.animate(effectAnimationFrames(element.effectAnimation), {
     duration,
-    easing: element.effectAnimation === 'shake' ? 'ease-in-out' : 'cubic-bezier(.2,.8,.2,1)',
+    easing: ["shake", "sway", "float"].includes(element.effectAnimation)
+      ? 'ease-in-out'
+      : 'cubic-bezier(.2,.8,.2,1)',
   });
 }
 
@@ -695,12 +742,9 @@ function createMediaElement(
   const { type, src } = el;
 
   if (type === "text") {
-    const { text, color, fontSize, fontFamily } = parseTextSrc(src);
     const span = document.createElement("span");
-    span.textContent = text;
-    span.style.cssText = `color:${color};font-size:${fontSize}px;font-family:${fontFamily},sans-serif;
-      text-shadow:1px 1px 4px rgba(0,0,0,0.8);white-space:pre-wrap;
-      display:block;width:100%;height:100%;word-break:break-word;pointer-events:none;`;
+    span.style.cssText = "white-space:pre-wrap;display:block;width:100%;height:100%;padding:12px 16px;box-sizing:border-box;overflow:hidden;word-break:break-word;pointer-events:none;";
+    applyTextStyles(span, src);
     return span;
   }
 
@@ -911,6 +955,7 @@ export function ElementPanel({
   onGroup,
   onUngroup,
   onElementChange,
+  onEditText,
   dvdCelebrationSettings,
   dvdSoundUploading,
   onDvdSettingsChange,
@@ -925,16 +970,28 @@ export function ElementPanel({
   onGroup: () => void;
   onUngroup: () => void;
   onElementChange: (id: string, changes: Partial<CanvasElement>) => void;
+  onEditText: (id: string) => void;
   dvdCelebrationSettings: DvdCelebrationSettings;
   dvdSoundUploading: boolean;
   onDvdSettingsChange: (settings: DvdCelebrationSettings) => void;
   onDvdSoundUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   footer?: React.ReactNode;
 }) {
-  type SelectedAnimation = "slide-lr" | "slide-rl" | "slide-tb" | "slide-bt" | "pop" | "pulse" | "spin" | "shake";
+  type SelectedAnimation =
+    | "slide-lr"
+    | "slide-rl"
+    | "slide-tb"
+    | "slide-bt"
+    | "bounce"
+    | "float"
+    | "sway"
+    | "heartbeat"
+    | "pulse"
+    | "spin"
+    | "shake";
   const [layerSearch, setLayerSearch] = useState("");
-  const [selectedAnimation, setSelectedAnimation] = useState<SelectedAnimation>("slide-lr");
-  const [animationDuration, setAnimationDuration] = useState(3);
+  const [selectedAnimation, setSelectedAnimation] = useState<SelectedAnimation>("bounce");
+  const [animationDuration, setAnimationDuration] = useState(1.2);
   const animationTimersRef = useRef(new Map<string, number>());
   const toast = useToast();
   const slots = buildSlots(elements);
@@ -982,14 +1039,24 @@ export function ElementPanel({
     const durationMs = Math.round(Math.max(0.2, Math.min(10, animationDuration)) * 1000);
     const existingTimer = animationTimersRef.current.get(selectedElement.id);
     if (existingTimer) window.clearTimeout(existingTimer);
-    if (["pop", "pulse", "spin", "shake"].includes(selectedAnimation)) {
+    if (!["slide-lr", "slide-rl", "slide-tb", "slide-bt"].includes(selectedAnimation)) {
+      const effectLabels: Record<ElementEffectAnimation, string> = {
+        pop: "pop",
+        pulse: "spotlight pulse",
+        spin: "spin",
+        shake: "energetic shake",
+        bounce: "bounce",
+        float: "gentle float",
+        sway: "sway",
+        heartbeat: "heartbeat",
+      };
       onElementChange(selectedElement.id, {
-        effectAnimation: selectedAnimation as CanvasElement['effectAnimation'],
+        effectAnimation: selectedAnimation as ElementEffectAnimation,
         effectId: randomUUID(),
         effectStartedAt: Date.now(),
         effectDurationMs: durationMs,
       });
-      toast.success(`Playing ${selectedAnimation} on ${selectedElement.displayName || getFileLabel(selectedElement.src) || selectedElement.type}`);
+      toast.success(`Playing ${effectLabels[selectedAnimation as ElementEffectAnimation]} on ${selectedElement.displayName || getFileLabel(selectedElement.src) || selectedElement.type}`);
       return;
     }
 
@@ -1314,6 +1381,7 @@ export function ElementPanel({
 
   return (
     <div
+      className="layers-panel"
       style={{
         width: "var(--sidebar-width)",
         background: "#111",
@@ -1532,51 +1600,161 @@ export function ElementPanel({
         </div>
       )}
       {selectedElement && (
-        <div style={{ padding: "8px 9px", display: "grid", gap: 7, borderBottom: "1px solid #242424", background: "#151515" }}>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button className="ui-button ui-button--compact" onClick={() => onElementChange(selectedElement.id, { locked: !selectedElement.locked })} title={selectedElement.locked ? "Unlock this element for editing" : "Lock this element to prevent accidental movement, resizing, or deletion"} style={{ flex: 1, background: selectedElement.locked ? "var(--accent-surface)" : "#202020", border: `1px solid ${selectedElement.locked ? "var(--accent-border)" : "#3a3a3a"}`, color: selectedElement.locked ? "var(--accent-text)" : "#bec5cf", cursor: "pointer" }}>{selectedElement.locked ? <Unlock size={12}/> : <Lock size={12}/>} {selectedElement.locked ? "Unlock" : "Lock"}</button>
-          </div>
-          <label style={{ display: "grid", gridTemplateColumns: "52px 1fr 34px", alignItems: "center", gap: 6, color: "#aeb6c2", fontSize: 10 }}><span>Opacity</span><input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => onElementChange(selectedElement.id, { opacity: Number(event.target.value) })} style={{ minWidth: 0, accentColor: "var(--accent-border)" }}/><span style={{ textAlign: "right" }}>{Math.round((selectedElement.opacity ?? 1) * 100)}%</span></label>
-          {!selectedElement.locked && ["image", "gif", "video"].includes(selectedElement.type) && (
-            <div className="selected-media-animation">
-              <strong>PLAY ANIMATION</strong>
-              <div>
+        <div className="selected-layer-controls">
+          <section className="selected-control-section">
+            <header>
+              <strong>Appearance</strong>
+              <span>How this layer looks and enters the stream</span>
+            </header>
+            {selectedElement.type === "text" && (
+              <button
+                type="button"
+                className="ui-button selected-text-edit-button"
+                onClick={() => onEditText(selectedElement.id)}
+                title="Edit this text layer's content and styling"
+              >
+                <Pencil size={13} /> Edit text and style
+              </button>
+            )}
+            <label className="selected-opacity-control">
+              <span>Opacity</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={selectedElement.opacity ?? 1}
+                onChange={(event) =>
+                  onElementChange(selectedElement.id, {
+                    opacity: Number(event.target.value),
+                  })
+                }
+              />
+              <output>{Math.round((selectedElement.opacity ?? 1) * 100)}%</output>
+            </label>
+            <div className="selected-transition-controls">
+              {([
+                ["Show effect", "enterAnimation"],
+                ["Hide effect", "exitAnimation"],
+              ] as const).map(([label, property]) => (
+                <label key={property}>
+                  <span>{label}</span>
+                  <select
+                    value={selectedElement[property] ?? "fade"}
+                    onChange={(event) =>
+                      onElementChange(selectedElement.id, {
+                        [property]: event.target.value as CanvasElement[typeof property],
+                      })
+                    }
+                  >
+                    <option value="none">None</option>
+                    <option value="fade">Fade</option>
+                    <option value="pop">Pop</option>
+                    <option value="slide-left">Slide from left</option>
+                    <option value="slide-right">Slide from right</option>
+                    <option value="slide-up">Slide from top</option>
+                    <option value="slide-down">Slide from bottom</option>
+                    <option value="spin">Spin</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          {["image", "gif", "video"].includes(selectedElement.type) && (
+            <section className="selected-control-section selected-media-animation">
+              <header className="selected-media-animation__header">
+                <span className="selected-media-animation__heading">
+                  <strong>Motion</strong>
+                  <small>Play a one-time reaction or move across the stream</small>
+                </span>
+                <ActionScopeBadge scope="both" />
+              </header>
+              <label className="selected-animation-choice">
+                <span>Animation</span>
                 <select
                   value={selectedAnimation}
-                  onChange={(event) => setSelectedAnimation(event.target.value as SelectedAnimation)}
-                  title="Choose a one-time animation for this media on both the dashboard and OBS overlay"
+                  onChange={(event) =>
+                    setSelectedAnimation(event.target.value as SelectedAnimation)
+                  }
+                  title="Choose a one-time animation for this media"
                 >
-                  <option value="slide-lr">Slide left → right</option>
-                  <option value="slide-rl">Slide right → left</option>
-                  <option value="slide-tb">Slide top → bottom</option>
-                  <option value="slide-bt">Slide bottom → top</option>
-                  <option value="pop">Pop</option>
-                  <option value="pulse">Pulse</option>
-                  <option value="spin">Spin</option>
-                  <option value="shake">Shake</option>
+                  <optgroup label="Reactions">
+                    <option value="bounce">Bounce</option>
+                    <option value="float">Gentle float</option>
+                    <option value="heartbeat">Heartbeat</option>
+                    <option value="sway">Sway</option>
+                    <option value="pulse">Spotlight pulse</option>
+                    <option value="shake">Energetic shake</option>
+                    <option value="spin">Full spin</option>
+                  </optgroup>
+                  <optgroup label="Travel across stream">
+                    <option value="slide-lr">Left → right</option>
+                    <option value="slide-rl">Right → left</option>
+                    <option value="slide-tb">Top → bottom</option>
+                    <option value="slide-bt">Bottom → top</option>
+                  </optgroup>
                 </select>
-                <label title="Animation duration in seconds">
-                  <input
-                    type="number"
-                    min="0.2"
-                    max="10"
-                    step="0.1"
-                    value={animationDuration}
-                    onChange={(event) => setAnimationDuration(Number(event.target.value))}
-                    aria-label="Animation duration in seconds"
-                  />
-                  <span>s</span>
-                </label>
-                <button className="ui-icon-button" onClick={playSelectedAnimation} title="Play this animation now on the dashboard and OBS overlay">
-                  <Play size={13} />
-                </button>
+              </label>
+              <label className="selected-animation-duration">
+                <span>Duration</span>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="10"
+                  step="0.1"
+                  value={animationDuration}
+                  onChange={(event) =>
+                    setAnimationDuration(Number(event.target.value))
+                  }
+                />
+                <output>{animationDuration.toFixed(1)}s</output>
+              </label>
+              <div className="selected-animation-presets" aria-label="Animation duration presets">
+                {[0.6, 1.2, 2.5, 5].map((seconds) => (
+                  <button
+                    type="button"
+                    key={seconds}
+                    className={Math.abs(animationDuration - seconds) < 0.01 ? "active" : ""}
+                    onClick={() => setAnimationDuration(seconds)}
+                    aria-label={`Set animation duration to ${seconds} seconds`}
+                  >
+                    {seconds}s
+                  </button>
+                ))}
               </div>
-            </div>
+              <button
+                className="ui-button selected-animation-play"
+                onClick={playSelectedAnimation}
+                title="Play this animation now on the dashboard and OBS overlay"
+              >
+                <Play size={13} /> Play animation
+              </button>
+            </section>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            <label style={{ display: "grid", gap: 3, color: "#8f99a8", fontSize: 9 }}>SHOW<select value={selectedElement.enterAnimation ?? "fade"} onChange={(event) => onElementChange(selectedElement.id, { enterAnimation: event.target.value as CanvasElement['enterAnimation'] })} style={{ height: 28, border: "1px solid #3a3a3a", borderRadius: 4, background: "#1d1d1f", color: "#d5dae2", fontSize: 10 }}>{["none","fade","pop","slide-left","slide-right","slide-up","slide-down","spin"].map(value => <option key={value}>{value}</option>)}</select></label>
-            <label style={{ display: "grid", gap: 3, color: "#8f99a8", fontSize: 9 }}>HIDE<select value={selectedElement.exitAnimation ?? "fade"} onChange={(event) => onElementChange(selectedElement.id, { exitAnimation: event.target.value as CanvasElement['exitAnimation'] })} style={{ height: 28, border: "1px solid #3a3a3a", borderRadius: 4, background: "#1d1d1f", color: "#d5dae2", fontSize: 10 }}>{["none","fade","pop","slide-left","slide-right","slide-up","slide-down","spin"].map(value => <option key={value}>{value}</option>)}</select></label>
-          </div>
+
+          <section className="selected-control-section selected-layer-protection">
+            <header>
+              <strong>Protection</strong>
+              <span>Prevent accidental canvas edits</span>
+            </header>
+            <button
+              className={`ui-button${selectedElement.locked ? " active" : ""}`}
+              onClick={() =>
+                onElementChange(selectedElement.id, {
+                  locked: !selectedElement.locked,
+                })
+              }
+              title={
+                selectedElement.locked
+                  ? "Unlock this element for editing"
+                  : "Lock this element to prevent accidental movement, resizing, or deletion"
+              }
+            >
+              {selectedElement.locked ? <Unlock size={13} /> : <Lock size={13} />}
+              {selectedElement.locked ? "Unlock layer" : "Lock layer"}
+            </button>
+          </section>
         </div>
       )}
       {!selectedElement && elements.length > 0 && (
@@ -2486,14 +2664,8 @@ export function CanvasStage({
 
       // Update text content live
       if (el.type === "text") {
-        const span = node.querySelector("span");
-        if (span) {
-          const { text, color, fontSize, fontFamily } = parseTextSrc(el.src);
-          span.textContent = text;
-          span.style.color = color;
-          span.style.fontSize = fontSize + "px";
-          span.style.fontFamily = fontFamily + ", sans-serif";
-        }
+        const span = node.querySelector<HTMLSpanElement>("span");
+        if (span) applyTextStyles(span, el.src);
       } else {
         const mediaName = node.querySelector<HTMLElement>(".media-name");
         if (mediaName) {
@@ -2998,7 +3170,8 @@ export function CanvasStage({
         style={{
           position: "absolute",
           bottom: 12,
-          right: 56,
+          // Leave a full button-width gap for Diagnostics and Help.
+          right: 98,
           display: "flex",
           gap: 6,
           userSelect: "none",
@@ -3030,7 +3203,7 @@ export function CanvasStage({
             </button>
           )}
           <button
-            className="ui-button"
+            className="ui-button canvas-fit-button"
             onClick={resetView}
             title="Reset zoom and center the 1920×1080 stream area"
             style={{
@@ -3038,10 +3211,13 @@ export function CanvasStage({
               color: "#aaa",
               fontSize: 11,
               pointerEvents: "all",
-              padding: "3px 8px",
+              padding: "0 10px",
               borderRadius: 4,
               border: "none",
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             {Math.round(zoomState * 100)}% · Fit
@@ -3616,14 +3792,8 @@ export const OverlayStage = forwardRef<
       }
 
       if (el.type === "text") {
-        const span = node.querySelector("span");
-        if (span) {
-          const { text, color, fontSize, fontFamily } = parseTextSrc(el.src);
-          span.textContent = text;
-          span.style.color = color;
-          span.style.fontSize = fontSize + "px";
-          span.style.fontFamily = fontFamily + ",sans-serif";
-        }
+        const span = node.querySelector<HTMLSpanElement>("span");
+        if (span) applyTextStyles(span, el.src);
       }
 
       targetMap.set(el.id, {

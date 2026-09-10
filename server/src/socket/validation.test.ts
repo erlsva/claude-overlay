@@ -28,6 +28,7 @@ test("only allows supported update fields and values", () => {
   assert.equal(validElementUpdate({ autoVisibility: true }), true);
   assert.equal(validElementUpdate({ locked: true, opacity: 0.5, enterAnimation: "pop", exitAnimation: "fade" }), true);
   assert.equal(validElementUpdate({ effectAnimation: "shake", effectId: "animation-1", effectStartedAt: Date.now(), effectDurationMs: 700 }), true);
+  assert.equal(validElementUpdate({ effectAnimation: "bounce", effectId: "animation-2", effectStartedAt: Date.now(), effectDurationMs: 1200 }), true);
   assert.equal(
     validElementUpdate({
       dvdEnabled: true,

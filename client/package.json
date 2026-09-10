@@ -6,6 +6,7 @@
     "dev": "vite",
     "typecheck": "tsc -b",
     "build": "npm run typecheck && vite build",
+    "test": "node --test tests/text-config.test.ts tests/diagnostics.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

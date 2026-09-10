@@ -43,7 +43,7 @@ export interface CanvasElement {
 }
 
 export type ElementAnimation = 'none' | 'fade' | 'pop' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'spin';
-export type ElementEffectAnimation = 'pop' | 'pulse' | 'spin' | 'shake';
+export type ElementEffectAnimation = 'pop' | 'pulse' | 'spin' | 'shake' | 'bounce' | 'float' | 'sway' | 'heartbeat';
 export interface SavedScene { id: string; name: string; elements: CanvasElement[]; strokes: DrawStroke[]; updatedAt: string; }
 export interface ElementPreset { id: string; name: string; elements: CanvasElement[]; createdAt: string; }
 export interface SoundboardItem { id: string; name: string; url: string; volume: number; }
@@ -188,6 +188,7 @@ export interface ServerToClientEvents {
   'studio:sync': (state: StudioState) => void;
   'history:status': (status: { canUndo: boolean; canRedo: boolean }) => void;
   'sound:play': (item: SoundboardItem & { playbackId?: string }) => void;
+  'sound:stop': (payload: { id: string }) => void;
   'chat:channel': (payload: { channel: string }) => void;
 }
 
@@ -216,6 +217,7 @@ export interface ClientToServerEvents {
   'sound:save': (item: SoundboardItem) => void;
   'sound:delete': (payload: { id: string }) => void;
   'sound:play': (payload: { id: string }) => void;
+  'sound:stop': (payload: { id: string }) => void;
   'trigger:save': (trigger: OverlayTrigger) => void;
   'trigger:delete': (payload: { id: string }) => void;
   'chat:channel:set': (payload: { channel: string }) => void;

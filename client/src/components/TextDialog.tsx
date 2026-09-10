@@ -1,14 +1,17 @@
-import { useState } from 'react';
-import { parseTextSrc } from '../canvas/config';
+import { useEffect, useMemo, useState } from "react";
+import { AlignCenter, AlignLeft, AlignRight, Type, X } from "lucide-react";
+import {
+  DEFAULT_TEXT_CONFIG,
+  parseTextSrc,
+  type TextAlignment,
+  type TextConfig,
+} from "../canvas/config";
 
-export interface TextConfig {
-  text: string;
-  color: string;
-  fontSize: number;
-  fontFamily: string;
-}
+export type { TextConfig } from "../canvas/config";
+export { encodeTextSrc } from "../canvas/config";
 
-const FONTS = ['Inter', 'Arial', 'Georgia', 'Impact', 'Courier New', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Comic Sans MS'];
+const FONTS = ["Inter", "Arial", "Verdana", "Trebuchet MS", "Georgia", "Times New Roman", "Impact", "Courier New", "Comic Sans MS"];
+const SIZE_PRESETS = [32, 48, 64, 96];
 
 interface TextDialogProps {
   initial?: TextConfig;
@@ -16,77 +19,98 @@ interface TextDialogProps {
   onClose: () => void;
 }
 
-export function TextDialog({ initial, onConfirm, onClose }: TextDialogProps) {
-  const [text, setText] = useState(initial?.text ?? '');
-  const [color, setColor] = useState(initial?.color ?? '#ffffff');
-  const [fontSize, setFontSize] = useState(initial?.fontSize ?? 48);
-  const [fontFamily, setFontFamily] = useState(initial?.fontFamily ?? 'Inter');
+export function estimateTextElementSize(config: TextConfig) {
+  const lines = config.text.split("\n");
+  const longest = Math.max(1, ...lines.map((line) => line.length));
+  const characterWidth = config.fontSize * (config.fontFamily === "Courier New" ? 0.62 : 0.55);
+  const width = Math.min(1100, Math.max(180, longest * characterWidth + 36));
+  const wrappedLines = lines.reduce(
+    (total, line) => total + Math.max(1, Math.ceil((line.length * characterWidth) / Math.max(1, width - 36))),
+    0,
+  );
+  const height = Math.min(800, Math.max(70, wrappedLines * config.fontSize * config.lineHeight + 28));
+  return { width: Math.round(width), height: Math.round(height) };
+}
 
+function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }} onClick={onClose}>
-      <div style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10, padding: 24, width: 460, maxWidth: '95vw', display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#e2e8f0', fontFamily: 'Inter, sans-serif' }}>
-          {initial ? 'Edit text' : 'Add text'}
-        </h3>
-
-        {/* Preview */}
-        <div style={{ background: '#111', borderRadius: 6, padding: 20, minHeight: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #222', overflow: 'hidden' }}>
-          <span style={{ fontFamily: fontFamily + ', sans-serif', fontSize: Math.min(fontSize, 52), color, textShadow: '1px 1px 4px rgba(0,0,0,0.8)', wordBreak: 'break-word', textAlign: 'center' }}>
-            {text || 'Preview text'}
-          </span>
-        </div>
-
-        {/* Text input */}
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Enter your text…" rows={3}
-          style={{ background: '#111', border: '1px solid #333', borderRadius: 6, color: '#e2e8f0', fontSize: 13, padding: '8px 12px', resize: 'vertical', fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box', width: '100%' }}
-          autoFocus />
-
-        {/* Controls row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          {/* Color */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 10, color: '#888', fontFamily: 'Inter, sans-serif' }}>Color</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
-                style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }} />
-              <input value={color} onChange={(e) => setColor(e.target.value)}
-                style={{ flex: 1, minWidth: 0, background: '#111', border: '1px solid #333', borderRadius: 4, color: '#e2e8f0', fontSize: 11, padding: '4px 6px', outline: 'none', fontFamily: 'monospace' }} />
-            </div>
-          </label>
-
-          {/* Font size */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 10, color: '#888', fontFamily: 'Inter, sans-serif' }}>Size: {fontSize}px</span>
-            <input type="range" min={8} max={400} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}
-              style={{ width: '100%', marginTop: 6 }} />
-          </label>
-
-          {/* Font family */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 10, color: '#888', fontFamily: 'Inter, sans-serif' }}>Font</span>
-            <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
-              style={{ background: '#111', border: '1px solid #333', borderRadius: 4, color: '#e2e8f0', fontSize: 12, padding: '4px 6px', outline: 'none', width: '100%', boxSizing: 'border-box' }}>
-              {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </label>
-        </div>
-
-        {/* Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-          <button className="ui-button" title="Close without saving text changes" onClick={onClose} style={{ padding: '7px 16px', background: '#222', border: '1px solid #333', borderRadius: 6, color: '#c4cad4', fontSize: 13, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
-          <button className="ui-button" title="Add this text to the overlay" onClick={() => { if (text.trim()) onConfirm({ text, color, fontSize, fontFamily }); }}
-            disabled={!text.trim()}
-            style={{ padding: '7px 16px', background: text.trim() ? 'var(--accent-solid)' : '#333', border: 'none', borderRadius: 6, color: text.trim() ? 'var(--accent-contrast)' : '#aaa', fontSize: 13, cursor: text.trim() ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif' }}>
-            {initial ? 'Update' : 'Add'}
-          </button>
-        </div>
-      </div>
-    </div>
+    <label className="text-editor-field">
+      <span>{label}</span>
+      <span className="text-editor-color">
+        <input type="color" value={value} onChange={(event) => onChange(event.target.value)} aria-label={`${label} picker`} />
+        <input value={value} onChange={(event) => onChange(event.target.value)} maxLength={7} aria-label={`${label} hex value`} />
+      </span>
+    </label>
   );
 }
 
-export function encodeTextSrc(config: TextConfig): string {
-  return [config.text, config.color, config.fontSize, config.fontFamily].join('|||');
+export function TextDialog({ initial, onConfirm, onClose }: TextDialogProps) {
+  const [config, setConfig] = useState<TextConfig>(() => ({ ...DEFAULT_TEXT_CONFIG, ...initial }));
+  const update = <K extends keyof TextConfig>(key: K, value: TextConfig[K]) => setConfig((current) => ({ ...current, [key]: value }));
+  const valid = config.text.trim().length > 0;
+  const previewSize = useMemo(() => Math.min(config.fontSize, 72), [config.fontSize]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && valid) onConfirm(config);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [config, onClose, onConfirm, valid]);
+
+  return (
+    <div className="text-editor-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="text-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="text-editor-title">
+        <header className="text-editor-header">
+          <span className="text-editor-heading-icon"><Type size={17} /></span>
+          <span><strong id="text-editor-title">{initial ? "Edit text" : "Add text"}</strong><small>Style a text layer for the dashboard and OBS overlay</small></span>
+          <button className="ui-icon-button" type="button" onClick={onClose} aria-label="Close text editor" title="Close text editor"><X size={16} /></button>
+        </header>
+
+        <div className="text-editor-preview" style={{
+          color: config.color,
+          fontFamily: `${config.fontFamily}, sans-serif`,
+          fontSize: previewSize,
+          fontWeight: config.fontWeight,
+          textAlign: config.textAlign,
+          lineHeight: config.lineHeight,
+          letterSpacing: `${config.letterSpacing}px`,
+          WebkitTextStroke: config.strokeWidth ? `${Math.min(config.strokeWidth, 4)}px ${config.strokeColor}` : undefined,
+          textShadow: config.shadowEnabled ? `1px 2px 5px ${config.shadowColor}` : "none",
+          backgroundColor: config.backgroundEnabled ? config.backgroundColor : undefined,
+        }}>{config.text || "Your text will appear here"}</div>
+
+        <label className="text-editor-field text-editor-field--wide">
+          <span>Text</span>
+          <textarea value={config.text} onChange={(event) => update("text", event.target.value.slice(0, 9_500))} placeholder="Type something for the stream…" rows={3} autoFocus />
+          <small>{config.text.length.toLocaleString()} / 9,500</small>
+        </label>
+
+        <div className="text-editor-grid">
+          <label className="text-editor-field text-editor-field--font"><span>Font</span><select value={config.fontFamily} onChange={(event) => update("fontFamily", event.target.value)}>{FONTS.map((font) => <option key={font} value={font}>{font}</option>)}</select></label>
+          <label className="text-editor-field"><span>Weight</span><select value={config.fontWeight} onChange={(event) => update("fontWeight", Number(event.target.value))}><option value={400}>Regular</option><option value={500}>Medium</option><option value={600}>Semibold</option><option value={700}>Bold</option><option value={800}>Extra bold</option><option value={900}>Black</option></select></label>
+          <label className="text-editor-field"><span>Alignment</span><span className="text-editor-segmented">{(["left", "center", "right"] as TextAlignment[]).map((alignment) => { const Icon = alignment === "left" ? AlignLeft : alignment === "right" ? AlignRight : AlignCenter; return <button type="button" key={alignment} className={config.textAlign === alignment ? "active" : ""} onClick={() => update("textAlign", alignment)} aria-label={`Align ${alignment}`} title={`Align text ${alignment}`}><Icon size={14} /></button>; })}</span></label>
+          <ColorControl label="Text color" value={config.color} onChange={(value) => update("color", value)} />
+        </div>
+
+        <div className="text-editor-range-card">
+          <label><span>Size</span><input type="range" min="8" max="400" value={config.fontSize} onChange={(event) => update("fontSize", Number(event.target.value))} /><input type="number" min="8" max="400" value={config.fontSize} onChange={(event) => update("fontSize", Math.min(400, Math.max(8, Number(event.target.value))))} /><output>px</output></label>
+          <div className="text-editor-presets">{SIZE_PRESETS.map((size) => <button type="button" key={size} className={config.fontSize === size ? "active" : ""} onClick={() => update("fontSize", size)}>{size}</button>)}</div>
+          <label><span>Line height</span><input type="range" min="0.8" max="2.5" step="0.05" value={config.lineHeight} onChange={(event) => update("lineHeight", Number(event.target.value))} /><output>{config.lineHeight.toFixed(2)}</output></label>
+          <label><span>Letter spacing</span><input type="range" min="-5" max="30" step="0.5" value={config.letterSpacing} onChange={(event) => update("letterSpacing", Number(event.target.value))} /><output>{config.letterSpacing}px</output></label>
+        </div>
+
+        <div className="text-editor-effects">
+          <div className="text-editor-effect-row"><label className="text-editor-toggle"><input type="checkbox" checked={config.strokeWidth > 0} onChange={(event) => update("strokeWidth", event.target.checked ? 2 : 0)} /><span>Outline</span></label>{config.strokeWidth > 0 && <><input type="range" min="1" max="12" value={config.strokeWidth} onChange={(event) => update("strokeWidth", Number(event.target.value))} aria-label="Outline width" /><output>{config.strokeWidth}px</output><input type="color" value={config.strokeColor} onChange={(event) => update("strokeColor", event.target.value)} aria-label="Outline color" /></>}</div>
+          <div className="text-editor-effect-row"><label className="text-editor-toggle"><input type="checkbox" checked={config.shadowEnabled} onChange={(event) => update("shadowEnabled", event.target.checked)} /><span>Shadow</span></label>{config.shadowEnabled && <input type="color" value={config.shadowColor} onChange={(event) => update("shadowColor", event.target.value)} aria-label="Shadow color" />}</div>
+          <div className="text-editor-effect-row"><label className="text-editor-toggle"><input type="checkbox" checked={config.backgroundEnabled} onChange={(event) => update("backgroundEnabled", event.target.checked)} /><span>Background</span></label>{config.backgroundEnabled && <input type="color" value={config.backgroundColor} onChange={(event) => update("backgroundColor", event.target.value)} aria-label="Background color" />}</div>
+        </div>
+
+        <footer className="text-editor-actions"><span>Esc to close · Ctrl+Enter to save</span><button className="ui-button" type="button" onClick={onClose}>Cancel</button><button className="ui-button studio-primary" type="button" disabled={!valid} onClick={() => valid && onConfirm(config)}>{initial ? "Save changes" : "Add to overlay"}</button></footer>
+      </section>
+    </div>
+  );
 }
 
 export function decodeTextSrc(src: string): TextConfig {

@@ -26,6 +26,8 @@ export function authHeaders(): Record<string, string> {
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     // Pick up token from OAuth redirect
@@ -36,28 +38,51 @@ export function useAuth() {
       window.history.replaceState({}, '', '/');
     }
 
+    setConnectionError(false);
     fetch(`${SERVER_URL}/auth/me`, {
       credentials: 'include',
       headers: authHeaders(),
     })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (r.status >= 500) throw new Error(`Authentication server returned ${r.status}`);
+        return r.ok ? r.json() : null;
+      })
       .then(setUser)
-      .catch(() => setUser(null))
+      .catch(() => {
+        setUser(null);
+        setConnectionError(true);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [retryKey]);
 
   const login = () => { window.location.href = `${SERVER_URL}/auth/twitch`; };
 
   const logout = async () => {
     localStorage.removeItem(TOKEN_KEY);
-    await fetch(`${SERVER_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers: authHeaders() });
-    setUser(null);
+    try {
+      await fetch(`${SERVER_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers: authHeaders() });
+    } catch {
+      // The local token is authoritative for the dashboard; server logout is best-effort.
+    } finally {
+      // Logging out locally must still work while Render is unavailable.
+      setUser(null);
+    }
   };
 
   const refreshUser = useCallback(async () => {
-    const r = await fetch(`${SERVER_URL}/auth/refresh`, { credentials: 'include', headers: authHeaders() });
-    if (r.ok) setUser(await r.json());
+    try {
+      const r = await fetch(`${SERVER_URL}/auth/refresh`, { credentials: 'include', headers: authHeaders() });
+      if (r.ok) setUser(await r.json());
+      else if (r.status >= 500) setConnectionError(true);
+    } catch {
+      setConnectionError(true);
+    }
   }, []);
 
-  return { user, loading, login, logout, refreshUser };
+  const retryConnection = () => {
+    setLoading(true);
+    setRetryKey((value) => value + 1);
+  };
+
+  return { user, loading, login, logout, refreshUser, connectionError, retryConnection };
 }

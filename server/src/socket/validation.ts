@@ -11,14 +11,23 @@ const UPDATE_KEYS = new Set<keyof CanvasElement>([
   "effectAnimation", "effectId", "effectStartedAt", "effectDurationMs",
 ]);
 const ANIMATIONS = new Set(["none", "fade", "pop", "slide-left", "slide-right", "slide-up", "slide-down", "spin"]);
-const EFFECT_ANIMATIONS = new Set(["pop", "pulse", "spin", "shake"]);
+const EFFECT_ANIMATIONS = new Set([
+  "pop",
+  "pulse",
+  "spin",
+  "shake",
+  "bounce",
+  "float",
+  "sway",
+  "heartbeat",
+]);
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const boundedString = (value: unknown, max: number): value is string =>
   typeof value === "string" && value.length > 0 && value.length <= max;
 
 export function validElement(element: CanvasElement): boolean {
   return !!element && boundedString(element.id, 100) && MEDIA_TYPES.has(element.type)
-    && boundedString(element.src, 10_000)
+    && boundedString(element.src, element.type === "text" ? 25_000 : 10_000)
     && finite(element.x) && finite(element.y)
     && finite(element.width) && element.width > 0 && element.width <= 10_000
     && finite(element.height) && element.height > 0 && element.height <= 10_000
@@ -46,7 +55,7 @@ export function validElementUpdate(changes: Partial<CanvasElement>): boolean {
   const keys = Object.keys(changes) as Array<keyof CanvasElement>;
   if (keys.length === 0 || keys.some((key) => !UPDATE_KEYS.has(key))) return false;
   const candidate = changes as Record<string, unknown>;
-  if ("src" in candidate && !boundedString(candidate.src, 10_000)) return false;
+  if ("src" in candidate && !boundedString(candidate.src, 25_000)) return false;
   for (const key of ["x", "y", "rotation", "scaleX", "scaleY", "zIndex", "mediaCurrentTime"] as const) {
     if (key in candidate && !finite(candidate[key])) return false;
   }

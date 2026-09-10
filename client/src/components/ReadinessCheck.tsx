@@ -208,6 +208,7 @@ export function ReadinessCheck({
     <>
       <button
         className="ui-button readiness-button"
+        data-onboarding-action="readiness"
         onClick={() => setOpen(true)}
         title="Check the server, OBS, Twitch connections, command targets, and stream placement"
       >

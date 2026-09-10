@@ -126,6 +126,7 @@ export function useSocket({
       previewSoundId?: string,
     ) => {
       const audio = new Audio(item.url);
+      audio.dataset.soundId = item.id;
       activeSoundAudioRef.current.add(audio);
       if (previewSoundId) {
         const previews = previewAudioBySoundRef.current.get(previewSoundId) ?? new Set<HTMLAudioElement>();
@@ -356,6 +357,21 @@ export function useSocket({
       if (mode !== "overlay") return;
       startSound(item, true, false);
     });
+    socket.on("sound:stop", ({ id }) => {
+      if (mode !== "overlay") return;
+      for (const audio of [...activeSoundAudioRef.current]) {
+        if (audio.dataset.soundId !== id) continue;
+        audio.pause();
+        try {
+          audio.currentTime = 0;
+        } catch {
+          // A remote stream may not be seekable yet; pausing still stops it.
+        }
+        // Reuse the normal completion path so chained actions waiting for the
+        // sound also continue when a moderator stops it early.
+        audio.dispatchEvent(new Event("ended"));
+      }
+    });
 
     // rAF loop — flush pending element and cursor updates once per frame
     const flushLoop = () => {
@@ -572,6 +588,22 @@ export function useSocket({
     },
     [overlayConnected, studio.sounds, toast],
   );
+  const stopSound = useCallback(
+    (id: string) => {
+      const item = studio.sounds.find((sound) => sound.id === id);
+      if (!item) {
+        toast.error("That sound is no longer available.");
+        return;
+      }
+      if (!overlayConnected) {
+        toast.error("The OBS overlay is offline, so there is no sound to stop.");
+        return;
+      }
+      socketRef.current?.emit("sound:stop", { id });
+      toast.info(`Stopped “${item.name}” on overlay`);
+    },
+    [overlayConnected, studio.sounds, toast],
+  );
   const saveTrigger = useCallback(
     (trigger: OverlayTrigger) =>
       socketRef.current?.emit("trigger:save", trigger),
@@ -629,6 +661,7 @@ export function useSocket({
     deleteSound,
     previewSound,
     playSound,
+    stopSound,
     saveTrigger,
     deleteTrigger,
   };

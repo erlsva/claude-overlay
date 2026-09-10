@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { lazy, Suspense, useState, useCallback, useRef, useEffect } from "react";
 import {
   CanvasStage,
   ElementPanel,
@@ -8,12 +8,13 @@ import { DrawingCanvas, renderAction } from "../components/DrawingCanvas";
 import type { DrawToolMode } from "../components/DrawingCanvas";
 import { Toolbar } from "../components/Toolbar";
 import { WhitelistPanel } from "../components/WhitelistPanel";
-import { StudioPanel } from "../components/StudioPanel";
 import {
   TextDialog,
   encodeTextSrc,
   decodeTextSrc,
 } from "../components/TextDialog";
+import type { TextConfig } from "../canvas/config";
+import { DEFAULT_TEXT_CONFIG } from "../canvas/config";
 import { useSocket } from "../hooks/useSocket";
 import { randomUUID } from "../utils";
 import type { AuthUser } from "../hooks/useAuth";
@@ -37,8 +38,10 @@ import {
 import { useToast } from "../components/ToastProvider";
 import { HelpGuide } from "../components/HelpGuide";
 import { SelectionHint } from "../components/SelectionHint";
+import { OnboardingTour } from "../components/OnboardingTour";
 import TileController from "../components/TileController";
 import { ReadinessCheck } from "../components/ReadinessCheck";
+import { SupportDiagnostics } from "../components/SupportDiagnostics";
 import { useConfirm } from "../components/ConfirmProvider";
 import {
   CUSTOM_ACCENT_STORAGE_KEY,
@@ -52,6 +55,9 @@ import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChan
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
+const ONBOARDING_VERSION = "v1";
+const APP_VERSION = import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VERSION ?? "local";
+const StudioPanel = lazy(() => import("../components/StudioPanel").then((module) => ({ default: module.StudioPanel })));
 
 function isEditingTarget(target: EventTarget | null) {
   return target instanceof HTMLElement &&
@@ -152,6 +158,7 @@ export function Dashboard({
     deleteSound,
     previewSound,
     playSound,
+    stopSound,
     saveTrigger,
     deleteTrigger,
   } = useSocket({
@@ -185,6 +192,15 @@ export function Dashboard({
   const [showStudio, setShowStudio] = useState(true);
   const [theme, setTheme] = useState<DashboardTheme>(loadStoredTheme);
   const [customAccent, setCustomAccent] = useState(loadStoredAccent);
+  const onboardingStorageKey = `overlay_onboarding_${ONBOARDING_VERSION}_${user.login.toLowerCase()}`;
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => localStorage.getItem(onboardingStorageKey) !== "complete",
+  );
+
+  const closeOnboarding = useCallback(() => {
+    localStorage.setItem(onboardingStorageKey, "complete");
+    setShowOnboarding(false);
+  }, [onboardingStorageKey]);
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
@@ -391,6 +407,7 @@ export function Dashboard({
         id: randomUUID(),
         type: "text",
         src: encodeTextSrc({
+          ...DEFAULT_TEXT_CONFIG,
           text: safeText,
           color: "#ffffff",
           fontSize: 48,
@@ -443,17 +460,13 @@ export function Dashboard({
   }, []);
 
   const handleTextUpdate = useCallback(
-    (config: {
-      text: string;
-      color: string;
-      fontSize: number;
-      fontFamily: string;
-    }) => {
+    (config: TextConfig) => {
       if (!editingTextId) return;
       updateElement(editingTextId, { src: encodeTextSrc(config) });
       setEditingTextId(null);
+      toast.success("Text layer updated");
     },
-    [editingTextId, updateElement],
+    [editingTextId, toast, updateElement],
   );
 
   const handleMediaControl = useCallback(
@@ -797,6 +810,7 @@ export function Dashboard({
           onGroup={handleGroup}
           onUngroup={handleUngroup}
           onElementChange={updateElement}
+          onEditText={handleEditText}
           dvdCelebrationSettings={dvdCelebrationSettings}
           dvdSoundUploading={dvdSoundUploading}
           onDvdSettingsChange={setDvdCelebrationSettings}
@@ -1505,14 +1519,28 @@ export function Dashboard({
                 .join(", ")}{liveStrokes.size > 2 ? ` +${liveStrokes.size - 2}` : ""} drawing
             </div>
           )}
-          <HelpGuide />
+          <HelpGuide onOpenTour={() => setShowOnboarding(true)} />
+          <SupportDiagnostics snapshot={{
+            version: APP_VERSION,
+            user: user.displayName,
+            channel: twitchChannel,
+            theme,
+            dashboardConnected: connected,
+            overlayConnected,
+            overlayCount,
+            chatConnected: studio.twitchConnected,
+            elementCount: elements.length,
+            soundCount: studio.sounds.length,
+            commandCount: studio.triggers.length,
+          }} />
           <SelectionHint elements={elements} selectedIds={selectedIds} />
         </div>
         <div
           className={`studio-panel-shell${showStudio ? " studio-panel-shell--open" : ""}`}
           aria-hidden={!showStudio}
         >
-          <StudioPanel
+          <Suspense fallback={<div className="studio-panel-loading">Loading Studio…</div>}>
+            <StudioPanel
             studio={studio}
             elements={elements}
             selectedIds={selectedIds}
@@ -1528,6 +1556,7 @@ export function Dashboard({
             onDeleteSound={deleteSound}
             onPreviewSound={previewSound}
             onPlaySound={playSound}
+            onStopSound={stopSound}
             onSaveTrigger={saveTrigger}
             onDeleteTrigger={deleteTrigger}
             onPreviewFly={(id, direction, durationSeconds) =>
@@ -1535,7 +1564,8 @@ export function Dashboard({
             }
             chatEmoteSettings={chatEmoteSettings}
             onChatEmoteSettingsChange={setChatEmoteSettings}
-          />
+            />
+          </Suspense>
         </div>
       </div>
 
@@ -1555,6 +1585,25 @@ export function Dashboard({
           onClose={() => setEditingTextId(null)}
         />
       )}
+      <OnboardingTour
+        open={showOnboarding}
+        userName={user.displayName}
+        onClose={closeOnboarding}
+        hasLayers={elements.length > 0}
+        overlayConnected={overlayConnected}
+        onStartText={() => {
+          closeOnboarding();
+          window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="add-text"]')?.click(), 0);
+        }}
+        onOpenSetup={() => {
+          closeOnboarding();
+          setProfileMenuOpen(true);
+        }}
+        onOpenReadiness={() => {
+          closeOnboarding();
+          window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')?.click(), 0);
+        }}
+      />
     </div>
   );
 }
