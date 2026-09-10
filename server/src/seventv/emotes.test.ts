@@ -55,3 +55,48 @@ test("resolves ordered 7TV emotes and identifies zero-width overlays", async () 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("keeps stale channel emotes available while 7TV is unavailable", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  const originalWarn = console.warn;
+  let now = originalNow();
+  let fetchCount = 0;
+
+  Date.now = () => now;
+  console.warn = () => {};
+  globalThis.fetch = async (input) => {
+    fetchCount += 1;
+    return new Response(JSON.stringify(
+      String(input).endsWith("/emote-sets/global")
+        ? { emotes: [] }
+        : { emote_set: { emotes: [{ id: "cached-fox", name: "CachedFox" }] } },
+    ));
+  };
+
+  try {
+    const initial = await resolveSevenTvEmotes("stale-cache-room", "CachedFox");
+    assert.equal(initial[0]?.name, "CachedFox");
+
+    now += 5 * 60 * 1000 + 1;
+    globalThis.fetch = async () => {
+      fetchCount += 1;
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    };
+
+    const stale = await resolveSevenTvEmotes("stale-cache-room", "CachedFox");
+    assert.equal(stale[0]?.name, "CachedFox");
+
+    // Allow both background refresh promises to settle, then ensure the
+    // backoff prevents the next chat message from starting more requests.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const requestsAfterFailure = fetchCount;
+    const duringBackoff = await resolveSevenTvEmotes("stale-cache-room", "CachedFox");
+    assert.equal(duringBackoff[0]?.name, "CachedFox");
+    assert.equal(fetchCount, requestsAfterFailure);
+  } finally {
+    globalThis.fetch = originalFetch;
+    Date.now = originalNow;
+    console.warn = originalWarn;
+  }
+});
