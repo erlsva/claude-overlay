@@ -15,11 +15,12 @@ export const jobs=new Map<string,TtsJob>();
 const plans=new Map<string,{prompt:string;scenes:Scene[];owner:string;expires:number}>();
 let chain:Promise<unknown>=Promise.resolve();let pending=0;let previews=0;
 let play:((clip:TtsClip,volume:number)=>Promise<void>)|undefined;
-export type TtsPlaybackState={enabled:boolean;active:boolean;paused:boolean;clipId?:string;prompt?:string;sender?:string};
+export type TtsPlaybackState={enabled:boolean;active:boolean;paused:boolean;volume?:number;clipId?:string;prompt?:string;sender?:string};
 type PlaybackController={
  stop:()=>boolean;
  pause:()=>boolean;
  resume:()=>boolean;
+ setVolume:(volume:number)=>boolean;
  setEnabled:(enabled:boolean)=>TtsPlaybackState;
  state:()=>TtsPlaybackState;
 };
@@ -29,6 +30,7 @@ export function setTtsPlaybackController(controller:PlaybackController){playback
 export function stopTtsPlayback(){return playbackController?.stop()??false;}
 export function pauseTtsPlayback(){return playbackController?.pause()??false;}
 export function resumeTtsPlayback(){return playbackController?.resume()??false;}
+export function setTtsPlaybackVolume(volume:number){return playbackController?.setVolume(volume)??false;}
 export function setTtsPlaybackEnabled(enabled:boolean){return playbackController?.setEnabled(enabled)??{enabled,active:false,paused:false};}
 export function getTtsPlaybackState(){return playbackController?.state()??{enabled:true,active:false,paused:false};}
 export function replayId(text:string){return text.trim().match(/^\(?TTS:([a-f0-9]{32})\)?$/i)?.[1].toLowerCase();}

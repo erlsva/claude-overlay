@@ -8,6 +8,7 @@ test("disabled playback rejects before a paid TTS job is queued", () => {
     stop: () => false,
     pause: () => false,
     resume: () => false,
+    setVolume: () => false,
     setEnabled: (enabled) => ({ enabled, active: false, paused: false }),
   });
   assert.throws(

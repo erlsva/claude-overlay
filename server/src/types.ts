@@ -63,7 +63,7 @@ export interface TriggerStep {
   chatMessage?: string;
   ttsErrorMessage?: string;
 }
-export interface TtsPlaybackState { enabled: boolean; active: boolean; paused: boolean; clipId?: string; prompt?: string; sender?: string; }
+export interface TtsPlaybackState { enabled: boolean; active: boolean; paused: boolean; volume?: number; clipId?: string; prompt?: string; sender?: string; }
 export interface OverlayTrigger extends TriggerStep {
   id: string;
   name: string;
@@ -193,6 +193,7 @@ export interface ServerToClientEvents {
   'sound:stop': (payload: { id: string }) => void;
   'sound:pause': (payload: { id: string }) => void;
   'sound:resume': (payload: { id: string }) => void;
+  'sound:volume': (payload: { id: string; volume: number }) => void;
   'tts:status': (state: TtsPlaybackState) => void;
   'chat:channel': (payload: { channel: string }) => void;
 }

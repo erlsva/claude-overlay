@@ -70,7 +70,7 @@ type TtsStatus = {
     audioStorage: boolean;
   };
 };
-type PlaybackState = { enabled: boolean; active: boolean; paused: boolean; clipId?: string; prompt?: string; sender?: string };
+type PlaybackState = { enabled: boolean; active: boolean; paused: boolean; volume?: number; clipId?: string; prompt?: string; sender?: string };
 
 type TtsState = { status: TtsStatus; playback: PlaybackState; clips: Clip[]; jobs: Job[] };
 
@@ -113,11 +113,40 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
   const notifiedJobs = useRef(new Set<string>());
   const refreshErrorShown = useRef(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const volumeSyncTimer = useRef(0);
+  const volumeSyncErrorShown = useRef(false);
 
-  useEffect(() => setPlayback(livePlayback), [livePlayback]);
+  useEffect(() => {
+    setPlayback(livePlayback);
+    if (livePlayback.active && typeof livePlayback.volume === "number") {
+      setVolume(livePlayback.volume);
+    }
+  }, [livePlayback]);
   useEffect(() => {
     if (previewAudioRef.current) previewAudioRef.current.volume = volume;
   }, [selected, volume]);
+  useEffect(() => () => window.clearTimeout(volumeSyncTimer.current), []);
+
+  const changeVolume = (nextVolume: number) => {
+    setVolume(nextVolume);
+    if (!playback.active) return;
+    window.clearTimeout(volumeSyncTimer.current);
+    volumeSyncTimer.current = window.setTimeout(() => {
+      void api<{ changed: boolean; state: PlaybackState }>("/playback", {
+        method: "POST",
+        body: JSON.stringify({ action: "volume", volume: nextVolume }),
+      })
+        .then((result) => {
+          setPlayback(result.state);
+          volumeSyncErrorShown.current = false;
+        })
+        .catch((cause) => {
+          if (volumeSyncErrorShown.current) return;
+          volumeSyncErrorShown.current = true;
+          toast.error(cause instanceof Error ? cause.message : "Could not update OBS TTS volume");
+        });
+    }, 100);
+  };
 
   const applyState = useCallback(
     (next: TtsState, notify = true) => {
@@ -370,7 +399,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
           max="1"
           step="0.05"
           value={volume}
-          onChange={(event) => setVolume(Number(event.target.value))}
+          onChange={(event) => changeVolume(Number(event.target.value))}
         />
         <output>{Math.round(volume * 100)}%</output>
       </label>

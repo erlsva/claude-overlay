@@ -1372,7 +1372,9 @@ button {
   color: #f4f7fb;
   box-shadow: 0 12px 36px rgba(0,0,0,.48);
   pointer-events: none;
-  animation: toast-enter 180ms ease-out;
+  backface-visibility: hidden;
+  will-change: opacity, transform;
+  animation: overlay-tts-enter 180ms ease-out;
 }
 .overlay-tts-status__icon {
   width: 38px;
@@ -1385,8 +1387,28 @@ button {
 }
 .overlay-tts-status > span:last-child { min-width: 0; display: grid; gap: 3px; }
 .overlay-tts-status strong { color: var(--accent-text); font-size: 11px; letter-spacing: .07em; }
-.overlay-tts-status small { overflow: hidden; color: #d7dce4; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.overlay-tts-status small {
+  display: block;
+  color: #d7dce4;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .overlay-tts-status--paused { opacity: .88; }
+@keyframes overlay-tts-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, 8px, 0) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay-tts-status { animation: none; }
+}
 .tts-inline-note,
 .tts-error {
   margin: 0 !important;

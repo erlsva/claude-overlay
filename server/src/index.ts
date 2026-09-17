@@ -93,8 +93,10 @@ let activeTtsPlayback: {
   prompt: string;
   sender: string;
   paused: boolean;
+  volume: number;
   pause: () => void;
   resume: () => void;
+  setVolume: (volume: number) => void;
 } | undefined;
 const emitTtsStatus = () => io.emit("tts:status", getTtsPlaybackState());
 app.use("/tts", ttsRouter);
@@ -139,7 +141,12 @@ setTtsPlayer(async (clip, volume) => {
       schedule();
       emitTtsStatus();
     };
-    activeTtsPlayback = { clipId: clip.id, playbackId, prompt: clip.prompt, sender: clip.sender, paused: false, pause, resume };
+    const setVolume = (nextVolume: number) => {
+      if (activeTtsPlayback?.playbackId !== playbackId) return;
+      activeTtsPlayback.volume = nextVolume;
+      io.to("overlay").emit("sound:volume", { id: clip.id, volume: nextVolume });
+    };
+    activeTtsPlayback = { clipId: clip.id, playbackId, prompt: clip.prompt, sender: clip.sender, paused: false, volume, pause, resume, setVolume };
     soundCompletionWaiters.set(playbackId, finish);
     schedule();
     const serverUrl = (process.env.PUBLIC_SERVER_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:3001").replace(/\/$/, "");
@@ -158,7 +165,7 @@ setTtsPlaybackController({
     enabled: ttsPlaybackEnabled,
     active: !!activeTtsPlayback,
     paused: activeTtsPlayback?.paused ?? false,
-    ...(activeTtsPlayback ? { clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
+    ...(activeTtsPlayback ? { volume: activeTtsPlayback.volume, clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
   }),
   stop: () => {
     if (!activeTtsPlayback) return false;
@@ -174,6 +181,12 @@ setTtsPlaybackController({
   resume: () => {
     if (!activeTtsPlayback || !activeTtsPlayback.paused) return false;
     activeTtsPlayback.resume();
+    return true;
+  },
+  setVolume: (volume) => {
+    if (!activeTtsPlayback || activeTtsPlayback.volume === volume) return false;
+    activeTtsPlayback.setVolume(volume);
+    emitTtsStatus();
     return true;
   },
   setEnabled: (enabled) => {

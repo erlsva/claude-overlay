@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
 import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
 import { ffmpegAvailable } from "./audio.js";
-import { getTtsPlaybackState, jobs, pauseTtsPlayback, preview, resumeTtsPlayback, setTtsPlaybackEnabled, stopTtsPlayback, submit } from "./service.js";
+import { getTtsPlaybackState, jobs, pauseTtsPlayback, preview, resumeTtsPlayback, setTtsPlaybackEnabled, setTtsPlaybackVolume, stopTtsPlayback, submit } from "./service.js";
 import { deleteClip, getClip, listClips, ttsMetadataStorageConfigured } from "./store.js";
 
 export const ttsRouter = Router();
@@ -44,9 +44,14 @@ ttsRouter.post('/playback', (req,res)=>{try{
     z.object({action:z.literal('pause')}),
     z.object({action:z.literal('resume')}),
     z.object({action:z.literal('enable'),enabled:z.boolean()}),
+    z.object({action:z.literal('volume'),volume:z.number().min(0).max(1)}),
   ]).parse(req.body);
   const before=getTtsPlaybackState();
-  const changed=input.action==='pause'?pauseTtsPlayback():input.action==='resume'?resumeTtsPlayback():(setTtsPlaybackEnabled(input.enabled),before.enabled!==input.enabled);
+  let changed=false;
+  if(input.action==='pause')changed=pauseTtsPlayback();
+  else if(input.action==='resume')changed=resumeTtsPlayback();
+  else if(input.action==='volume')changed=setTtsPlaybackVolume(input.volume);
+  else {setTtsPlaybackEnabled(input.enabled);changed=before.enabled!==input.enabled;}
   res.json({changed,state:getTtsPlaybackState()});
 }catch(error){res.status(400).json({error:error instanceof Error?error.message:'Invalid playback control.'});}});
 ttsRouter.delete('/clips/:id',async(req,res)=>{try{if(!/^[a-f0-9]{32}$/.test(req.params.id)){res.status(400).json({error:'Invalid TTS clip ID.'});return;}const clip=await getClip(req.params.id);if(!clip){res.status(404).json({error:'That saved TTS clip no longer exists.'});return;}await deleteUploadedClip(clip.discordMessageId);await deleteClip(clip.id);res.json({deleted:true});}catch(error){res.status(502).json({error:error instanceof Error?error.message:'Could not delete the saved clip.'});}});

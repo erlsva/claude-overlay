@@ -388,6 +388,12 @@ export function useSocket({
         void audio.play().catch((error) => console.error("TTS resume failed:", error));
       }
     });
+    socket.on("sound:volume", ({ id, volume }) => {
+      if (mode !== "overlay") return;
+      for (const audio of activeSoundAudioRef.current) {
+        if (audio.dataset.soundId === id) audio.volume = volume;
+      }
+    });
     socket.on("tts:status", setTtsPlayback);
 
     // rAF loop — flush pending element and cursor updates once per frame
