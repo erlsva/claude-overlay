@@ -23,6 +23,11 @@ interface EventStatus {
   configured: boolean;
   channels: Array<{ channel: string; connected: boolean }>;
 }
+interface TtsStatus {
+  configured: boolean;
+  canReplay: boolean;
+  services: Record<string, boolean>;
+}
 
 function triggerSteps(studio: StudioState) {
   return studio.triggers.flatMap((trigger) =>
@@ -62,6 +67,7 @@ export function ReadinessCheck({
 }) {
   const [open, setOpen] = useState(false);
   const [events, setEvents] = useState<EventStatus | null>(null);
+  const [tts, setTts] = useState<TtsStatus | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [mediaResult, setMediaResult] = useState<{ checked: number; failed: number } | null>(null);
 
@@ -74,6 +80,15 @@ export function ReadinessCheck({
       setEvents(null);
     } finally {
       setLoadingEvents(false);
+    }
+  }, []);
+
+  const refreshTts = useCallback(async () => {
+    try {
+      const response = await fetch(`${SERVER_URL}/tts/status`, { headers: authHeaders() });
+      setTts(response.ok ? await response.json() : null);
+    } catch {
+      setTts(null);
     }
   }, []);
 
@@ -98,8 +113,9 @@ export function ReadinessCheck({
 
   const refreshChecks = useCallback(() => {
     void refreshEvents();
+    void refreshTts();
     void refreshMedia();
-  }, [refreshEvents, refreshMedia]);
+  }, [refreshEvents, refreshMedia, refreshTts]);
 
   useEffect(() => {
     if (open) refreshChecks();
@@ -124,6 +140,19 @@ export function ReadinessCheck({
     const enabledDvd = elements.filter((element) => element.visible && element.dvdEnabled).length;
     const connectedEvents = events?.channels.filter((channel) => channel.connected).length ?? 0;
     const totalEvents = events?.channels.length ?? 0;
+    const usesTts = triggerSteps(studio).some(({ step }) => step.action === "tts");
+    const ttsServiceLabels: Record<string, string> = {
+      openai: "OpenAI",
+      elevenlabs: "ElevenLabs",
+      ffmpeg: "FFmpeg",
+      metadata: "clip metadata storage",
+      audioStorage: "audio storage",
+    };
+    const missingTtsServices = tts
+      ? Object.entries(tts.services)
+          .filter(([, ready]) => !ready)
+          .map(([name]) => ttsServiceLabels[name] ?? name)
+      : [];
     return [
       {
         kind: connected ? "pass" : "warning",
@@ -167,6 +196,17 @@ export function ReadinessCheck({
           : `${missing.length} saved action${missing.length === 1 ? " has" : "s have"} a missing target. Edit or remove them before going live.`,
       },
       {
+        kind: tts?.configured ? "pass" : usesTts ? "warning" : "info",
+        title: "TTS scenes",
+        detail: tts?.configured
+          ? "Generation, saved-clip storage, and replay are ready."
+          : tts?.canReplay
+            ? "Saved clips can replay, but new generation is unavailable."
+            : tts
+              ? `${usesTts ? "A saved TTS action needs attention." : "TTS is optional and not fully configured."} Missing: ${missingTtsServices.join(", ")}.`
+              : "TTS readiness could not be checked.",
+      },
+      {
         kind: mediaResult === null || mediaResult.failed === 0 ? (mediaResult === null ? "info" : "pass") : "warning",
         title: "Uploaded media",
         detail: mediaResult === null
@@ -197,10 +237,10 @@ export function ReadinessCheck({
       {
         kind: "info",
         title: "Render persistence",
-        detail: "Uploads, canvas state, and LowDB Studio data remain ephemeral without persistent storage. Neon keeps whitelist and encrypted Twitch authorization.",
+        detail: "Uploads, canvas state, and LowDB Studio data remain ephemeral without persistent storage. Neon keeps whitelist, encrypted Twitch authorization, and the TTS clip index; TTS audio currently lives in Discord webhook attachments.",
       },
     ];
-  }, [chatEmotesEnabled, connected, elements, events, loadingEvents, mediaResult, overlayConnected, overlayCount, studio, twitchChannel, twitchConnected]);
+  }, [chatEmotesEnabled, connected, elements, events, loadingEvents, mediaResult, overlayConnected, overlayCount, studio, tts, twitchChannel, twitchConnected]);
 
   const warningCount = checks.filter((check) => check.kind === "warning").length;
 

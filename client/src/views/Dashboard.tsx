@@ -33,6 +33,7 @@ import {
   RotateCcw,
   Settings,
   MessageCircle,
+  Volume2,
   X,
 } from "lucide-react";
 import { useToast } from "../components/ToastProvider";
@@ -57,7 +58,17 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
 const ONBOARDING_VERSION = "v1";
 const APP_VERSION = import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VERSION ?? "local";
+const UI_SCALE_STORAGE_KEY = "overlay_dashboard_ui_scale";
+const UI_SCALE_OPTIONS = [100, 110, 125] as const;
+type DashboardUiScale = (typeof UI_SCALE_OPTIONS)[number];
 const StudioPanel = lazy(() => import("../components/StudioPanel").then((module) => ({ default: module.StudioPanel })));
+
+function loadDashboardUiScale(): DashboardUiScale {
+  const stored = Number(localStorage.getItem(UI_SCALE_STORAGE_KEY));
+  return UI_SCALE_OPTIONS.includes(stored as DashboardUiScale)
+    ? (stored as DashboardUiScale)
+    : 100;
+}
 
 function isEditingTarget(target: EventTarget | null) {
   return target instanceof HTMLElement &&
@@ -145,6 +156,7 @@ export function Dashboard({
     studio,
     historyStatus,
     chatChannel: twitchChannel,
+    ttsPlayback,
     setChatChannel: setTwitchChannel,
     undo,
     redo,
@@ -192,6 +204,7 @@ export function Dashboard({
   const [showStudio, setShowStudio] = useState(true);
   const [theme, setTheme] = useState<DashboardTheme>(loadStoredTheme);
   const [customAccent, setCustomAccent] = useState(loadStoredAccent);
+  const [uiScale, setUiScale] = useState<DashboardUiScale>(loadDashboardUiScale);
   const onboardingStorageKey = `overlay_onboarding_${ONBOARDING_VERSION}_${user.login.toLowerCase()}`;
   const [showOnboarding, setShowOnboarding] = useState(
     () => localStorage.getItem(onboardingStorageKey) !== "complete",
@@ -208,6 +221,9 @@ export function Dashboard({
   useEffect(() => {
     localStorage.setItem(CUSTOM_ACCENT_STORAGE_KEY, customAccent);
   }, [customAccent]);
+  useEffect(() => {
+    localStorage.setItem(UI_SCALE_STORAGE_KEY, String(uiScale));
+  }, [uiScale]);
 
   const handleDvdSoundUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -584,7 +600,9 @@ export function Dashboard({
 
   return (
     <div
+      className="dashboard-shell"
       data-theme={theme}
+      data-ui-scale={uiScale}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -598,6 +616,7 @@ export function Dashboard({
       <TileController channel={twitchChannel} />
       {/* Top bar */}
       <div
+        className="dashboard-topbar"
         style={{
           display: "flex",
           alignItems: "center",
@@ -629,6 +648,16 @@ export function Dashboard({
               <span className="chat-emote-active-indicator__dot" />
               <MessageCircle size={13} />
               Chat emotes active
+            </span>
+          )}
+          {ttsPlayback.enabled && (
+            <span
+              className="chat-emote-active-indicator"
+              title="TTS playback is enabled for the OBS overlay. Open Studio → TTS to generate clips or turn TTS off."
+            >
+              <span className="chat-emote-active-indicator__dot" />
+              <Volume2 size={13} />
+              TTS active
             </span>
           )}
           {isAdmin && (
@@ -1331,6 +1360,30 @@ export function Dashboard({
                       }}
                     />
                   </label>
+                  <div className="dashboard-ui-scale-settings">
+                    <div>
+                      <span>INTERFACE SIZE</span>
+                      <small>Dashboard only</small>
+                    </div>
+                    <div role="group" aria-label="Dashboard interface size">
+                      {UI_SCALE_OPTIONS.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          className={uiScale === option ? "active" : ""}
+                          aria-pressed={uiScale === option}
+                          onClick={() => {
+                            setUiScale(option);
+                            toast.success(`Dashboard interface set to ${option}%`);
+                          }}
+                          title={`Set dashboard controls and panels to ${option}% without changing the stream canvas`}
+                        >
+                          {option}%
+                        </button>
+                      ))}
+                    </div>
+                    <p>Canvas size and OBS coordinates stay unchanged.</p>
+                  </div>
                   <div style={{ display: "grid", gap: 7 }}>
                     <button
                       className="ui-button ui-button--compact"
@@ -1545,6 +1598,8 @@ export function Dashboard({
             elements={elements}
             selectedIds={selectedIds}
             isOwner={user.isOwner}
+            overlayConnected={overlayConnected}
+            ttsPlayback={ttsPlayback}
             onClose={() => setShowStudio(false)}
             onSaveScene={saveScene}
             onLoadScene={loadScene}

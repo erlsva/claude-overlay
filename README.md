@@ -25,6 +25,9 @@ Konva is not used by the current application code.
 - Provides a Soundboard and chained commands for showing, hiding, playing, or
   flying media across the stream, playing sounds, refreshing OBS, starting DVD
   movement, and sending Twitch chat messages.
+- Builds expressive TTS and sound-effect scenes with OpenAI, ElevenLabs, and
+  FFmpeg, with private dashboard previews, OBS playback, reusable clip tokens,
+  deletion, job feedback, and trigger-chain support.
 - Listens anonymously to public Vicksy or Wixels chat commands through `tmi.js`.
 - Displays Twitch and 7TV chat emotes as an ordered bottom parade or with floor/wall-bounce movement,
 - Plays one-shot Pop, Pulse, Spin, Shake, and directional slide animations on selected media,
@@ -50,6 +53,7 @@ Konva is not used by the current application code.
         ├── db/             LowDB studio data and PostgreSQL whitelist
         ├── socket/         Realtime handlers and input validation
         ├── state/          In-memory canvas history
+        ├── tts/            Scene planning, voice casting, audio rendering, and clip storage
         ├── twitch/         Chat listener, Event OAuth, and EventSub webhooks
         └── uploads/        Validated media uploads and Myinstants resolution
 ```
@@ -65,6 +69,8 @@ The application intentionally uses more than one kind of state:
 | Elements, drawings, cursor presence, history, playback | Server memory | No |
 | Soundboard, commands, emote settings, scenes, presets | `DATA_DIR/db.json` through LowDB | Only with a persistent disk |
 | Uploaded media | `UPLOAD_DIR` | Only with a persistent disk/object storage |
+| Saved TTS metadata | Neon PostgreSQL (local JSON fallback outside production) | Yes in production |
+| Saved TTS MP3 audio | Discord webhook message attachments | Yes while the webhook message remains available |
 
 On Render's free tier, the filesystem is ephemeral. Neon keeps authorization
 and whitelist records, but uploaded files and LowDB studio configuration can be
@@ -132,6 +138,11 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `TWITCH_EVENTSUB_SECRET` | Yes for Events | Independent random secret used to verify Twitch webhook signatures. |
 | `DATA_DIR` | Optional | LowDB directory; defaults to `server/data` locally. |
 | `UPLOAD_DIR` | Optional | Media directory; defaults to `/tmp/obs-uploads`. |
+| `OPENAI_API_KEY` | For TTS generation | Interprets free-form TTS scene prompts into structured scenes. |
+| `OPENAI_MODEL` | Optional | Structured-output model used by TTS; defaults to `gpt-4.1-mini`. |
+| `ELEVENLABS_API_KEY` | For TTS generation | Generates speech and sound-effect audio. |
+| `DISCORD_TTS_WEBHOOK_URL` | For TTS save/replay | Private webhook whose message attachments hold saved MP3 clips. |
+| `FFMPEG_PATH` | Optional | Explicit FFmpeg executable; otherwise `ffmpeg` must be available on `PATH`. |
 
 Generate independent secrets with Node.js:
 
@@ -176,6 +187,51 @@ These are separate OAuth flows:
 
 All access and refresh tokens are encrypted before being stored in PostgreSQL
 and are refreshed automatically.
+
+## TTS Scene Studio
+
+Studio → TTS turns expressive prompts into reusable overlay audio:
+
+1. Plain text is spoken dialogue. Inside `((...))`, quoted text is speech and
+   unquoted descriptions are generated as sound effects. Plain sections and
+   directed blocks can be mixed, and every section plays in sequence.
+   Use `((silence;2s))`, `((pause, 2 sec))`, or `((silent pause 2 seconds))`
+   for an exact 0.5–30 second
+   sound-effect pause. Without a duration, a pause defaults to one second and
+   is created locally without spending sound-generation credits.
+2. **Review plan** shows the interpreted voices, sounds, effects, and timing
+   before ElevenLabs credits are spent.
+3. **Generate & save** stores a 128 kbps MP3 and returns a `(TTS:<id>)` token.
+   The intermediate WAV and temporary mix files are deleted after each job.
+4. Paste that token into Studio or a command/event action to replay the exact
+   clip without running OpenAI or ElevenLabs again.
+5. Dashboard preview audio stays local to the controller. **Play**, **Pause**,
+   **Resume**, and **Stop OBS** affect the connected overlay browser source.
+   The on/off control blocks new paid playback before generation begins. New
+   TTS playback defaults to 25% volume.
+6. Finished clips are loudness-normalized with a -2 dB true-peak ceiling before
+   storage. OBS shows a small now-playing/paused TTS notice while a clip is active.
+
+If OpenAI times out, returns a transient HTTP error, or produces malformed
+structured output, the server uses the deterministic local parser rather than
+discarding the alert or automatically spending money on a second model call.
+Invalid user syntax still fails with a precise message. TTS trigger actions can
+optionally send a chatbot message to the viewer when generation or OBS playback
+fails.
+
+TTS metadata is indexed in Neon. The current compatibility storage adapter
+keeps MP3s as attachments on private Discord webhook messages and resolves a
+fresh signed attachment URL when OBS plays one. Deleting a clip removes both
+the webhook message and its metadata. [Discord attachment URLs are signed and
+expire](https://docs.discord.com/developers/reference#signed-attachment-cdn-urls),
+so never save a returned CDN URL as the clip identity.
+
+For a larger or public-facing clip library, replace the Discord adapter with
+dedicated [S3-compatible object storage such as Cloudflare
+R2](https://developers.cloudflare.com/r2/how-r2-works/). The `/tts/clips` API
+and database metadata already provide a clean boundary for that migration.
+Dynamic chat-command TTS can spend provider credits; restrict it to trusted
+roles, use a cooldown, and prefer saved tokens for repeated effects.
 
 Public chat commands and emotes do not require broadcaster authorization. The
 anonymous listener follows the dashboard's active Vicksy/Wixels preview.
@@ -288,7 +344,9 @@ After deploying:
 4. Connect Vicksy and Wixels in **Studio → Events**.
 5. Run a simulated event, then verify one real Twitch event.
 6. Confirm an anonymous chat command follows the selected preview channel.
-7. Test uploaded media after a restart if durable file storage is configured.
+7. If TTS is configured, review a plan, generate a short clip, preview it on
+   the dashboard, play/stop it in OBS, then replay its saved token.
+8. Test uploaded media after a restart if durable file storage is configured.
 
 ## Security notes
 
@@ -300,6 +358,9 @@ After deploying:
   stay server-side.
 - Uploaded files are size-limited and checked by allowed type and file
   signature. Do not weaken these checks to support arbitrary URLs.
+- TTS generation is rate-limited and queued, but dynamic public chat-command
+  prompts can still spend provider credits. Restrict them to trusted roles and
+  use cooldowns; saved TTS tokens replay without generation cost.
 - Myinstants page-link resolution is best-effort because Myinstants may reject
   requests from hosting-provider IPs. Downloading the MP3 and uploading it is
   the reliable fallback.
@@ -314,6 +375,9 @@ After deploying:
 - The Twitch embed is cross-origin and sensitive to pointer-blocking layers;
   editor interaction uses a shield only while dashboard gestures require it.
 - Myinstants can return HTTP 403 to server-side resolution requests.
+- Saved TTS audio currently depends on private Discord webhook messages. Keep
+  the webhook secret, and move the storage adapter to dedicated object storage
+  before treating the clip library as a large or public archive.
 
 ## License and content
 

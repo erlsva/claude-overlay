@@ -13,6 +13,7 @@ import type {
   ChatEmoteSpawn,
   StudioState,
   SoundboardItem,
+  TtsPlaybackState,
   OverlayTrigger,
   ServerToClientEvents,
   ClientToServerEvents,
@@ -97,6 +98,7 @@ export function useSocket({
     canRedo: false,
   });
   const [chatChannel, setChatChannelState] = useState(DEFAULT_TWITCH_CHANNEL);
+  const [ttsPlayback, setTtsPlayback] = useState<TtsPlaybackState>({ enabled: true, active: false, paused: false });
 
   // Use refs for callbacks so the socket listener closure always has the latest version
   const onRoleUpdatedRef = useRef(onRoleUpdated);
@@ -145,11 +147,12 @@ export function useSocket({
         }
       };
       let completionReported = false;
-      const reportPlaybackEnded = () => {
+      const reportPlaybackEnded = (error?: string) => {
         if (completionReported || mode !== "overlay" || !item.playbackId) return;
         completionReported = true;
         socketRef.current?.emit("sound:ended", {
           playbackId: item.playbackId,
+          ...(error ? { error } : {}),
         });
       };
       audio.addEventListener(
@@ -164,7 +167,7 @@ export function useSocket({
         "error",
         () => {
           cleanup();
-          reportPlaybackEnded();
+          reportPlaybackEnded(`Could not load ${item.name}`);
           if (reportError)
             toast.error(
               `Could not load “${item.name}”. Check its URL or uploaded file.`,
@@ -179,7 +182,7 @@ export function useSocket({
         })
         .catch((error) => {
           cleanup();
-          reportPlaybackEnded();
+          reportPlaybackEnded(`The browser could not play ${item.name}`);
           console.error("Soundboard playback failed:", error);
           if (reportError)
             toast.error(
@@ -372,6 +375,20 @@ export function useSocket({
         audio.dispatchEvent(new Event("ended"));
       }
     });
+    socket.on("sound:pause", ({ id }) => {
+      if (mode !== "overlay") return;
+      for (const audio of activeSoundAudioRef.current) {
+        if (audio.dataset.soundId === id) audio.pause();
+      }
+    });
+    socket.on("sound:resume", ({ id }) => {
+      if (mode !== "overlay") return;
+      for (const audio of activeSoundAudioRef.current) {
+        if (audio.dataset.soundId !== id || !audio.paused) continue;
+        void audio.play().catch((error) => console.error("TTS resume failed:", error));
+      }
+    });
+    socket.on("tts:status", setTtsPlayback);
 
     // rAF loop — flush pending element and cursor updates once per frame
     const flushLoop = () => {
@@ -638,6 +655,7 @@ export function useSocket({
     studio,
     historyStatus,
     chatChannel,
+    ttsPlayback,
     setChatChannel,
     addElement,
     updateElement,

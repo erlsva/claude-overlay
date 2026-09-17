@@ -28,6 +28,7 @@ import type {
   TriggerEventType,
   ChatEmoteSettings,
   ChatEmoteSpawn,
+  TtsPlaybackState,
 } from "../types";
 import { randomUUID } from "../utils";
 import { getFileLabel } from "../canvas/config";
@@ -39,6 +40,7 @@ import { useTwitchEvents } from "../hooks/useTwitchEvents";
 import { useConfirm } from "./ConfirmProvider";
 import { ActionScopeBadge } from "./ActionScopeBadge";
 
+import { TtsPanel } from "./TtsPanel";
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
 type Tab =
@@ -47,13 +49,16 @@ type Tab =
   | "sounds"
   | "triggers"
   | "events"
-  | "emotes";
+  | "emotes"
+  | "tts";
 
 interface StudioPanelProps {
   studio: StudioState;
   elements: CanvasElement[];
   selectedIds: Set<string>;
   isOwner: boolean;
+  overlayConnected: boolean;
+  ttsPlayback: TtsPlaybackState;
   onClose: () => void;
   onSaveScene: (id: string, name: string) => void;
   onLoadScene: (id: string) => void;
@@ -83,7 +88,8 @@ interface StudioPanelProps {
 }
 
 const tabs: Array<[Tab, string, typeof Save]> = [
-  ["sounds", "Soundboard", AudioLines],
+  ["sounds", "Sounds", AudioLines],
+  ["tts", "TTS", Headphones],
   ["triggers", "Commands", Radio],
   ["events", "Events", BellRing],
   ["emotes", "Emotes", MessageCircle],
@@ -115,6 +121,7 @@ const triggerActionOptions: Array<{
   { value: "enable-dvd", label: "Start DVD movement" },
   { value: "refresh-overlay", label: "Refresh OBS overlay" },
   { value: "send-chat", label: "Send Twitch chat message" },
+  { value: "tts", label: "Generate / replay TTS" },
 ];
 
 const triggerActionLabel = (action: OverlayTrigger["action"]) =>
@@ -150,6 +157,7 @@ export function StudioPanel(props: StudioPanelProps) {
   const [triggerMinimum, setTriggerMinimum] = useState(1);
   const [triggerChannel, setTriggerChannel] = useState("");
   const [chatMessage, setChatMessage] = useState("");
+  const [ttsErrorMessage, setTtsErrorMessage] = useState("");
   const [targetId, setTargetId] = useState("");
   const [cooldown, setCooldown] = useState(5);
   const [triggerPlacement, setTriggerPlacement] =
@@ -200,7 +208,8 @@ export function StudioPanel(props: StudioPanelProps) {
     flyDirection: triggerAction === "fly-across" ? flyDirection : undefined,
     timing: stepTiming,
     delaySeconds: stepTiming === "delay" ? stepDelay : undefined,
-    chatMessage: triggerAction === "send-chat" ? chatMessage.trim() : undefined,
+    chatMessage: ["send-chat", "tts"].includes(triggerAction) ? chatMessage.trim() : undefined,
+    ttsErrorMessage: triggerAction === "tts" && ttsErrorMessage.trim() ? ttsErrorMessage.trim() : undefined,
   });
 
   const resetTriggerStep = () => {
@@ -212,6 +221,7 @@ export function StudioPanel(props: StudioPanelProps) {
     setStepTiming("immediate");
     setStepDelay(1);
     setChatMessage("");
+    setTtsErrorMessage("");
     setEditingChainIndex(null);
   };
 
@@ -224,6 +234,7 @@ export function StudioPanel(props: StudioPanelProps) {
     setStepTiming(step.timing ?? "immediate");
     setStepDelay(step.delaySeconds ?? 1);
     setChatMessage(step.chatMessage ?? "");
+    setTtsErrorMessage(step.ttsErrorMessage ?? "");
   };
 
   const resetTriggerForm = () => {
@@ -334,9 +345,9 @@ export function StudioPanel(props: StudioPanelProps) {
     }
     if (
       !name.trim() ||
-      (!["refresh-overlay", "send-chat"].includes(triggerAction) &&
+      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
         !targetId) ||
-      (triggerAction === "send-chat" && !chatMessage.trim())
+      (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
     )
       return;
     const steps = [...chainedSteps, currentTriggerStep()];
@@ -396,13 +407,15 @@ export function StudioPanel(props: StudioPanelProps) {
 
   const addChainedStep = () => {
     if (
-      (!["refresh-overlay", "send-chat"].includes(triggerAction) &&
+      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
         !targetId) ||
-      (triggerAction === "send-chat" && !chatMessage.trim())
+      (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
     ) {
       toast.error(
-        triggerAction === "send-chat"
-          ? "Enter a chat message before adding this action"
+        ["send-chat", "tts"].includes(triggerAction)
+          ? triggerAction === "tts"
+            ? "Enter a TTS scene prompt or saved token before adding this action"
+            : "Enter a chat message before adding this action"
           : "Choose a target before adding this action",
       );
       return;
@@ -482,6 +495,7 @@ export function StudioPanel(props: StudioPanelProps) {
         />
       </div>
       <div className="studio-panel__body">
+        {tab === "tts" && <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />}
         {tab === "scenes" && (
           <Section
             title="Scenes"
@@ -931,7 +945,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 </option>
               ))}
             </select>
-            {!["refresh-overlay", "send-chat"].includes(triggerAction) && (
+            {!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) && (
               <select
                 style={fieldStyle}
                 value={targetId}
@@ -983,10 +997,10 @@ export function StudioPanel(props: StudioPanelProps) {
                 </div>
               </div>
             )}
-            {triggerAction === "send-chat" && (
+            {["send-chat", "tts"].includes(triggerAction) && (
               <div className="chat-message-editor">
                 <label>
-                  <span>Chat message</span>
+                  <span>{triggerAction === "tts" ? "TTS prompt or token · {message} inserts viewer input" : "Chat message"}</span>
                   <textarea
                     style={{
                       ...fieldStyle,
@@ -994,10 +1008,10 @@ export function StudioPanel(props: StudioPanelProps) {
                       paddingTop: 8,
                       resize: "vertical",
                     }}
-                    maxLength={500}
+                    maxLength={triggerAction === "tts" ? 6000 : 500}
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="Thanks {user} for the {bits} Bits!"
+                    placeholder={triggerAction === "tts" ? '((a warm voice says "{message}" with echo;6s))' : "Thanks {user} for the {bits} Bits!"}
                     title="Message sent by the connected chatbot account. Event variables in braces are replaced automatically."
                   />
                 </label>
@@ -1006,6 +1020,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   aria-label="Available chat message variables"
                 >
                   <strong>Variables</strong>
+                  {triggerAction === "tts" && <code title="Viewer text after the chat command">{"{message}"}</code>}
                   <code title="Viewer or broadcaster who caused the event">
                     {"{user}"}
                   </code>
@@ -1021,6 +1036,23 @@ export function StudioPanel(props: StudioPanelProps) {
                   <code title="Permanent or timeout duration">{"{duration}"}</code>
                   <code title="Either ban or timeout">{"{banType}"}</code>
                 </div>
+                {triggerAction === "tts" && (
+                  <>
+                    <label>
+                      <span>Chat message if TTS fails (optional)</span>
+                      <textarea
+                        style={{ ...fieldStyle, height: 58, paddingTop: 8, resize: "vertical" }}
+                        maxLength={500}
+                        value={ttsErrorMessage}
+                        onChange={(event) => setTtsErrorMessage(event.target.value)}
+                        placeholder="Sorry {user}, that TTS could not be played."
+                      />
+                    </label>
+                    <p className="command-cost-warning">
+                      New prompts spend OpenAI and ElevenLabs credits. Saved (TTS:…) tokens replay without generation cost; restrict dynamic chat TTS to trusted roles and a meaningful cooldown. Failed TTS can notify chat through the connected chatbot.
+                    </p>
+                  </>
+                )}
               </div>
             )}
             {["play-media", "show-temporary"].includes(triggerAction) && (
@@ -1279,9 +1311,9 @@ export function StudioPanel(props: StudioPanelProps) {
               onClick={addChainedStep}
               disabled={
                 (chainedSteps.length >= 9 && editingChainIndex === null) ||
-                (!["refresh-overlay", "send-chat"].includes(triggerAction) &&
+                (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
                   !targetId) ||
-                (triggerAction === "send-chat" && !chatMessage.trim())
+                (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
               }
               title="Keep this action and configure another action for the same chat command"
             >
@@ -1335,6 +1367,13 @@ export function StudioPanel(props: StudioPanelProps) {
                 </select>
               </label>
             )}
+            {tab === "triggers" &&
+              permission === "everyone" &&
+              (triggerAction === "tts" || chainedSteps.some((step) => step.action === "tts")) && (
+                <p className="command-cost-warning">
+                  Everyone can run this paid TTS action. Prefer a saved (TTS:…) token, or restrict access and add a cooldown before saving.
+                </p>
+              )}
             <label
               style={{
                 display: "grid",
@@ -1363,9 +1402,9 @@ export function StudioPanel(props: StudioPanelProps) {
               disabled={
                 !name.trim() ||
                 editingChainIndex !== null ||
-                (!["refresh-overlay", "send-chat"].includes(triggerAction) &&
+                (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
                   !targetId) ||
-                (triggerAction === "send-chat" && !chatMessage.trim())
+                (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
               }
             >
               {editingTriggerId ? <Save size={14} /> : <Plus size={14} />}{" "}

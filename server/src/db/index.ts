@@ -3,7 +3,7 @@ import { JSONFile } from 'lowdb/node';
 import { mkdirSync } from 'fs';
 import path from 'path';
 import type { ChatEmoteSettings, ElementPreset, OverlayTrigger, SavedScene, SoundboardItem } from '../types.js';
-import { Pool } from 'pg';
+import { postgres } from './postgres.js';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
 mkdirSync(DATA_DIR, { recursive: true });
@@ -34,13 +34,6 @@ db.data.presets ??= [];
 db.data.sounds ??= [];
 db.data.triggers ??= [];
 
-const postgresUrl = process.env.DATABASE_URL?.replace(
-  /([?&])sslmode=(?:prefer|require|verify-ca)(?=&|$)/i,
-  "$1sslmode=verify-full",
-);
-const postgres = postgresUrl
-  ? new Pool({ connectionString: postgresUrl, max: 3 })
-  : null;
 let whitelistCache: WhitelistEntry[] = [...db.data.whitelist];
 
 export async function initializeWhitelistStore(): Promise<void> {

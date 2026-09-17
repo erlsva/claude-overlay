@@ -26,6 +26,8 @@ import { resolveSevenTvEmotes, stackEmotes } from "./seventv/emotes.js";
 import { initializeChatEmoteSettingsStore, initializeWhitelistStore } from "./db/index.js";
 import { myinstantsRouter } from "./uploads/myinstants.js";
 
+import { ttsRouter } from "./tts/routes.js";
+import { getTtsPlaybackState, setTtsPlaybackController, setTtsPlayer, submit as submitTts } from "./tts/service.js";
 const app = express();
 const httpServer = createServer(app);
 
@@ -83,7 +85,107 @@ interface PresentationRestore {
 
 const presentationRestores = new Map<string, PresentationRestore>();
 const mediaCompletionWaiters = new Map<string, Set<() => void>>();
-const soundCompletionWaiters = new Map<string, () => void>();
+const soundCompletionWaiters = new Map<string, (error?: string) => void>();
+let ttsPlaybackEnabled = true;
+let activeTtsPlayback: {
+  clipId: string;
+  playbackId: string;
+  prompt: string;
+  sender: string;
+  paused: boolean;
+  pause: () => void;
+  resume: () => void;
+} | undefined;
+const emitTtsStatus = () => io.emit("tts:status", getTtsPlaybackState());
+app.use("/tts", ttsRouter);
+setTtsPlayer(async (clip, volume) => {
+  if (!ttsPlaybackEnabled) throw new Error("TTS playback is turned off.");
+  if (!activeOverlays.size) throw new Error("OBS overlay is offline. Replay the saved clip when OBS connects.");
+  if (activeTtsPlayback) {
+    io.to("overlay").emit("sound:stop", { id: activeTtsPlayback.clipId });
+    soundCompletionWaiters.get(activeTtsPlayback.playbackId)?.();
+  }
+  const playbackId = randomUUID();
+  await new Promise<void>((resolve, reject) => {
+    let finished = false;
+    let timer: NodeJS.Timeout | undefined;
+    let remainingMs = Math.ceil(clip.duration * 1000) + 15_000;
+    let timerStartedAt = Date.now();
+    const finish = (error?: string) => {
+      if (finished) return;
+      finished = true;
+      if (timer) clearTimeout(timer);
+      soundCompletionWaiters.delete(playbackId);
+      if (activeTtsPlayback?.playbackId === playbackId) activeTtsPlayback = undefined;
+      emitTtsStatus();
+      error ? reject(new Error(error)) : resolve();
+    };
+    const schedule = () => {
+      timerStartedAt = Date.now();
+      timer = setTimeout(finish, remainingMs);
+    };
+    const pause = () => {
+      if (activeTtsPlayback?.playbackId !== playbackId || activeTtsPlayback.paused) return;
+      remainingMs = Math.max(1_000, remainingMs - (Date.now() - timerStartedAt));
+      if (timer) clearTimeout(timer);
+      activeTtsPlayback.paused = true;
+      io.to("overlay").emit("sound:pause", { id: clip.id });
+      emitTtsStatus();
+    };
+    const resume = () => {
+      if (activeTtsPlayback?.playbackId !== playbackId || !activeTtsPlayback.paused) return;
+      activeTtsPlayback.paused = false;
+      io.to("overlay").emit("sound:resume", { id: clip.id });
+      schedule();
+      emitTtsStatus();
+    };
+    activeTtsPlayback = { clipId: clip.id, playbackId, prompt: clip.prompt, sender: clip.sender, paused: false, pause, resume };
+    soundCompletionWaiters.set(playbackId, finish);
+    schedule();
+    const serverUrl = (process.env.PUBLIC_SERVER_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:3001").replace(/\/$/, "");
+    io.to("overlay").emit("sound:play", {
+      id: clip.id,
+      name: clip.prompt.slice(0, 80),
+      url: `${serverUrl}/tts/clips/${clip.id}/audio`,
+      volume,
+      playbackId,
+    });
+    emitTtsStatus();
+  });
+});
+setTtsPlaybackController({
+  state: () => ({
+    enabled: ttsPlaybackEnabled,
+    active: !!activeTtsPlayback,
+    paused: activeTtsPlayback?.paused ?? false,
+    ...(activeTtsPlayback ? { clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
+  }),
+  stop: () => {
+    if (!activeTtsPlayback) return false;
+    io.to("overlay").emit("sound:stop", { id: activeTtsPlayback.clipId });
+    soundCompletionWaiters.get(activeTtsPlayback.playbackId)?.();
+    return true;
+  },
+  pause: () => {
+    if (!activeTtsPlayback || activeTtsPlayback.paused) return false;
+    activeTtsPlayback.pause();
+    return true;
+  },
+  resume: () => {
+    if (!activeTtsPlayback || !activeTtsPlayback.paused) return false;
+    activeTtsPlayback.resume();
+    return true;
+  },
+  setEnabled: (enabled) => {
+    ttsPlaybackEnabled = enabled;
+    if (!enabled && activeTtsPlayback) {
+      io.to("overlay").emit("sound:stop", { id: activeTtsPlayback.clipId });
+      soundCompletionWaiters.get(activeTtsPlayback.playbackId)?.();
+    }
+    emitTtsStatus();
+    return getTtsPlaybackState();
+  },
+});
 const chatEmoteSenderCooldowns = new Map<string, number>();
 
 const delay = (milliseconds: number) =>
@@ -191,7 +293,7 @@ function presentElement(
 
 type TriggerEventPayload = Record<string, any>;
 
-function renderEventMessage(template: string, event: TriggerEventPayload) {
+function renderEventMessage(template: string, event: TriggerEventPayload, maxLength = 500) {
   const timeoutMinutes = event.ends_at && event.banned_at
     ? Math.max(1, Math.ceil((Date.parse(event.ends_at) - Date.parse(event.banned_at)) / 60_000))
     : 0;
@@ -206,8 +308,9 @@ function renderEventMessage(template: string, event: TriggerEventPayload) {
     reason: String(event.reason ?? ""),
     duration: event.is_permanent ? "permanent" : `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`,
     bantype: event.is_permanent ? "ban" : "timeout",
+    message: String(event.user_input ?? event.message?.text?.replace(/^\S+\s*/, "") ?? ""),
   };
-  return template.replace(/\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType)\}/gi, (_, key: string) => values[key.toLowerCase()] ?? "").slice(0, 500);
+  return template.replace(/\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType|message)\}/gi, (_, key: string) => values[key.toLowerCase()] ?? "").slice(0, maxLength);
 }
 
 async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayload) {
@@ -230,6 +333,29 @@ async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayloa
 }
 
 function executeTriggerStep(step: TriggerStep, event: TriggerEventPayload): Promise<void> {
+  if (step.action === "tts") {
+    const sender = String(event.chatter_user_name || event.user_name || event.user_login || "Twitch");
+    const prompt = renderEventMessage(step.chatMessage || "{message}", event, 6000);
+    try {
+      const request = submitTts({ prompt, sender, owner: "trigger", play: true, volume: 0.25 });
+      return request.completion.then(async () => {
+        if (request.job.status === "failed" || request.job.warning) {
+          const failure = new Error(request.job.error || request.job.warning || "TTS generation failed");
+          if (step.ttsErrorMessage) {
+            try { await sendEventChatMessage({ action: "send-chat", chatMessage: step.ttsErrorMessage }, event); }
+            catch (chatError) { console.error("Could not send TTS failure message", chatError); }
+          }
+          throw failure;
+        }
+      });
+    } catch (error) {
+      if (step.ttsErrorMessage) {
+        void sendEventChatMessage({ action: "send-chat", chatMessage: step.ttsErrorMessage }, event)
+          .catch((chatError) => console.error("Could not send TTS failure message", chatError));
+      }
+      return Promise.reject(error);
+    }
+  }
   if (step.action === 'refresh-overlay') { io.emit('overlay:refresh'); return Promise.resolve(); }
   if (step.action === 'send-chat') return sendEventChatMessage(step, event);
   if (step.action === 'play-sound') {
@@ -279,12 +405,15 @@ function executeTriggerStep(step: TriggerStep, event: TriggerEventPayload): Prom
   return Promise.resolve();
 }
 
-async function executeTriggerSteps(steps: TriggerStep[], event: TriggerEventPayload) {
+async function executeTriggerSteps(steps: TriggerStep[], event: TriggerEventPayload, onError?: (error: unknown) => void) {
   let previousCompletion = Promise.resolve();
   for (const step of steps) {
     if (step.timing === "after-previous") await previousCompletion;
     if (step.timing === "delay") await delay((step.delaySeconds ?? 1) * 1000);
-    previousCompletion = executeTriggerStep(step, event).catch((error) => console.error("Trigger action failed", error));
+    previousCompletion = executeTriggerStep(step, event).catch((error) => {
+      console.error("Trigger action failed", error);
+      onError?.(error);
+    });
   }
 }
 
@@ -377,7 +506,7 @@ io.use((socket, next) => {
   next(new Error("Unauthorized"));
 });
 
-io.on("connection", (socket) =>
+io.on("connection", (socket) => {
   registerSocketHandlers(
     io,
     socket,
@@ -385,12 +514,13 @@ io.on("connection", (socket) =>
     activeUsers,
     activeOverlays,
     finishMedia,
-    (playbackId) => {
-      soundCompletionWaiters.get(playbackId)?.();
+    (playbackId, error) => {
+      soundCompletionWaiters.get(playbackId)?.(error);
       soundCompletionWaiters.delete(playbackId);
     },
-  ),
-);
+  );
+  socket.emit("tts:status", getTtsPlaybackState());
+});
 
 const triggerCooldowns = new Map<string, number>();
 configureTwitchEvents((eventType, event) => {
@@ -492,7 +622,12 @@ configureTwitchEvents((eventType, event) => {
     canvasStore.activity = canvasStore.activity.slice(0, 50);
     io.to('dashboard').emit('studio:sync', { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
     const steps = trigger.steps?.length ? trigger.steps : [trigger];
-    void executeTriggerSteps(steps, event);
+    void executeTriggerSteps(steps, event, (error) => {
+      const message = (error instanceof Error ? error.message : "Unknown error").replace(/\s+/g, " ").slice(0, 180);
+      canvasStore.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user: "Twitch", action: `trigger “${trigger.name}” failed: ${message}` });
+      canvasStore.activity = canvasStore.activity.slice(0, 50);
+      io.to("dashboard").emit("studio:sync", { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
+    });
   }
 }, connected => {
   canvasStore.twitchConnected = connected;

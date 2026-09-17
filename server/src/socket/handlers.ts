@@ -39,7 +39,7 @@ export function registerSocketHandlers(
   activeUsers: Map<string, ActiveUser>,
   activeOverlays: Set<string>,
   onMediaEnded?: (id: string) => void,
-  onSoundEnded?: (playbackId: string) => void,
+  onSoundEnded?: (playbackId: string, error?: string) => void,
 ) {
   const user = socket.data.jwtUser as AuthUser | undefined;
   const isOverlay = socket.handshake.query.mode === "overlay";
@@ -69,9 +69,10 @@ export function registerSocketHandlers(
       if (!element || !["video", "audio"].includes(element.type) || !element.autoVisibility) return;
       onMediaEnded?.(id);
     });
-    socket.on("sound:ended", ({ playbackId }) => {
+    socket.on("sound:ended", ({ playbackId, error }) => {
       if (typeof playbackId !== "string" || playbackId.length > 100) return;
-      onSoundEnded?.(playbackId);
+      if (error !== undefined && (typeof error !== "string" || error.length > 300)) return;
+      onSoundEnded?.(playbackId, error);
     });
   }
 
@@ -335,11 +336,15 @@ function validSoundUrl(value: unknown): value is string {
   const myInstants = url.protocol === "https:" && url.hostname === "www.myinstants.com" && /^\/media\/sounds\/[a-zA-Z0-9_.%-]+\.mp3$/i.test(url.pathname);
   return uploadedHere || myInstants;
 }
-const triggerActions = ["show-element", "show-temporary", "fly-across", "hide-element", "toggle-element", "play-media", "play-sound", "enable-dvd", "refresh-overlay", "send-chat"];
+const triggerActions = ["show-element", "show-temporary", "fly-across", "hide-element", "toggle-element", "play-media", "play-sound", "enable-dvd", "refresh-overlay", "send-chat", "tts"];
 const triggerPlacements = ["current", "random", "fit", "fill", "top-left", "top-center", "top-right", "center-left", "center", "center-right", "bottom-left", "bottom-center", "bottom-right"];
 const flyDirections = ["left-to-right-top", "left-to-right-center", "left-to-right-bottom", "right-to-left-top", "right-to-left-center", "right-to-left-bottom", "top-to-bottom-left", "top-to-bottom-center", "top-to-bottom-right", "bottom-to-top-left", "bottom-to-top-center", "bottom-to-top-right"];
 function validTriggerStep(value: any): boolean {
-  const allowed = new Set(["action", "targetId", "placement", "durationSeconds", "flyDirection", "timing", "delaySeconds", "chatMessage"]);
+  const allowed = new Set(["action", "targetId", "placement", "durationSeconds", "flyDirection", "timing", "delaySeconds", "chatMessage", "ttsErrorMessage"]);
+  const chatMessageLimit = value?.action === "tts" ? 6000 : 500;
+  const hasValidChatMessage = typeof value?.chatMessage === "string"
+    && value.chatMessage.trim().length > 0
+    && value.chatMessage.length <= chatMessageLimit;
   return value && typeof value === "object" && Object.keys(value).every(key => allowed.has(key))
     && triggerActions.includes(value.action)
     && (value.placement === undefined || triggerPlacements.includes(value.placement))
@@ -347,15 +352,18 @@ function validTriggerStep(value: any): boolean {
     && (value.flyDirection === undefined || flyDirections.includes(value.flyDirection))
     && (value.timing === undefined || ["immediate", "delay", "after-previous"].includes(value.timing))
     && (value.delaySeconds === undefined || (Number.isFinite(value.delaySeconds) && value.delaySeconds >= 0 && value.delaySeconds <= 3600))
-    && (value.chatMessage === undefined || (typeof value.chatMessage === "string" && value.chatMessage.trim().length > 0 && value.chatMessage.length <= 500))
-    && (["refresh-overlay", "send-chat"].includes(value.action) ? value.targetId === undefined : validLabel(value.targetId, 100));
+    && (["send-chat", "tts"].includes(value.action)
+      ? hasValidChatMessage
+      : value.chatMessage === undefined || hasValidChatMessage)
+    && (["refresh-overlay", "send-chat", "tts"].includes(value.action) ? value.targetId === undefined : validLabel(value.targetId, 100))
+    && (value.ttsErrorMessage === undefined || (value.action === "tts" && typeof value.ttsErrorMessage === "string" && value.ttsErrorMessage.trim().length > 0 && value.ttsErrorMessage.length <= 500));
 }
 function validTrigger(value: any): boolean {
-  const allowed = new Set(["id", "name", "enabled", "event", "match", "minimum", "channel", "action", "targetId", "cooldownSeconds", "placement", "durationSeconds", "flyDirection", "timing", "delaySeconds", "chatMessage", "permission", "steps"]);
+  const allowed = new Set(["id", "name", "enabled", "event", "match", "minimum", "channel", "action", "targetId", "cooldownSeconds", "placement", "durationSeconds", "flyDirection", "timing", "delaySeconds", "chatMessage", "ttsErrorMessage", "permission", "steps"]);
   return value && typeof value === "object" && Object.keys(value).every(key => allowed.has(key))
     && validLabel(value.id, 100) && validLabel(value.name, 60)
     && ["chat-command", "follow", "subscribe", "gift-subscribe", "raid", "bits", "channel-points", "ban", "timeout"].includes(value.event)
-    && validTriggerStep({ action: value.action, targetId: value.targetId, placement: value.placement, durationSeconds: value.durationSeconds, flyDirection: value.flyDirection, timing: value.timing, delaySeconds: value.delaySeconds, chatMessage: value.chatMessage })
+    && validTriggerStep({ action: value.action, targetId: value.targetId, placement: value.placement, durationSeconds: value.durationSeconds, flyDirection: value.flyDirection, timing: value.timing, delaySeconds: value.delaySeconds, chatMessage: value.chatMessage, ttsErrorMessage: value.ttsErrorMessage })
     && typeof value.enabled === "boolean" && Number.isFinite(value.cooldownSeconds) && value.cooldownSeconds >= 0 && value.cooldownSeconds <= 86400
     && (value.match === undefined || (typeof value.match === "string" && value.match.length <= 100))
     && (value.minimum === undefined || (Number.isFinite(value.minimum) && value.minimum >= 0 && value.minimum <= 10_000_000))

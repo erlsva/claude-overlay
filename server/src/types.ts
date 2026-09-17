@@ -48,7 +48,7 @@ export interface SavedScene { id: string; name: string; elements: CanvasElement[
 export interface ElementPreset { id: string; name: string; elements: CanvasElement[]; createdAt: string; }
 export interface SoundboardItem { id: string; name: string; url: string; volume: number; }
 export type TriggerEventType = 'chat-command' | 'follow' | 'subscribe' | 'gift-subscribe' | 'raid' | 'bits' | 'channel-points' | 'ban' | 'timeout';
-export type TriggerActionType = 'show-element' | 'show-temporary' | 'fly-across' | 'hide-element' | 'toggle-element' | 'play-media' | 'play-sound' | 'enable-dvd' | 'refresh-overlay' | 'send-chat';
+export type TriggerActionType = 'show-element' | 'show-temporary' | 'fly-across' | 'hide-element' | 'toggle-element' | 'play-media' | 'play-sound' | 'enable-dvd' | 'refresh-overlay' | 'send-chat' | 'tts';
 export type TriggerPlacement = 'current' | 'random' | 'fit' | 'fill' | 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 export type FlyDirection = 'left-to-right-top' | 'left-to-right-center' | 'left-to-right-bottom' | 'right-to-left-top' | 'right-to-left-center' | 'right-to-left-bottom' | 'top-to-bottom-left' | 'top-to-bottom-center' | 'top-to-bottom-right' | 'bottom-to-top-left' | 'bottom-to-top-center' | 'bottom-to-top-right';
 export type ChatPermission = 'everyone' | 'vip' | 'moderator' | 'streamer';
@@ -61,7 +61,9 @@ export interface TriggerStep {
   timing?: "immediate" | "delay" | "after-previous";
   delaySeconds?: number;
   chatMessage?: string;
+  ttsErrorMessage?: string;
 }
+export interface TtsPlaybackState { enabled: boolean; active: boolean; paused: boolean; clipId?: string; prompt?: string; sender?: string; }
 export interface OverlayTrigger extends TriggerStep {
   id: string;
   name: string;
@@ -189,6 +191,9 @@ export interface ServerToClientEvents {
   'history:status': (status: { canUndo: boolean; canRedo: boolean }) => void;
   'sound:play': (item: SoundboardItem & { playbackId?: string }) => void;
   'sound:stop': (payload: { id: string }) => void;
+  'sound:pause': (payload: { id: string }) => void;
+  'sound:resume': (payload: { id: string }) => void;
+  'tts:status': (state: TtsPlaybackState) => void;
   'chat:channel': (payload: { channel: string }) => void;
 }
 
@@ -198,7 +203,7 @@ export interface ClientToServerEvents {
   'element:remove': (payload: ElementRemovedPayload) => void;
   'media:control': (payload: MediaControlPayload) => void;
   'media:ended': (payload: { id: string }) => void;
-  'sound:ended': (payload: { playbackId: string }) => void;
+  'sound:ended': (payload: { playbackId: string; error?: string }) => void;
   'cursor:move': (payload: { x: number; y: number; showOnOverlay: boolean }) => void;
   'overlay:refresh': () => void;
   'draw:stroke': (stroke: DrawStroke) => void;

@@ -456,6 +456,7 @@ export function Toolbar({
         </div>
       )}
       <div
+        className="dashboard-toolbar"
         style={{
           display: "flex",
           alignItems: "center",

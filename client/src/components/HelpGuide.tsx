@@ -25,8 +25,14 @@ const sections = [
         "Draw a selection box around multiple elements.",
       ],
       ["Click empty background", "Clear the current selection."],
-      ["Double-click text", "Open the text editor. You can also select the layer and use Edit text and style in Layers."],
-      ["Ctrl / Cmd + Enter in text editor", "Save the text layer without reaching for the mouse."],
+      [
+        "Double-click text",
+        "Open the text editor. You can also select the layer and use Edit text and style in Layers.",
+      ],
+      [
+        "Ctrl / Cmd + Enter in text editor",
+        "Save the text layer without reaching for the mouse.",
+      ],
       ["Escape in text editor", "Close the editor without saving changes."],
       ["Delete / Backspace", "Delete selected unlocked elements."],
     ],
@@ -56,7 +62,10 @@ const sections = [
     title: "Top toolbar",
     items: [
       ["Add media", "Upload an image, GIF, video, or audio file."],
-      ["Text", "Create centered overlay text with font, weight, alignment, color, outline, shadow, background, spacing, and size controls."],
+      [
+        "Text",
+        "Create centered overlay text with font, weight, alignment, color, outline, shadow, background, spacing, and size controls.",
+      ],
       ["Draw", "Open Pen, Erase, Fill, brush size, and drawing controls."],
       ["Add as Element", "Turn the current drawing into movable media."],
       ["Fit / Fill", "Fit inside the stream area, or cover it completely."],
@@ -75,13 +84,31 @@ const sections = [
   {
     title: "Drawing mode",
     items: [
-      ["Pen / Erase", "Draw or remove freehand strokes. The circle at the pointer previews the current brush size."],
-      ["Line / Arrow", "Drag between two points. Hold Shift to snap to 45° angles."],
-      ["Box / Oval", "Drag out a rectangle or ellipse. Hold Shift to constrain it to a square or circle."],
+      [
+        "Pen / Erase",
+        "Draw or remove freehand strokes. The circle at the pointer previews the current brush size.",
+      ],
+      [
+        "Line / Arrow",
+        "Drag between two points. Hold Shift to snap to 45° angles.",
+      ],
+      [
+        "Box / Oval",
+        "Drag out a rectangle or ellipse. Hold Shift to constrain it to a square or circle.",
+      ],
       ["Opacity", "Set transparency for new strokes, shapes, and fills."],
-      ["Fill tolerance", "Control how closely neighboring pixels must match; lower values stop at sharper boundaries."],
-      ["Exit Draw", "Exit drawing mode and return to selecting and moving overlay elements."],
-      ["Clear", "Remove the complete drawing after confirmation. Use Undo to restore it immediately."],
+      [
+        "Fill tolerance",
+        "Control how closely neighboring pixels must match; lower values stop at sharper boundaries.",
+      ],
+      [
+        "Exit Draw",
+        "Exit drawing mode and return to selecting and moving overlay elements.",
+      ],
+      [
+        "Clear",
+        "Remove the complete drawing after confirmation. Use Undo to restore it immediately.",
+      ],
     ],
   },
   {
@@ -114,7 +141,7 @@ const sections = [
       ],
       [
         "Studio",
-        "Open the Soundboard, commands, Twitch events, and chat emotes.",
+        "Open Sounds, commands, Twitch events, TTS scenes, and chat emotes.",
       ],
       [
         "Dashboard / OBS badges",
@@ -155,7 +182,27 @@ const sections = [
       ],
       [
         "Chat message variables",
-        "Messages can insert {user}, {months}, {viewers}, {bits}, {reward}, {channel}, {moderator}, {reason}, {duration}, and {banType}. The dedicated chatbot sends the message.",
+        "Messages can insert {user}, {months}, {viewers}, {bits}, {reward}, {channel}, {moderator}, {reason}, {duration}, and {banType}. TTS chat commands can also insert {message}. The dedicated chatbot sends chat replies.",
+      ],
+      [
+        "Studio · TTS",
+        "Write a scene, review the interpreted plan, then generate and save it or play it on OBS. Plain text is spoken. Inside ((…)), quoted words are speech and unquoted descriptions are sound effects; every part plays in sequence.",
+      ],
+      [
+        "Saved TTS tokens",
+        "Copy a (TTS:…) token to replay the exact saved audio later without paying generation credits again. You can preview saved clips privately on the dashboard or delete them permanently.",
+      ],
+      [
+        "TTS pauses",
+        "Use ((silence;2s)), ((pause, 2 sec)), or ((silent pause 2 seconds)) for an exact 0.5–30 second silent gap. Without a duration it defaults to one second.",
+      ],
+      [
+        "TTS playback safety",
+        "Use the speaker control to turn new TTS playback on or off. Pause, Resume, and Stop control the active OBS clip. Audio is loudness-normalized and peak-limited, and the overlay shows a small status notice while TTS is playing.",
+      ],
+      [
+        "TTS failures",
+        "If AI planning is temporarily unavailable, TTS uses a safe local interpretation instead of paying for a retry. A TTS command/event action can optionally send a chatbot message when generation or OBS playback fails.",
       ],
       [
         "Command action timing",
