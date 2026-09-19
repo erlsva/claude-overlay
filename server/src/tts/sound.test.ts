@@ -4,9 +4,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { activeSoundDuration, renderAudio, run, SOUND_ONLY_TARGET_LUFS, SPEECH_TARGET_LUFS } from "./audio.js";
-import { channelFilter, characterPitch, effectTail, screamTone, integratedLoudness, layerUnderSpeech, normalizeLoudness, RATE, readWav, roomProfile, softLimit, tameSpikes, writeWav } from "./dsp.js";
+import { channelFilter, characterPitch, effectTail, muffle, screamTone, integratedLoudness, layerUnderSpeech, normalizeLoudness, RATE, readWav, roomProfile, softLimit, tameSpikes, writeWav } from "./dsp.js";
 import { buildSoundPrompt, enrichSoundPrompt, sanitizeSoundPrompt, screamLayerPrompt, soundDecodeFilter } from "./sound.js";
-import { detectEffect, detectRoom, isExtreme, parsePrompt } from "./shared/scene.js";
+import { detectEffect, detectMuffled, detectRoom, isExtreme, parsePrompt } from "./shared/scene.js";
+import { speechRequest } from "./casting.js";
 import { stripRoomPhrases } from "./sound.js";
 import type { Scene } from "./shared/scene.js";
 
@@ -407,7 +408,7 @@ test("scream tone is on by default, scales with intensity, and is a dial", async
     assert.equal(screamToneScale(), 1);
     assert.equal(toneAmountFor("normal"), 0);
     assert.equal(toneAmountFor("scream"), 1);
-    assert.equal(toneAmountFor("shout"), 0.6);
+    assert.equal(toneAmountFor("shout"), 1);
     process.env.TTS_SCREAM_TONE = "off";
     assert.equal(toneAmountFor("scream"), 0);
     process.env.TTS_SCREAM_TONE = "2";
@@ -573,4 +574,94 @@ test("every requested fart keeps enough of its scene to be heard, and leaves roo
   }
   // A long, lasting fart is not the 1.8 s blip a plain one is.
   assert.ok(lengths[0].heard > 3);
+});
+
+// ---- heard through a door -------------------------------------------------------------------------------
+test("wording that puts a voice behind a door, a wall or in another room is recognised", () => {
+  for (const text of [
+    "man yells from outside", "a voice behind a door", "a knock through the wall", "muffled voice", "someone shouting from another room",
+    "from the other side of the door", "man behind a thick closed door", "voice from next door", "on the other side of the wall",
+  ]) assert.equal(detectMuffled(text), true, text);
+  for (const text of ["man yelling", "a door slam", "yells at the top of his lungs", "outside voice", "the doorbell rings"]) assert.equal(detectMuffled(text), false, text);
+});
+
+test("the door example parses to plain knocks and muffled yells", () => {
+  const scenes = parsePrompt('((door knock)) ((man yells from outside: "OPEN THE DOOR")) ((door knock)) ((man yells from outside: "VICKSY! OPEN THE DOOR"))').scenes;
+  assert.deepEqual(scenes.map((item) => [item.dialogue, item.sound, item.muffled ?? false, item.intensity ?? null]), [
+    ["", "door knock", false, null],
+    ["OPEN THE DOOR", "", true, "shout"],
+    ["", "door knock", false, null],
+    ["VICKSY! OPEN THE DOOR", "", true, "shout"],
+  ]);
+});
+
+test("muffling removes the highs and keeps a dull, boxy body", () => {
+  const level = (frequency: number, scale = 1) => {
+    const input = tone(frequency, 2, 0.2);
+    const out = muffle(input, scale);
+    const from = Math.round(0.5 * RATE);
+    const rmsOf = (samples: Float32Array) => Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+    return 20 * Math.log10(rmsOf(out.slice(from)) / rmsOf(input.slice(from)));
+  };
+  assert.ok(level(300) > -1, "the low-mid body stays");
+  assert.ok(level(60) < -5, "rumble is cut");
+  assert.ok(level(1000) < -6 && level(1200) < -9, "the top of the voice is going");
+  assert.ok(level(3000) < -20, "consonant detail is gone");
+  assert.ok(level(6000) < -35, "and the air above it");
+  assert.ok(level(1200, 2) < level(1200, 1) - 6, "a thicker door absorbs more");
+  const input = tone(1000, 0.2, 0.3);
+  assert.equal(muffle(input, 0), input);
+  // Linear: no new harmonics appear.
+  assert.ok(bandShare(muffle(tone(400, 1, 0.3)).slice(Math.round(0.3 * RATE)), 1200) < 0.001);
+});
+
+test("the place is kept out of the sound prompt and out of the voice's tags", () => {
+  assert.equal(sanitizeSoundPrompt("a heavy knock behind a closed door"), "a heavy knock");
+  assert.equal(sanitizeSoundPrompt("muffled music from another room"), "music");
+  const request = speechRequest(scene({
+    dialogue: "[muffled, shouting from outside] OPEN THE DOOR",
+    character: "man",
+    delivery: "yelling from outside a door",
+    intensity: "shout",
+    prepared: true,
+  }));
+  assert.equal(request.text, "[shouts] OPEN THE DOOR!");
+  assert.doesNotMatch(request.text, /outside|door\b.*door|muffled/i);
+});
+
+test("a voice behind a door is quieter than the same voice in the room, and still audible", async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), "tts-door-test-"));
+  try {
+    await mkdir(path.join(dataDir, "clips"));
+    const line = "Open the door, please, open it now";
+    await renderAudio({
+      id: "door",
+      scenes: [scene({ dialogue: line }), scene({ dialogue: line, muffled: true })],
+      mode: "demo", key: "", voices: {}, dataDir, progress: () => {},
+    });
+    const samples = readWav(await readFile(path.join(dataDir, "clips", "door.wav")));
+    const half = Math.floor(samples.length / 2);
+    const inRoom = integratedLoudness(samples.slice(0, half - Math.round(0.1 * RATE)));
+    const behind = integratedLoudness(samples.slice(half + Math.round(0.1 * RATE)));
+    assert.ok(inRoom - behind > 2.5 && inRoom - behind < 6.5, `in room ${inRoom}, behind door ${behind}`);
+    assert.ok(behind > -30, "it is still clearly audible");
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("TTS_MUFFLE is a dial", async () => {
+  const { muffleScale } = await import("./audio.js");
+  try {
+    delete process.env.TTS_MUFFLE;
+    assert.equal(muffleScale(), 1);
+    process.env.TTS_MUFFLE = "2";
+    assert.equal(muffleScale(), 2);
+    process.env.TTS_MUFFLE = "off";
+    assert.equal(muffleScale(), 0);
+    process.env.TTS_MUFFLE = "9";
+    assert.equal(muffleScale(), 3);
+  } finally {
+    delete process.env.TTS_MUFFLE;
+  }
 });

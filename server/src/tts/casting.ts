@@ -32,6 +32,9 @@ export function sceneIntensity(scene: Scene): Intensity {
 const genericVoiceWords = new Set([
   "a", "an", "the", "voice", "man", "woman", "male", "female", "boy", "girl", "narrator", "character", "custom",
   "generated", "angry", "old", "young", "big", "small", "evil", "deep", "low", "loud", "of", "and",
+  // How something is said is not who says it. "troll screaming" must not match a voice
+  // called "Screaming man" just because of the verb.
+  "screaming", "screamer", "shouting", "shouter", "yelling", "yeller", "roaring", "screams", "shouts", "yells",
 ]);
 
 /**
@@ -109,6 +112,7 @@ function generalPerformanceCue(scene: Scene): string {
     .replace(/\b(?:says?|saying|speaks?|speaking)\b/gi, "")
     .replace(/\b(?:in|inside|into|through|over)\s+(?:a\s+|an\s+|the\s+)?(?:cave|church|cathedral|mountain|mountains|void|intercom|megaphone|walkie[ -]?talkie|telephone)\b/gi, "")
     .replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi, "")
+    .replace(/\b(?:muffled|(?:from|behind|through)\s+(?:the\s+)?(?:outside|(?:a\s+|the\s+)?(?:closed\s+)?(?:door|wall)|another room|the other room|next door))\b/gi, "")
     .replace(/\bdesperetaley\b/gi, "desperately")
     .replace(/[;,]?\s*\d+(?:[.,]\d+)?\s*(?:s|sec(?:ond)?s?)\b/gi, "")
     .replace(/[:;,]+/g, " ")
@@ -281,6 +285,8 @@ function cleanTags(raw: string): string[] {
   return raw
     .replace(/[[\]]/g, "")
     .split(/[,;]/)
+    // A tag that talks about the place would be read aloud or ignored; the muffling is applied later.
+    .filter((part) => !/\b(?:muffled?|outside|door|wall|behind|through|room)\b/i.test(part))
     .map((part) => part.toLowerCase().replace(roomAndMetaWords, " ").replace(/[^\p{L}\p{N}' -]/gu, " ").replace(/\s+/g, " ").trim())
     .filter((tag) => tag && tag.split(" ").length <= 4);
 }

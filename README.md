@@ -159,6 +159,7 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `OPENAI_MODEL` | Optional | Structured-output model used by TTS; defaults to `gpt-4.1-mini`. |
 | `ELEVENLABS_API_KEY` | For TTS generation | Generates speech and sound-effect audio. |
 | `TTS_SHOUT_VOICES` | Optional | Comma-separated ElevenLabs voice names or IDs used for shouting and screaming, e.g. `Harry, Angry Pirate`. Without it the most intense-sounding voice is used. |
+| `TTS_MUFFLE` | Optional | How heavily a voice "behind a door" or "from outside" is muffled: `1` is the default (a thick door), `2` heavier still, `0.6` a thin wall, `off` skips it. |
 | `TTS_SCREAM_TONE` | Optional | Clean spectral shaping that makes shouted and screamed speech sound like a scream: `off` skips it, `1` is the default, `2` is double. |
 | `TTS_SCREAM_STRAIN` | Optional | Off by default. `1` pushes shouted and screamed speech into a saturator (crunchy, walkie-talkie-like); `0.5` half, `2` double. |
 | `TTS_SCREAM_LAYER` | Optional | Off by default. `1` mixes a generated wordless scream under shouted lines (one extra sound-effect request each); `2` is louder. |

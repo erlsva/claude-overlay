@@ -9,6 +9,7 @@
 
 const durationPhrase = /\b(?:for|lasting|over|about|around)?\s*\d+(?:[.,]\d+)?\s*(?:seconds?|secs?|s)\b/gi;
 const roomWords = /\b(?:(?:with\s+)?(?:extreme\s+)?(?:echo(?:es|ing|ed)?|reverb(?:erat\w*)?)|(?:from\s+)?(?:far\s+)?(?:down|in|inside)\s+(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well|(?:in|inside|through|within|across|under)\s+(?:a|an|the)?\s*(?:(?:large|huge|vast|big|grand|empty|echoing|stone|ancient)\s+)*(?:cave|cavern|church|cathedral|chapel|basilica)(?:\s+(?:space|interior|hall|chamber))?|cavernous)\b/gi;
+const muffleWords = /\b(?:muffled|(?:from\s+)?(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door))\b/gi;
 const harshWords = /\b(?:high[- ]pitched|ear[- ]?piercing|ear[- ]?splitting|piercing|shrill|deafening)\b/gi;
 
 // Words that describe the place or the effect rather than the sound itself.
@@ -56,7 +57,7 @@ function tidy(text: string): string {
  * themselves. `authored` is the user's own text for this scene, when known.
  */
 export function sanitizeSoundPrompt(sound: string, authored = ""): string {
-  let clean = stripRoomPhrases(sound.replace(durationPhrase, " ").replace(roomWords, " "));
+  let clean = stripRoomPhrases(sound.replace(durationPhrase, " ").replace(roomWords, " ").replace(muffleWords, " "));
   clean = clean.replace(harshWords, (word) => (authored && new RegExp(`\\b${word.replace(/[-\s]/g, "[- ]?")}\\b`, "i").test(authored) ? word : " "));
   return tidy(clean);
 }

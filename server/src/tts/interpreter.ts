@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   detectEffect,
+  detectMuffled,
   detectIntensity,
   detectRoom,
   isExtreme,
@@ -87,7 +88,7 @@ sound is a dry description of ONLY the sound source, 6-25 words, as a sound desi
 soundDuration is the ACTIVE source length in seconds inside the scene (0.5-30). A single transient such as a fart, explosion, gunshot, thunder strike or impact uses 1-2 seconds, but an oversized, sustained or drawn-out one uses 3-5 seconds. Repeated or plural sources use 5-8 seconds, or the active length the user asked for. Use 1 for scenes without sound.
 
 ROOMS AND CHANNELS
-Cave, church, cathedral, indoors or a room means effect reverb at normal strength. Echo means effect echo (decaying repeats). When the user asks for both, such as Reverb Echo or a cave with echo, or puts something down a well, effect is both. Never describe rooms, echo or reverb inside sound. Intercom, telephone, megaphone or walkie-talkie means channel intercom. distant only when the user writes distant or far away. Extreme strength only when explicitly requested. The engine supports one of none, echo or reverb plus the channel; explain any other combination in warnings instead of pretending.
+Cave, church, cathedral, indoors or a room means effect reverb at normal strength. Echo means effect echo (decaying repeats). When the user asks for both, such as Reverb Echo or a cave with echo, or puts something down a well, effect is both. Never describe rooms, echo or reverb inside sound. Intercom, telephone, megaphone or walkie-talkie means channel intercom. distant only when the user writes distant or far away. Being behind a door or wall, or coming from outside or another room, is applied by the engine: never write it into dialogue, tags or sound. Extreme strength only when explicitly requested. The engine supports one of none, echo or reverb plus the channel; explain any other combination in warnings instead of pretending.
 
 DURATION
 A stated ;15s always means the COMPLETE scene lasts 15 seconds including echo or reverb decay, never an extra tail. When the user states no duration, duration MUST be null: never invent one. Do not pad dialogue to fill a duration. backgroundVolume defaults to 0.22.
@@ -230,6 +231,7 @@ export function decodePlan(
       scene.distant = /\b(distant|far away|faraway)\b/i.test(segment.text);
       scene.effectStrength = isExtreme(segment.text) ? "extreme" : "normal";
       scene.room = detectRoom(segment.text);
+      scene.muffled = detectMuffled(segment.text) || undefined;
     } else {
       const outsideQuotes = segment.text.replace(
         /"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g,
@@ -259,6 +261,7 @@ export function decodePlan(
         scene.distant = true;
       if (isExtreme(outsideQuotes)) scene.effectStrength = "extreme";
       scene.room = detectRoom(outsideQuotes);
+      scene.muffled = detectMuffled(outsideQuotes) || undefined;
       const speechRate = parseSpeechRate(segment.text);
       if (speechRate !== undefined) scene.speechRate = speechRate;
     }

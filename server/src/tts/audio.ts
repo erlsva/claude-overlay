@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { Scene } from './shared/scene.js';
 import { sceneIntensity, speechRequest, type Casting } from './casting.js';
-import { RATE, readWav, writeWav, channelFilter, effectTail, finish, finalWordTiming, layerUnderSpeech, normalizeLoudness, screamTone, softLimit, tameSpikes, type Alignment } from './dsp.js';
+import { RATE, readWav, writeWav, channelFilter, effectTail, finish, finalWordTiming, layerUnderSpeech, muffle, normalizeLoudness, screamTone, softLimit, tameSpikes, type Alignment } from './dsp.js';
 import { buildSoundPrompt, isHugeSound, isSharpSound, screamLayerPrompt, soundDecodeFilter } from './sound.js';
 export const ffmpeg=process.env.FFMPEG_PATH || 'ffmpeg';
 // Keep alerts present in a stream mix while retaining expressive dynamics and
@@ -51,13 +51,17 @@ export const SHOUT_STRAIN_DB=10;
  * effect, which is also what a "through a walkie talkie" style of scream sounds like.
  */
 export const screamStrainScale=()=>dial('TTS_SCREAM_STRAIN',0,2);
+/** TTS_MUFFLE: how heavily a voice behind a door is muffled. 1 is the default (a thick door), 2 is heavier, 0.6 a thin wall, off skips it. */
+export const muffleScale=()=>dial('TTS_MUFFLE',1,3);
+/** A voice behind a door is quieter than one in the room, but it must still be understood. */
+export const MUFFLED_LEVEL_LU=4;
 /**
  * TTS_SCREAM_TONE scales the clean spectral shaping that makes a shouted line sound like
  * a scream instead of a raised voice: 0 or off skips it, 1 is the default, 2 is double.
  */
 export const screamToneScale=()=>dial('TTS_SCREAM_TONE',1,2);
-/** A shout gets less of the shaping than a scream. */
-export const toneAmountFor=(intensity:'normal'|'shout'|'scream'):number=>intensity==='scream'?screamToneScale():intensity==='shout'?screamToneScale()*0.6:0;
+/** A yell is shaped as fully as a scream: at a lower amount it just sounded like a raised voice. */
+export const toneAmountFor=(intensity:'normal'|'shout'|'scream'):number=>intensity==='normal'?0:screamToneScale();
 export function strainDbFor(intensity:'normal'|'shout'|'scream'):number {
   return intensity==='scream'?SCREAM_STRAIN_DB*screamStrainScale():intensity==='shout'?SHOUT_STRAIN_DB*screamStrainScale():0;
 }
@@ -217,6 +221,7 @@ export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'el
           }
         }
       }
+      if(speech&&scene.muffled&&muffleScale()>0)speech=tameSpikes(normalizeLoudness(muffle(speech,muffleScale()),SPEECH_TARGET_LUFS-MUFFLED_LEVEL_LU),SHOUTED_SPEECH_SPIKE_LU);
       if(scene.sound.trim()) {
         const raw=path.join(temp,`${index}-sound.mp3`),decoded=path.join(temp,`${index}-sound.wav`);
         // Standalone echo needs a dry burst and room for its repeats, not eight seconds of pre-echoed noise.
@@ -234,6 +239,7 @@ export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'el
         const sharp=isSharpSound(scene.sound);
         sound=normalizeLoudness(readWav(await readFile(decoded)),(speech?SPEECH_TARGET_LUFS:SOUND_ONLY_TARGET_LUFS)-(sharp?2:0),24,sharp?0.45:0.6);
         sound=tameSpikes(sound,sharp?SHARP_SOUND_SPIKE_LU:SOUND_SPIKE_LU);
+        if(scene.muffled&&!speech&&muffleScale()>0)sound=normalizeLoudness(muffle(sound,muffleScale()),SOUND_ONLY_TARGET_LUFS-MUFFLED_LEVEL_LU,24,0.5);
       }
       opts.progress(`Scene ${index+1}/${opts.scenes.length}: applying ${scene.channel==='intercom'?'intercom and ':''}${scene.effect} / ${scene.duration??'natural'}s`);
       let segment:Float32Array;

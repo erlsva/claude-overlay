@@ -134,7 +134,7 @@ or screamed line is shaped for it:
   energy falls away, the 500-2000 Hz body comes forward, and almost nothing is left
   above 4-5 kHz. That is why a real scream sounds clear rather than bright. A
   shouted or screamed line is given that shape, cleanly, with no distortion (a
-  scream fully, a shout at 60%). `TTS_SCREAM_TONE` scales it: `off` skips it, `1`
+  yell and a scream alike). `TTS_SCREAM_TONE` scales it: `off` skips it, `1`
   is the default, `2` is double.
 - **Strain (off by default):** the voice is pushed hard into a saturator and
   compressed. It matches a real scream on paper but sounds crunchy and harsh, and it
@@ -207,6 +207,21 @@ not the room or the length: those are applied by the overlay.
 - Oversized sounds (`gigantic`, `enormous`, `colossal`, `huge`, `massive`) are
   described that way to the sound model, slowed down so they are deeper and longer,
   and given a stronger effect.
+
+## Behind a door
+
+Say where the voice is and it sounds like it. `behind a door`, `through a wall`,
+`from outside`, `from another room`, `from the other side of the door` or just
+`muffled` take the highs out of the voice, leave a dull, boxy body, and make it a
+little quieter than a voice in the room while keeping it clear enough to understand.
+
+```text
+((door knock)) ((man yells from outside: "OPEN THE DOOR")) ((door knock)) ((man yells from outside: "VICKSY! OPEN THE DOOR"))
+```
+
+It works on sound effects too (`((music from another room))`). The wording is applied
+by the overlay and is never sent to ElevenLabs. `TTS_MUFFLE` sets how heavy it is:
+`1` is the default (a thick door), `2` is heavier still, `0.6` a thin wall, and `off` skips it.
 
 ## Pauses
 

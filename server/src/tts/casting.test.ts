@@ -281,3 +281,28 @@ test("TTS_SHOUT_VOICES picks the shouting voice that fits the character", () => 
     delete process.env.TTS_SHOUT_VOICES;
   }
 });
+
+test("how something is said does not pick who says it: a screaming troll gets the troll", () => {
+  const catalog: AccountVoice[] = [
+    { voice_id: "a", name: "Screaming man", category: "generated" },
+    { voice_id: "b", name: "Troll / Ogre", category: "generated" },
+    { voice_id: "c", name: "Angry Pirate", category: "generated" },
+    { voice_id: "d", name: "Harry - Fierce Warrior", category: "premade", labels: { gender: "male", descriptive: "rough" } },
+  ];
+  process.env.TTS_SHOUT_VOICES = "Screaming man";
+  try {
+    const casting = castScenes([
+      scene({ character: "troll screaming", intensity: "scream" }),
+      scene({ character: "man yelling", intensity: "shout" }),
+      scene({ character: "pirate shouting", intensity: "shout" }),
+      scene({ character: "screaming man", intensity: "scream" }),
+    ], catalog);
+    assert.equal(casting[0].voiceId, "b");
+    assert.equal(casting[0].pinned, true);
+    assert.equal(casting[1].voiceId, "a", "a generic yelling man gets the named shouting voice");
+    assert.equal(casting[2].voiceId, "c");
+    assert.equal(casting[3].voiceId, "a");
+  } finally {
+    delete process.env.TTS_SHOUT_VOICES;
+  }
+});

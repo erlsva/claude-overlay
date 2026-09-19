@@ -8,6 +8,8 @@ export const sceneSchema = z.object({
   channel: z.enum(["clean", "intercom"]).optional(),
   distant: z.boolean().optional(),
   effectStrength: z.enum(["normal", "extreme"]).optional(),
+  /** Heard through a door or wall, or from another room. */
+  muffled: z.boolean().optional(),
   /** Which kind of reverb. Unset is a general small-to-medium room. */
   room: z.enum(["cathedral", "indoor", "well"]).optional(),
   /** How hard the line is delivered. Drives voice choice, tags and settings. */
@@ -50,6 +52,10 @@ const indoorPhrase = /\b(?:indoors?|(?:in|inside)\s+(?:a|an|the)\s+(?:(?:small|l
  */
 export const detectRoom = (text: string): Scene["room"] =>
   /\b(?:church|cathedral)\b/i.test(text) ? "cathedral" : wellPhrase.test(text) ? "well" : indoorPhrase.test(text) ? "indoor" : undefined;
+
+/** "behind a door", "from outside", "muffled": heard through something, not in the room. */
+export const detectMuffled = (text: string): boolean =>
+  /\b(?:muffled|(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door)|from\s+the\s+other\s+room|(?:on\s+)?the\s+other\s+side\s+of\s+(?:a|the)\s+(?:door|wall))\b/i.test(text);
 
 const echoWord = /\becho(?:es|ing|ed)?\b/i;
 const roomWord = /\b(?:reverb(?:erat\w*)?|church|cathedral|cave|cavern)\b/i;
@@ -220,6 +226,7 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
       scene.distant = /\b(distant|far away|faraway)\b/i.test(direction);
       scene.effectStrength = isExtreme(direction) ? "extreme" : "normal";
       scene.room = detectRoom(direction);
+      if (detectMuffled(direction)) scene.muffled = true;
       if (dialogue && speechRate !== undefined) scene.speechRate = speechRate;
       if (dialogue) scene.intensity = detectIntensity(direction);
       if (dialogue) {

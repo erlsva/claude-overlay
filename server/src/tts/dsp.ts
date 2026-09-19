@@ -347,3 +347,19 @@ export function screamTone(samples:Float32Array,amount=1):Float32Array {
   out=biquad('highshelf',4500,0.7,-6*a,out);
   return biquad('lowpass',9000,0.7,0,out);
 }
+
+/**
+ * A voice or sound heard through a door or wall: the highs are absorbed, leaving a
+ * dull, boxy low-mid body. scale makes it heavier (2 is a thick door), lighter below 1.
+ * The cutoff is low because a voice keeps much of its energy between 700 Hz and 2 kHz:
+ * at 1200 Hz a voice still sounded clear, and at 800 Hz it was only a thin wall. The
+ * default is the "thick door" the owner chose by ear (800 Hz at 1.5, about 530 Hz).
+ */
+export function muffle(samples:Float32Array,scale=1):Float32Array {
+  if(!(scale>0)||!samples.length)return samples;
+  const cutoff=Math.max(250,533/scale);
+  let out=biquad('highpass',90,0.7,0,samples);
+  out=biquad('lowpass',cutoff,0.7,0,out);
+  out=biquad('lowpass',cutoff,0.7,0,out);
+  return biquad('peak',260,1,3,out);
+}
