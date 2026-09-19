@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   copyDetails = async () => {
     const report = [
-      "Vicksy OBS Overlay — Crash report",
+      "Stream Overlay — Crash report",
       `Support ID: ${this.state.supportId}`,
       `Time: ${new Date().toISOString()}`,
       `Page: ${window.location.pathname}`,

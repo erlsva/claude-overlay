@@ -2,12 +2,65 @@ import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { Scene } from './shared/scene.js';
-import { speechRequest, type Casting } from './casting.js';
-import { RATE, readWav, writeWav, channelFilter, effectTail, finish, finalWordTiming, type Alignment } from './dsp.js';
+import { sceneIntensity, speechRequest, type Casting } from './casting.js';
+import { RATE, readWav, writeWav, channelFilter, effectTail, finish, finalWordTiming, layerUnderSpeech, normalizeLoudness, screamTone, softLimit, tameSpikes, type Alignment } from './dsp.js';
+import { buildSoundPrompt, isHugeSound, isSharpSound, screamLayerPrompt, soundDecodeFilter } from './sound.js';
 export const ffmpeg=process.env.FFMPEG_PATH || 'ffmpeg';
 // Keep alerts present in a stream mix while retaining expressive dynamics and
 // a true-peak safety margin. The OBS volume control still defaults to 25%.
 export const FINAL_TTS_FILTER='loudnorm=I=-14:TP=-1.5:LRA=15';
+// Standalone effects sit lower than speech alerts, and retain extra peak
+// headroom for sharp transients such as explosions and screams.
+export const FINAL_SOUND_EFFECT_FILTER='loudnorm=I=-18:TP=-3:LRA=12';
+export const MAX_AUTO_SPEECH_TEMPO=1.25;
+// Every scene is balanced by how loud it sounds before the scenes are joined.
+// Generated effects arrive far louder than speech at the same peak, so a clip
+// like foxes / pirate / foxes used to jump out at the listener.
+export const SPEECH_TARGET_LUFS=-14;
+// A standalone effect sits below speech. Under speech it is set to the speech
+// level first, then scaled by the scene's background volume.
+export const SOUND_ONLY_TARGET_LUFS=-19;
+// How much of the scream layer is heard under a shouted or screamed line.
+// How far above its own average a moment of a clip may rise before it is turned
+// down. Sharp effects get the tightest limit: a piercing spike makes people leave.
+export const SHARP_SOUND_SPIKE_LU=3;
+export const SOUND_SPIKE_LU=5;
+export const SHOUTED_SPEECH_SPIKE_LU=6;
+// The layer is texture under the voice, not a second voice: kept well below it.
+export const SCREAM_LAYER_GAIN=0.35;
+export const SHOUT_LAYER_GAIN=0.18;
+function dial(name:string,fallback:number,max:number):number {
+  const setting=(process.env[name]||'').trim().toLowerCase();
+  if(!setting)return fallback;
+  if(/^(?:off|false|no)$/.test(setting))return 0;
+  const value=Number(setting);
+  return Number.isFinite(value)?Math.min(max,Math.max(0,value)):fallback;
+}
+/**
+ * TTS_SCREAM_LAYER: how much of a generated wordless scream is mixed under a
+ * shouted line. Off by default: it reads as a second person screaming behind the
+ * voice. 1 turns it on; 2 is twice as loud. It costs one extra sound-effect request.
+ */
+export const screamLayerScale=()=>dial('TTS_SCREAM_LAYER',0,3);
+/** Drive, in dB, of the saturation that gives shouted and screamed speech its rough texture. */
+export const SCREAM_STRAIN_DB=16;
+export const SHOUT_STRAIN_DB=10;
+/**
+ * TTS_SCREAM_STRAIN scales that drive. Off by default: heavy saturation reads as
+ * crunchy and harsh, and it cannot turn a calm voice into a scream. 1 is the full
+ * effect, which is also what a "through a walkie talkie" style of scream sounds like.
+ */
+export const screamStrainScale=()=>dial('TTS_SCREAM_STRAIN',0,2);
+/**
+ * TTS_SCREAM_TONE scales the clean spectral shaping that makes a shouted line sound like
+ * a scream instead of a raised voice: 0 or off skips it, 1 is the default, 2 is double.
+ */
+export const screamToneScale=()=>dial('TTS_SCREAM_TONE',1,2);
+/** A shout gets less of the shaping than a scream. */
+export const toneAmountFor=(intensity:'normal'|'shout'|'scream'):number=>intensity==='scream'?screamToneScale():intensity==='shout'?screamToneScale()*0.6:0;
+export function strainDbFor(intensity:'normal'|'shout'|'scream'):number {
+  return intensity==='scream'?SCREAM_STRAIN_DB*screamStrainScale():intensity==='shout'?SHOUT_STRAIN_DB*screamStrainScale():0;
+}
 let ffmpegReadiness:Promise<boolean>|undefined;
 export function ffmpegAvailable():Promise<boolean>{
  if(!ffmpegReadiness)ffmpegReadiness=new Promise(resolve=>{
@@ -65,9 +118,14 @@ export function activeSoundDuration(scene:Scene,hasSpeech:boolean):number {
   // A generated source that fills the whole scene leaves no audible decay.
   // Short impacts reserve most of the scene for the room; sustained ambience
   // keeps more source audio while still guaranteeing an effect tail.
-  const sourceLimit=transientSound.test(scene.sound)
+  const sustained=/\b(?:sustained|drawn[- ]out|prolonged|rumbling|resonant|long|lasting|extended|extreme(?:ly)?)\b/i.test(scene.sound)||isHugeSound(scene.sound);
+  let sourceLimit=transientSound.test(scene.sound)&&!sustained
     ? Math.max(0.5,Math.min(2,scene.duration*0.3))
     : Math.max(0.5,scene.duration-Math.min(3,Math.max(1,scene.duration*0.35)));
+  // Echoes need room to be heard: half the scene at most is the source itself.
+  if(scene.effect==='echo'||scene.effect==='both')sourceLimit=Math.min(sourceLimit,Math.max(0.5,scene.duration*0.5));
+  // An oversized sound is slowed by 1/0.7 afterwards, so ask for less to end up at the right length.
+  if(isHugeSound(scene.sound))sourceLimit=Math.max(0.5,sourceLimit*0.7);
   return Math.min(requested,sourceLimit);
 }
 export function speechTempo(scene:Scene,naturalSeconds:number):number {
@@ -75,19 +133,23 @@ export function speechTempo(scene:Scene,naturalSeconds:number):number {
   // An explicit duration describes the complete scene. Fit the paid performance
   // rather than truncating words or silently making the result much longer.
   // Room reverb is audible during speech, so only a short decay needs reserving.
-  const tail=scene.effect==='echo'
+  const tail=scene.effect==='echo'||scene.effect==='both'
     ? Math.min(1,scene.duration*0.15)
     : scene.effect==='reverb'
       ? Math.min(0.75,scene.duration*0.1)
       : 0;
-  return Math.max(1,naturalSeconds/Math.max(0.5,scene.duration-tail));
+  // Never turn an expressive delivery into rushed speech just to satisfy an
+  // optimistic duration. The full performance is preserved when 1.25x is not
+  // enough; the scene warning then suggests a longer authored duration.
+  return Math.min(MAX_AUTO_SPEECH_TEMPO,Math.max(1,naturalSeconds/Math.max(0.5,scene.duration-tail)));
 }
 export function atempoFilters(tempo:number):string[] {
   const filters:string[]=[];
-  let remaining=Math.max(1,tempo);
+  let remaining=tempo;
+  while(remaining<0.5){filters.push('atempo=0.5');remaining/=0.5;}
   // Chaining atempo at 2x or below avoids FFmpeg's high-ratio sample skipping.
   while(remaining>2){filters.push('atempo=2');remaining/=2;}
-  if(remaining>1.001)filters.push(`atempo=${remaining.toFixed(6)}`);
+  if(Math.abs(remaining-1)>0.001)filters.push(`atempo=${remaining.toFixed(6)}`);
   return filters;
 }
 export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'elevenlabs';key:string;voices:Record<string,string>;casting?:Casting[];dataDir:string;progress:(message:string)=>void;warning?:(message:string)=>void}) {
@@ -123,18 +185,36 @@ export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'el
           timing=finalWordTiming(payload.normalized_alignment)||finalWordTiming(payload.alignment);
           await writeFile(raw,Buffer.from(payload.audio_base64,'base64'));
         }
-        await run(['-i',raw,'-af',channelFilter(scene),'-ar','44100','-ac','1','-c:a','pcm_s16le',decoded]);
+        await run(['-i',raw,'-af',channelFilter(scene,{pitchShift:!opts.casting?.find(c=>c.scene===index)?.pinned,strainDb:strainDbFor(sceneIntensity(scene))}),'-ar','44100','-ac','1','-c:a','pcm_s16le',decoded]);
         speech=readWav(await readFile(decoded));
         // Provider character alignment can finish before the real waveform.
         // Measure the decoded file itself so time fitting never clips a word.
         const naturalSpeechSeconds=speech.length/RATE;
-        const tempo=speechTempo(scene,naturalSpeechSeconds);
-        if(timing&&tempo>1.001) {
+        const tempo=scene.speechRate??speechTempo(scene,naturalSpeechSeconds);
+        if(timing&&Math.abs(tempo-1)>0.001) {
           const fitted=path.join(temp,`${index}-speech-fitted.wav`);
           await run(['-i',decoded,'-af',atempoFilters(tempo).join(','),'-ar','44100','-ac','1','-c:a','pcm_s16le',fitted]);
           speech=readWav(await readFile(fitted));
           timing={start:timing.start/tempo,end:timing.end/tempo};
-          opts.warning?.(`Scene ${index+1} performance was time-fitted from ${naturalSpeechSeconds.toFixed(1)}s so the complete scene stays within the requested ${scene.duration}s${scene.effect!=='none'?' with room for the effect':''}.`);
+        }
+        const intensity=sceneIntensity(scene);
+        speech=normalizeLoudness(screamTone(speech,toneAmountFor(intensity)),SPEECH_TARGET_LUFS);
+        const layerScale=screamLayerScale();
+        if(opts.mode==='elevenlabs'&&intensity!=='normal'&&layerScale>0) {
+          try {
+            opts.progress(`Scene ${index+1}/${opts.scenes.length}: adding ${intensity==='scream'?'scream':'shout'} texture`);
+            const layerRaw=path.join(temp,`${index}-layer.mp3`),layerDecoded=path.join(temp,`${index}-layer.wav`);
+            const seconds=Math.min(30,Math.max(0.5,Math.ceil(speech.length/RATE*10)/10));
+            const layerResponse=await eleven('sound-generation',opts.key,{text:screamLayerPrompt(scene.character,intensity),duration_seconds:seconds,model_id:'eleven_text_to_sound_v2',prompt_influence:0.7});
+            await writeFile(layerRaw,Buffer.from(await layerResponse.arrayBuffer()));
+            // Keep only the body of the scream, so it thickens the voice instead of adding a shriek on top.
+            await run(['-i',layerRaw,'-af','aresample=44100,highpass=f=180,lowpass=f=4000','-ar','44100','-ac','1','-c:a','pcm_s16le',layerDecoded]);
+            speech=normalizeLoudness(layerUnderSpeech(speech,readWav(await readFile(layerDecoded)),(intensity==='scream'?SCREAM_LAYER_GAIN:SHOUT_LAYER_GAIN)*layerScale),SPEECH_TARGET_LUFS);
+            speech=tameSpikes(speech,SHOUTED_SPEECH_SPIKE_LU);
+          } catch(error) {
+            // The voice alone is still a valid result, and it has already been paid for.
+            opts.warning?.(`Scene ${index+1}: the ${intensity} texture could not be added (${error instanceof Error?error.message:'request failed'}), so the voice alone was used.`);
+          }
         }
       }
       if(scene.sound.trim()) {
@@ -143,14 +223,17 @@ export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'el
         const soundDuration=activeSoundDuration(scene,!!speech);
         if(opts.mode==='demo')await run(['-f','lavfi','-i',`anoisesrc=color=pink:sample_rate=44100:duration=${soundDuration}`,'-af','volume=0.12',raw]);
         else {
-          const dryDescription=scene.sound.replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi,'').trim();
+          const soundPrompt=buildSoundPrompt(scene.sound);
           let response:Response;
-          try {response=await eleven('sound-generation',opts.key,{text:`${dryDescription}. Dry recording, no echo or reverberation.`,duration_seconds:soundDuration,model_id:'eleven_text_to_sound_v2',prompt_influence:0.6});}
+          try {response=await eleven('sound-generation',opts.key,{text:soundPrompt,duration_seconds:soundDuration,model_id:'eleven_text_to_sound_v2',prompt_influence:0.6});}
           catch(error){throw new Error(`Scene ${index+1} sound generation failed: ${error instanceof Error?error.message:'ElevenLabs request failed.'}`);}
           await writeFile(raw,Buffer.from(await response.arrayBuffer()));
         }
-        await run(['-i',raw,'-af','aresample=44100','-ar','44100','-ac','1','-c:a','pcm_s16le',decoded]);
-        sound=readWav(await readFile(decoded));
+        await run(['-i',raw,'-af',soundDecodeFilter(scene.sound),'-ar','44100','-ac','1','-c:a','pcm_s16le',decoded]);
+        // Sharp effects keep extra headroom: their spikes, not their average, are what hurts.
+        const sharp=isSharpSound(scene.sound);
+        sound=normalizeLoudness(readWav(await readFile(decoded)),(speech?SPEECH_TARGET_LUFS:SOUND_ONLY_TARGET_LUFS)-(sharp?2:0),24,sharp?0.45:0.6);
+        sound=tameSpikes(sound,sharp?SHARP_SOUND_SPIKE_LU:SOUND_SPIKE_LU);
       }
       opts.progress(`Scene ${index+1}/${opts.scenes.length}: applying ${scene.channel==='intercom'?'intercom and ':''}${scene.effect} / ${scene.duration??'natural'}s`);
       let segment:Float32Array;
@@ -162,7 +245,13 @@ export async function renderAudio(opts:{id:string;scenes:Scene[];mode:'demo'|'el
         if(!scene.duration&&sound.length>segment.length){const expanded=new Float32Array(sound.length);expanded.set(segment);segment=expanded;}
         for(let i=0;i<Math.min(segment.length,sound.length);i++)segment[i]+=sound[i]*scene.backgroundVolume;
       }
-      segments.push(finish(segment));
+      // Echoes and a room can stack up beyond the raw sound. Hold a finished sound
+      // effect to the same comfort limit as the sound it was built from.
+      // Then bend any single loud sample instead of letting it through; a brief peak
+      // is what stabs even when the loudness is fine.
+      if(!speech&&sound)segment=softLimit(tameSpikes(segment,isSharpSound(scene.sound)?SHARP_SOUND_SPIKE_LU:SOUND_SPIKE_LU),0.72,0.5);
+      const finished=finish(segment);
+      segments.push(finished);
     }
     opts.progress('Saving the finished clip');
     const samples=new Float32Array(segments.reduce((sum,s)=>sum+s.length,0));let offset=0;

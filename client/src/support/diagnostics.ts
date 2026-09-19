@@ -22,7 +22,7 @@ export function createSupportId(at = Date.now()) {
 export function buildDiagnosticReport(snapshot: DiagnosticSnapshot, now = new Date()) {
   const recent = snapshot.notifications.slice(-15).reverse();
   return [
-    "Vicksy OBS Overlay — Support report",
+    "Stream Overlay — Support report",
     `Support ID: ${createSupportId(now.getTime())}`,
     `Created: ${now.toISOString()}`,
     `App version: ${snapshot.version}`,
@@ -31,7 +31,7 @@ export function buildDiagnosticReport(snapshot: DiagnosticSnapshot, now = new Da
     `Preview channel: ${snapshot.channel}`,
     `Theme: ${snapshot.theme}`,
     `Dashboard server: ${snapshot.dashboardConnected ? "connected" : "offline"}`,
-    `OBS overlay: ${snapshot.overlayConnected ? `connected (${snapshot.overlayCount})` : "offline"}`,
+    `Overlay: ${snapshot.overlayConnected ? `connected (${snapshot.overlayCount})` : "offline"}`,
     `Chat listener: ${snapshot.chatConnected ? "connected" : "offline"}`,
     `Content: ${snapshot.elementCount} layers, ${snapshot.soundCount} sounds, ${snapshot.commandCount} commands`,
     `Browser: ${navigator.userAgent}`,

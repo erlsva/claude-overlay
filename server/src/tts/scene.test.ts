@@ -71,6 +71,13 @@ test("common duration and pause spellings are accepted", () => {
   assert.equal(parsePrompt("((thunder;.5s))").scenes[0].duration, 0.5);
 });
 
+test("authored speech speed supports natural and precise prompt directions", () => {
+  assert.equal(parsePrompt('((pirate slowly says "Wait for me";8s))').scenes[0].speechRate, 0.9);
+  assert.equal(parsePrompt('((pirate says "Wait for me";speed=0.8x;8s))').scenes[0].speechRate, 0.8);
+  assert.equal(parsePrompt('((pirate very quickly says "Run!";8s))').scenes[0].speechRate, 1.25);
+  assert.throws(() => parsePrompt('((pirate says "No";speed=0.5x;8s))'), /0.75x.*1.25x/);
+});
+
 test("straight, smart double, and smart single quotes become dialogue", () => {
   for (const prompt of ['((angry voice: "NOW!"))', "((angry voice: “NOW!”))", "((angry voice: ‘NOW!’))"]) {
     const scene = parsePrompt(prompt).scenes[0];

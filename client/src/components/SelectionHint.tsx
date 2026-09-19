@@ -78,11 +78,11 @@ export function SelectionHint({
         alignItems: "center",
         gap: 8,
         padding: "8px 9px",
-        border: "1px solid #3a3a42",
+        border: "1px solid var(--line-strong)",
         borderLeft: "3px solid var(--accent-border)",
         borderRadius: 7,
         background: "rgba(20,20,23,.96)",
-        color: "#d5dae2",
+        color: "var(--text-primary)",
         boxShadow: "0 8px 24px rgba(0,0,0,.38)",
         font: "500 11px Inter,sans-serif",
       }}
@@ -99,11 +99,11 @@ export function SelectionHint({
           flexShrink: 0,
           height: 24,
           padding: "0 7px",
-          border: "1px solid #3a3a42",
-          background: "#252529",
-          color: "#b8c0cc",
+          border: "1px solid var(--line-strong)",
+          background: "var(--bg-control)",
+          color: "var(--text-secondary)",
           cursor: "pointer",
-          fontSize: 10,
+          fontSize: 11,
         }}
       >
         Don’t show again
@@ -118,9 +118,9 @@ export function SelectionHint({
           height: 24,
           padding: 0,
           flexShrink: 0,
-          border: "1px solid #3a3a42",
-          background: "#252529",
-          color: "#b8c0cc",
+          border: "1px solid var(--line-strong)",
+          background: "var(--bg-control)",
+          color: "var(--text-secondary)",
           cursor: "pointer",
         }}
       >

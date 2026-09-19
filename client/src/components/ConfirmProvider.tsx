@@ -9,6 +9,7 @@ import {
 } from "react";
 import { CircleAlert, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { usePresence } from "../hooks/usePresence";
 
 interface ConfirmOptions {
   title: string;
@@ -26,40 +27,45 @@ export function useConfirm() {
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const resolver = useRef<((accepted: boolean) => void) | null>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
 
   const close = useCallback((accepted: boolean) => {
     resolver.current?.(accepted);
     resolver.current = null;
-    setOptions(null);
+    // Keep the options so the dialog can finish its exit animation.
+    setOpen(false);
   }, []);
 
   const confirm = useCallback<ConfirmFn>((nextOptions) => {
     resolver.current?.(false);
     setOptions(nextOptions);
+    setOpen(true);
     return new Promise<boolean>((resolve) => {
       resolver.current = resolve;
     });
   }, []);
 
   useEffect(() => {
-    if (!options) return;
+    if (!open) return;
     cancelButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close, options]);
+  }, [close, open]);
 
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {options && createPortal(
-        <div className="confirm-backdrop" onMouseDown={() => close(false)}>
+      {options && presence.mounted && createPortal(
+        <div className="confirm-backdrop motion-backdrop" data-state={presence.state} onMouseDown={() => close(false)}>
           <section
-            className="confirm-dialog"
+            className="confirm-dialog motion-dialog"
+            data-state={presence.state}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-title"

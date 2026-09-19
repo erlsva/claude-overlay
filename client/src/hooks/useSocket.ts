@@ -14,11 +14,14 @@ import type {
   StudioState,
   SoundboardItem,
   TtsPlaybackState,
+  FeatureFlags,
   OverlayTrigger,
   ServerToClientEvents,
   ClientToServerEvents,
 } from "../types";
 import { getAuthToken } from "./useAuth";
+import { playTestTone } from "../audio/testTone";
+import { randomUUID } from "../utils";
 import { useToast } from "../components/ToastProvider";
 import { DEFAULT_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
 
@@ -26,7 +29,7 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 interface UseSocketOptions {
-  mode?: "dashboard" | "overlay";
+  mode?: "dashboard" | "overlay" | "mirror";
   onSessionRevoked?: () => void;
   onRoleUpdated?: () => void;
   onMediaControl?: (payload: MediaControlPayload) => void;
@@ -99,6 +102,8 @@ export function useSocket({
   });
   const [chatChannel, setChatChannelState] = useState(DEFAULT_TWITCH_CHANNEL);
   const [ttsPlayback, setTtsPlayback] = useState<TtsPlaybackState>({ enabled: true, active: false, paused: false });
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({ tts: true, scenes: false });
+  const [previewingSoundIds, setPreviewingSoundIds] = useState<string[]>([]);
 
   // Use refs for callbacks so the socket listener closure always has the latest version
   const onRoleUpdatedRef = useRef(onRoleUpdated);
@@ -119,6 +124,9 @@ export function useSocket({
   const lastConnectionToastRef = useRef(0);
   const activeSoundAudioRef = useRef<Set<HTMLAudioElement>>(new Set());
   const previewAudioBySoundRef = useRef<Map<string, Set<HTMLAudioElement>>>(new Map());
+  const pendingAudioTests = useRef(
+    new Map<string, (result: { ok: boolean; error?: string }) => void>(),
+  );
 
   const startSound = useCallback(
     (
@@ -134,6 +142,7 @@ export function useSocket({
         const previews = previewAudioBySoundRef.current.get(previewSoundId) ?? new Set<HTMLAudioElement>();
         previews.add(audio);
         previewAudioBySoundRef.current.set(previewSoundId, previews);
+        setPreviewingSoundIds((current) => (current.includes(previewSoundId) ? current : [...current, previewSoundId]));
       }
       audio.preload = "auto";
       audio.volume = item.volume;
@@ -143,7 +152,10 @@ export function useSocket({
         if (previewSoundId) {
           const previews = previewAudioBySoundRef.current.get(previewSoundId);
           previews?.delete(audio);
-          if (!previews?.size) previewAudioBySoundRef.current.delete(previewSoundId);
+          if (!previews?.size) {
+            previewAudioBySoundRef.current.delete(previewSoundId);
+            setPreviewingSoundIds((current) => current.filter((id) => id !== previewSoundId));
+          }
         }
       };
       let completionReported = false;
@@ -167,7 +179,7 @@ export function useSocket({
         "error",
         () => {
           cleanup();
-          reportPlaybackEnded(`Could not load ${item.name}`);
+          reportPlaybackEnded("The overlay could not load the audio.");
           if (reportError)
             toast.error(
               `Could not load “${item.name}”. Check its URL or uploaded file.`,
@@ -182,7 +194,7 @@ export function useSocket({
         })
         .catch((error) => {
           cleanup();
-          reportPlaybackEnded(`The browser could not play ${item.name}`);
+          reportPlaybackEnded("The overlay browser blocked or could not play the audio.");
           console.error("Soundboard playback failed:", error);
           if (reportError)
             toast.error(
@@ -197,8 +209,8 @@ export function useSocket({
     const socket: AppSocket = io(SERVER_URL, {
       transports: ["websocket", "polling"],
       withCredentials: true,
-      query: mode === "overlay" ? { mode: "overlay" } : {},
-      auth: mode === "overlay" ? {} : { token: getAuthToken() ?? "" },
+      query: mode === "dashboard" ? {} : { mode },
+      auth: mode === "dashboard" ? { token: getAuthToken() ?? "" } : {},
     });
     socketRef.current = socket;
 
@@ -345,6 +357,7 @@ export function useSocket({
     });
     socket.on("dvd:settings", setDvdCelebrationSettingsState);
     socket.on("chat-emote:settings", setChatEmoteSettingsState);
+    socket.on("features:updated", setFeatureFlags);
     socket.on("chat-emote:spawn", setChatEmoteSpawn);
     socket.on("studio:sync", setStudio);
     socket.on("history:status", setHistoryStatus);
@@ -395,6 +408,14 @@ export function useSocket({
       }
     });
     socket.on("tts:status", setTtsPlayback);
+    socket.on("overlay:test-audio", async ({ testId }) => {
+      if (mode !== "overlay") return;
+      const result = await playTestTone();
+      socket.emit("overlay:test-result", { testId, ...result });
+    });
+    socket.on("overlay:test-result", (result) => {
+      pendingAudioTests.current.get(result.testId)?.(result);
+    });
 
     // rAF loop — flush pending element and cursor updates once per frame
     const flushLoop = () => {
@@ -595,6 +616,14 @@ export function useSocket({
     },
     [studio.sounds, startSound, toast],
   );
+  /** Stops this browser's own preview of a sound. Nothing on the overlay is touched. */
+  const stopPreviewSound = useCallback((id: string) => {
+    previewAudioBySoundRef.current.get(id)?.forEach((audio) => {
+      audio.pause();
+      // Reuse the normal completion path so the bookkeeping is cleared.
+      audio.dispatchEvent(new Event("ended"));
+    });
+  }, []);
   const playSound = useCallback(
     (id: string) => {
       const item = studio.sounds.find((sound) => sound.id === id);
@@ -603,7 +632,7 @@ export function useSocket({
         return;
       }
       if (!overlayConnected) {
-        toast.error("The OBS overlay is offline, so the sound was not played.");
+        toast.error("The overlay is offline, so the sound was not played.");
         return;
       }
       socketRef.current?.emit("sound:play", { id });
@@ -619,7 +648,7 @@ export function useSocket({
         return;
       }
       if (!overlayConnected) {
-        toast.error("The OBS overlay is offline, so there is no sound to stop.");
+        toast.error("The overlay is offline, so there is no sound to stop.");
         return;
       }
       socketRef.current?.emit("sound:stop", { id });
@@ -634,6 +663,34 @@ export function useSocket({
   );
   const deleteTrigger = useCallback(
     (id: string) => socketRef.current?.emit("trigger:delete", { id }),
+    [],
+  );
+  /** Asks the connected overlay to play a chime and reports whether it did. */
+  const testOverlayAudio = useCallback(
+    () =>
+      new Promise<{ ok: boolean; message: string }>((resolve) => {
+        const socket = socketRef.current;
+        if (!socket) {
+          resolve({ ok: false, message: "Not connected to the server." });
+          return;
+        }
+        const testId = randomUUID();
+        const finish = (ok: boolean, message: string) => {
+          window.clearTimeout(timer);
+          pendingAudioTests.current.delete(testId);
+          resolve({ ok, message });
+        };
+        const timer = window.setTimeout(
+          () => finish(false, "The overlay did not answer. Is it open in OBS?"),
+          6_000,
+        );
+        pendingAudioTests.current.set(testId, (result) =>
+          result.ok
+            ? finish(true, "The overlay played the test chime.")
+            : finish(false, result.error || "The overlay could not play audio."),
+        );
+        socket.emit("overlay:test-audio", { testId });
+      }),
     [],
   );
   const setChatChannel = useCallback(
@@ -662,7 +719,9 @@ export function useSocket({
     historyStatus,
     chatChannel,
     ttsPlayback,
+    featureFlags,
     setChatChannel,
+    testOverlayAudio,
     addElement,
     updateElement,
     removeElement,
@@ -684,6 +743,8 @@ export function useSocket({
     saveSound,
     deleteSound,
     previewSound,
+    previewingSoundIds,
+    stopPreviewSound,
     playSound,
     stopSound,
     saveTrigger,

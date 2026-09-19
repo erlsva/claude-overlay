@@ -64,6 +64,7 @@ export interface TriggerStep {
   ttsErrorMessage?: string;
 }
 export interface TtsPlaybackState { enabled: boolean; active: boolean; paused: boolean; volume?: number; clipId?: string; prompt?: string; sender?: string; }
+export interface FeatureFlags { tts: boolean; scenes: boolean; }
 export interface OverlayTrigger extends TriggerStep {
   id: string;
   name: string;
@@ -132,12 +133,15 @@ export interface CursorPayload {
   y: number;
 }
 
+export type UserRole = 'owner' | 'streamer' | 'super-moderator' | 'moderator';
+
 export interface UserPresencePayload {
   userId: string;
   login: string;
   displayName: string;
   avatar: string;
   color: string;
+  role?: UserRole;
 }
 
 export interface DrawStroke {
@@ -192,6 +196,9 @@ export interface ServerToClientEvents {
   'sound:resume': (payload: { id: string }) => void;
   'sound:volume': (payload: { id: string; volume: number }) => void;
   'tts:status': (state: TtsPlaybackState) => void;
+  'features:updated': (flags: FeatureFlags) => void;
+  'overlay:test-audio': (payload: { testId: string }) => void;
+  'overlay:test-result': (payload: { testId: string; ok: boolean; error?: string }) => void;
   'chat:channel': (payload: { channel: string }) => void;
 }
 
@@ -204,6 +211,8 @@ export interface ClientToServerEvents {
   'sound:ended': (payload: { playbackId: string; error?: string }) => void;
   'cursor:move': (payload: { x: number; y: number; showOnOverlay: boolean }) => void;
   'overlay:refresh': () => void;
+  'overlay:test-audio': (payload: { testId: string }) => void;
+  'overlay:test-result': (payload: { testId: string; ok: boolean; error?: string }) => void;
   'draw:stroke': (stroke: DrawStroke) => void;
   'draw:clear': () => void;
   'draw:live': (stroke: Omit<LiveDrawStroke, 'userId'>) => void;

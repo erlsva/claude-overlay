@@ -8,18 +8,63 @@ export const sceneSchema = z.object({
   channel: z.enum(["clean", "intercom"]).optional(),
   distant: z.boolean().optional(),
   effectStrength: z.enum(["normal", "extreme"]).optional(),
+  /** Which kind of reverb. Unset is a general small-to-medium room. */
+  room: z.enum(["cathedral", "indoor", "well"]).optional(),
+  /** How hard the line is delivered. Drives voice choice, tags and settings. */
+  intensity: z.enum(["normal", "shout", "scream"]).optional(),
   prepared: z.boolean().optional(),
   preferredVoiceId: z.string().max(100).optional(),
   soundDuration: z.number().min(0.5).max(30).optional(),
   stability: z.number().min(0).max(1).optional(),
+  speechRate: z.number().min(0.75).max(1.25).optional(),
   voice: z.enum(["voice1", "voice2"]),
   duration: z.number().min(0.5).max(30).nullable(),
-  effect: z.enum(["none", "echo", "reverb"]),
+  /** "both" is an echo and a room together. */
+  effect: z.enum(["none", "echo", "reverb", "both"]),
   backgroundVolume: z.number().min(0).max(1),
 }).refine((scene) => scene.dialogue.trim() || scene.sound.trim(), "Each scene needs dialogue or a sound.");
 
 export const scenesSchema = z.array(sceneSchema).min(1).max(10);
 export type Scene = z.infer<typeof sceneSchema>;
+export type Intensity = NonNullable<Scene["intensity"]>;
+
+const screamWords = /\b(?:scream(?:s|ing|ed)?|shriek(?:s|ing|ed)?|screech(?:es|ing|ed)?|bloodcurdling|top of (?:his|her|their|my|your) lungs)\b/i;
+const shoutWords = /\b(?:yell(?:s|ing|ed)?|shout(?:s|ing|ed)?|bellow(?:s|ing|ed)?|roar(?:s|ing|ed)?|holler(?:s|ing|ed)?|loudly)\b/i;
+/**
+ * How hard the user asked for a line to be delivered. Only call this with the
+ * user's own wording (never a model's explanation), so a planner that merely
+ * describes a scene cannot accidentally turn speech into a scream.
+ */
+export function detectIntensity(text: string): Intensity {
+  if (screamWords.test(text)) return "scream";
+  if (shoutWords.test(text)) return "shout";
+  return "normal";
+}
+/** "gigantic", "huge" and friends mean a stronger effect and a bigger sound. */
+export const isExtreme = (text: string) => /\b(?:extreme|huge|massive|gigantic|enormous|colossal|titanic)\b/i.test(text);
+const wellPhrase = /\b(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well\b(?!-)/i;
+const indoorPhrase = /\b(?:indoors?|(?:in|inside)\s+(?:a|an|the)\s+(?:(?:small|large|big|empty|tiled)\s+)?(?:room|hall|house|building|bathroom|garage|warehouse|tunnel))\b/i;
+/**
+ * The kind of room. A cathedral is long, wide and bright; a well is narrow and
+ * hollow; indoors is a small, close room. Anything else keeps the general reverb.
+ */
+export const detectRoom = (text: string): Scene["room"] =>
+  /\b(?:church|cathedral)\b/i.test(text) ? "cathedral" : wellPhrase.test(text) ? "well" : indoorPhrase.test(text) ? "indoor" : undefined;
+
+const echoWord = /\becho(?:es|ing|ed)?\b/i;
+const roomWord = /\b(?:reverb(?:erat\w*)?|church|cathedral|cave|cavern)\b/i;
+/**
+ * Echo (repeats) and room (reverb) are separate things and can be asked for
+ * together: "Reverb Echo", "a cave with echo", "down a well" (narrow and echoing).
+ * Only pass the user's own wording, never a model's explanation.
+ */
+export function detectEffect(text: string): Scene["effect"] {
+  const well = wellPhrase.test(text);
+  const echo = echoWord.test(text) || well;
+  const room = roomWord.test(text) || well || indoorPhrase.test(text);
+  return echo && room ? "both" : echo ? "echo" : room ? "reverb" : "none";
+}
+export const intensityRank: Record<Intensity, number> = { normal: 0, shout: 1, scream: 2 };
 export type PromptSegment = { text: string; explicitBlock: boolean };
 
 const normalize = (input: string) => input
@@ -33,6 +78,25 @@ export function parseTrailingDuration(value: string): { seconds: number; index: 
   const match = value.match(new RegExp(`[;,]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?)\\s*$`, "i"));
   if (!match || match.index === undefined) return undefined;
   return { seconds: Number(match[1].replace(",", ".")), index: match.index };
+}
+const speechRateDirective = /(?:^|[;,])\s*(?:speed|rate)\s*[:=]?\s*(0(?:[.,]\d+)?|1(?:[.,]\d+)?|\.\d+)\s*x?\s*(?=$|[;,])/i;
+export function parseSpeechRate(value: string): number | undefined {
+  const precise = value.match(speechRateDirective);
+  if (precise) {
+    const rate = Number(precise[1].replace(",", "."));
+    if (rate < 0.75 || rate > 1.25)
+      throw new Error("TTS speech speed must be between 0.75x and 1.25x.");
+    return rate;
+  }
+  const direction = withoutQuotedDialogue(value);
+  if (/\b(?:very|much)\s+(?:slowly|slower)\b/i.test(direction)) return 0.75;
+  if (/\b(?:slowly|slower)\b/i.test(direction)) return 0.9;
+  if (/\b(?:very|much)\s+(?:quickly|faster|fast)\b/i.test(direction)) return 1.25;
+  if (/\b(?:quickly|faster|fast)\b/i.test(direction)) return 1.1;
+  return undefined;
+}
+export function stripSpeechRateDirective(value: string): string {
+  return value.replace(speechRateDirective, " ").replace(/\s+/g, " ").trim();
 }
 export function parsePauseSeconds(value: string): number | undefined {
   const suffix = value.match(new RegExp(`^(?:silence|pause|silent pause)(?:\\s+for)?\\s*(?:[:,;]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?))?$`, "i"));
@@ -111,12 +175,6 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
     duration: number | null = null,
     effect: Scene["effect"] = "none",
   ): Scene => ({ dialogue, sound, voice, duration, effect, backgroundVolume: 0.22 });
-  const detectEffect = (value: string): Scene["effect"] =>
-    /\becho(?:ing)?\b/i.test(value)
-      ? "echo"
-      : /\b(reverb|church|cathedral|cave)\b/i.test(value)
-        ? "reverb"
-        : "none";
 
   let scenes: Scene[] = [];
   const segments = splitPromptSegments(text);
@@ -133,9 +191,11 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
         continue;
       }
       const timing = parseTrailingDuration(segment.text);
-      const description = timing
+      const authoredDescription = timing
         ? segment.text.slice(0, timing.index).trim()
         : segment.text;
+      const speechRate = parseSpeechRate(authoredDescription);
+      const description = stripSpeechRateDirective(authoredDescription);
       const quotes = quotedDialogue(description);
       const dialogue = quotes.map((quote) => quote[1].replace(/\\"/g, '"')).join(" ");
       let sound = "";
@@ -158,7 +218,10 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
         ? "intercom"
         : "clean";
       scene.distant = /\b(distant|far away|faraway)\b/i.test(direction);
-      scene.effectStrength = /\b(extreme|huge|massive)\b/i.test(direction) ? "extreme" : "normal";
+      scene.effectStrength = isExtreme(direction) ? "extreme" : "normal";
+      scene.room = detectRoom(direction);
+      if (dialogue && speechRate !== undefined) scene.speechRate = speechRate;
+      if (dialogue) scene.intensity = detectIntensity(direction);
       if (dialogue) {
         const before = description.slice(0, quotes[0].index).split(/\bwhile\b/i).pop()!;
         const describedCharacter = before

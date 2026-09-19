@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode } from "react";
 import { randomUUID } from "../utils";
 import { TextDialog, encodeTextSrc, estimateTextElementSize } from "./TextDialog";
+import { MediaLibrary } from "./MediaLibrary";
 import type { TextConfig } from "./TextDialog";
 import type { CanvasElement, MediaType } from "../types";
 import { authHeaders } from "../hooks/useAuth";
@@ -17,6 +18,7 @@ import {
   Pin,
   Trash2,
   ImagePlus,
+  Library,
   Type,
   Palette,
   SlidersHorizontal,
@@ -73,6 +75,8 @@ interface ToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /** Rendered at the far right of the tool row (live status chips). */
+  trailing?: ReactNode;
 }
 
 const ACCEPTED =
@@ -151,9 +155,11 @@ export function Toolbar({
   onRedo,
   canUndo,
   canRedo,
+  trailing,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [showTextDialog, setShowTextDialog] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
   const uploadMediaFileRef = useRef<(file: File) => Promise<void>>(async () => {});
@@ -240,7 +246,7 @@ export function Toolbar({
       toast.success(`${file.name} added to the canvas`);
       if (type === "audio" && await confirm({
         title: "Add to Soundboard?",
-        message: "Soundboard clips can play on OBS without creating or showing a canvas layer.",
+        message: "Soundboard clips can play on the overlay without creating or showing a canvas layer.",
         confirmLabel: "Add sound",
       })) {
         onSaveSound({
@@ -385,8 +391,8 @@ export function Toolbar({
       style={{
         height: BUTTON_HEIGHT,
         padding: "0 11px",
-        background: toolMode === mode ? "var(--accent-solid)" : "#202020",
-        border: `1px solid ${toolMode === mode ? "var(--accent-border)" : "#3a3a3a"}`,
+        background: toolMode === mode ? "var(--accent-solid)" : "var(--bg-control)",
+        border: `1px solid ${toolMode === mode ? "var(--accent-border)" : "var(--line-strong)"}`,
         borderRadius: 5,
         color: toolMode === mode ? "var(--accent-contrast)" : "var(--text-secondary)",
         fontSize: TOOLBAR_FONT_SIZE,
@@ -424,8 +430,8 @@ export function Toolbar({
           ? "#7f1d1d"
           : variant === "primary" || active
             ? "var(--accent-solid)"
-            : "#202020",
-        border: `1px solid ${variant === "danger" ? "#ef4444" : variant === "primary" || active ? "var(--accent-border)" : "#3a3a3a"}`,
+            : "var(--bg-control)",
+        border: `1px solid ${variant === "danger" ? "#ef4444" : variant === "primary" || active ? "var(--accent-border)" : "var(--line-strong)"}`,
         borderRadius: 5,
         color: variant === "danger"
           ? "#fee2e2"
@@ -462,8 +468,8 @@ export function Toolbar({
           alignItems: "center",
           gap: 8,
           padding: "6px 12px",
-          background: "#141414",
-          borderBottom: "1px solid #222",
+          background: "var(--bg-panel)",
+          borderBottom: "1px solid var(--line)",
           flexShrink: 0,
           flexWrap: "wrap",
         }}
@@ -477,10 +483,10 @@ export function Toolbar({
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <button className="ui-icon-button" onClick={onUndo} disabled={!canUndo} title="Undo the latest canvas change (Ctrl+Z)" style={{ background: "#202020", border: "1px solid #3a3a3a", color: canUndo ? "#d6d9df" : "#555", cursor: canUndo ? "pointer" : "not-allowed" }}><Undo2 size={ICON_SIZE}/></button>
-          <button className="ui-icon-button" onClick={onRedo} disabled={!canRedo} title="Redo the latest undone canvas change (Ctrl+Y)" style={{ background: "#202020", border: "1px solid #3a3a3a", color: canRedo ? "#d6d9df" : "#555", cursor: canRedo ? "pointer" : "not-allowed" }}><Redo2 size={ICON_SIZE}/></button>
+          <button className="ui-icon-button" onClick={onUndo} disabled={!canUndo} title="Undo the latest canvas change (Ctrl+Z)" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: canUndo ? "#d6d9df" : "#555", cursor: canUndo ? "pointer" : "not-allowed" }}><Undo2 size={ICON_SIZE}/></button>
+          <button className="ui-icon-button" onClick={onRedo} disabled={!canRedo} title="Redo the latest undone canvas change (Ctrl+Y)" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: canRedo ? "#d6d9df" : "#555", cursor: canRedo ? "pointer" : "not-allowed" }}><Redo2 size={ICON_SIZE}/></button>
         </div>
-        <div style={{ width: 1, height: 24, background: "#2a2a2a", margin: "0 2px" }} />
+        <div style={{ width: 1, height: 24, background: "var(--line)", margin: "0 2px" }} />
 
         {!drawMode && (
           <>
@@ -514,6 +520,14 @@ export function Toolbar({
             </button>
             {btn(
               <>
+                <Library size={ICON_SIZE} /> Library
+              </>,
+              () => setShowLibrary(true),
+              false,
+              "Shared media library: files that stay available for everyone",
+            )}
+            {btn(
+              <>
                 <Type size={ICON_SIZE} /> Text
               </>,
               () => setShowTextDialog(true),
@@ -524,7 +538,7 @@ export function Toolbar({
               style={{
                 width: 1,
                 height: 24,
-                background: "#2a2a2a",
+                background: "var(--line)",
                 margin: "0 2px",
               }}
             />
@@ -548,8 +562,8 @@ export function Toolbar({
 
         {!drawMode && selectedElement && !selectedElement.locked && (
           <>
-            <div style={{ width: 1, height: 24, background: "#2a2a2a", margin: "0 2px" }} />
-            <span style={{ color: "#7f8997", fontSize: 10, fontWeight: 700 }}>SELECTED</span>
+            <div style={{ width: 1, height: 24, background: "var(--line)", margin: "0 2px" }} />
+            <span style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>SELECTED</span>
             {btn(<><Maximize2 size={ICON_SIZE}/> Fit</>, () => fitSelected("fit"), false, "Fit selected element inside the Twitch viewport")}
             {btn(<><Expand size={ICON_SIZE}/> Fill</>, () => fitSelected("fill"), false, "Fill the Twitch viewport with the selected element")}
             {selectedElement.type !== "audio" && btn(<><Disc size={ICON_SIZE}/> DVD</>, toggleDvd, Boolean(selectedElement.dvdEnabled), selectedElement.dvdEnabled ? "Stop DVD movement" : "Start DVD movement")}
@@ -601,7 +615,7 @@ export function Toolbar({
               style={{
                 width: 1,
                 height: 24,
-                background: "#2a2a2a",
+                background: "var(--line)",
                 margin: "0 2px",
               }}
             />
@@ -614,7 +628,7 @@ export function Toolbar({
                 gap: 4,
                 alignItems: "center",
                 fontSize: TOOLBAR_FONT_SIZE,
-                color: "#94a3b8",
+                color: "var(--text-muted)",
                 fontFamily: "Inter,sans-serif",
               }}
             >
@@ -637,7 +651,7 @@ export function Toolbar({
                     border:
                       drawColor === c && toolMode === "pen"
                         ? "2px solid #fff"
-                        : "1.5px solid #555",
+                        : "1.5px solid var(--line-strong)",
                     borderRadius: 3,
                     cursor: "pointer",
                     padding: 0,
@@ -658,7 +672,7 @@ export function Toolbar({
                   width: 24,
                   height: 24,
                   padding: 0,
-                  border: "1.5px solid #555",
+                  border: "1.5px solid var(--line-strong)",
                   borderRadius: 3,
                   cursor: "pointer",
                   background: "none",
@@ -676,11 +690,11 @@ export function Toolbar({
                   gap: 5,
                 }}
               >
-                <SlidersHorizontal size={ICON_SIZE} color="#94a3b8" />
+                <SlidersHorizontal size={ICON_SIZE} color="var(--text-muted)" />
                 <span
                   style={{
                     fontSize: TOOLBAR_FONT_SIZE,
-                    color: "#94a3b8",
+                    color: "var(--text-muted)",
                     fontFamily: "Inter,sans-serif",
                     whiteSpace: "nowrap",
                   }}
@@ -698,7 +712,7 @@ export function Toolbar({
                 <span
                   style={{
                     fontSize: TOOLBAR_FONT_SIZE,
-                    color: "#94a3b8",
+                    color: "var(--text-muted)",
                     fontFamily: "Inter,sans-serif",
                     minWidth: 20,
                   }}
@@ -708,7 +722,7 @@ export function Toolbar({
               </div>
             )}
 
-            <div className="draw-setting" title="Set drawing opacity">
+            <div className="draw-setting">
               <Droplets size={ICON_SIZE} />
               <span>Opacity</span>
               <input
@@ -761,7 +775,15 @@ export function Toolbar({
           </>
         )}
 
+        {trailing && <div className="toolbar-trailing">{trailing}</div>}
       </div>
+
+      <MediaLibrary
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onAdd={onAdd}
+        onSaveSound={onSaveSound}
+      />
 
       {showTextDialog && (
         <TextDialog

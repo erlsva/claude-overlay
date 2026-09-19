@@ -13,6 +13,7 @@ interface TooltipState {
   top: number;
   placement: "above" | "below";
   accentBorder: string;
+  closing?: boolean;
 }
 
 const TOOLTIP_ID = "app-control-tooltip";
@@ -43,6 +44,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const activeTarget = useRef<Element | null>(null);
   const showTimer = useRef<number | null>(null);
+  const exitTimer = useRef<number | null>(null);
   const tooltipElement = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
@@ -85,11 +87,17 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       if (showTimer.current !== null) window.clearTimeout(showTimer.current);
       showTimer.current = null;
     };
+    const clearExit = () => {
+      if (exitTimer.current !== null) window.clearTimeout(exitTimer.current);
+      exitTimer.current = null;
+    };
     const hide = () => {
       clearTimer();
       activeTarget.current?.removeAttribute("aria-describedby");
       activeTarget.current = null;
-      setTooltip(null);
+      clearExit();
+      setTooltip((current) => (current && !current.closing ? { ...current, closing: true } : current));
+      exitTimer.current = window.setTimeout(() => setTooltip(null), 90);
     };
     const show = (target: Element, delayed: boolean) => {
       const text = target.getAttribute("data-app-tooltip")?.trim();
@@ -104,7 +112,9 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         const accentBorder = getComputedStyle(target)
           .getPropertyValue("--accent-border")
           .trim() || "#f97316";
+        clearExit();
         setTooltip({
+          closing: false,
           text,
           left: rect.left + rect.width / 2,
           top: placement === "above" ? rect.top - 8 : rect.bottom + 8,
@@ -164,7 +174,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
             ref={tooltipElement}
             id={TOOLTIP_ID}
             role="tooltip"
-            className={`app-tooltip app-tooltip--${tooltip.placement}`}
+            className={`app-tooltip app-tooltip--${tooltip.placement}${tooltip.closing ? " app-tooltip--closing" : ""}`}
             style={{
               left: tooltip.left,
               top: tooltip.top,

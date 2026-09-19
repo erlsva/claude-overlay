@@ -12,10 +12,10 @@ export default function TileController({ channel }: { channel: string }) {
   useEffect(() => {
     if (isLive) {
       favicon.href = vicksyWLIVE;
-      document.title = `(LIVE) OBS Overlay | ${channelName}`;
+      document.title = `(LIVE) Stream Overlay | ${channelName}`;
     } else {
       favicon.href = vicksyW;
-      document.title = `OBS Overlay | ${channelName}`;
+      document.title = `Stream Overlay | ${channelName}`;
     }
   }, [channelName, favicon, isLive]);
 

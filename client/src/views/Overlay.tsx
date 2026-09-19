@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Pause, Volume2 } from "lucide-react";
 import {
   OverlayStage,
@@ -8,6 +8,11 @@ import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
 import TileController from "../components/TileController";
+import { isMirrorMode, silencePage } from "../audio/silence";
+
+// The dashboard embeds the overlay as a silent live preview (?mirror=1).
+const IS_MIRROR = isMirrorMode();
+if (IS_MIRROR) silencePage();
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
@@ -19,11 +24,32 @@ export function Overlay() {
   }, []);
 
   const { elements, cursors, dvdCelebrationSettings, chatEmoteSettings, chatEmoteSpawn, strokes, liveStrokes, notifyMediaEnded, chatChannel, ttsPlayback } = useSocket({
-    mode: "overlay",
+    mode: IS_MIRROR ? "mirror" : "overlay",
     onMediaControl: handleMediaControl,
   });
+  const [displayedTts, setDisplayedTts] = useState(ttsPlayback);
+  const [ttsLeaving, setTtsLeaving] = useState(false);
+  const ttsExitTimer = useRef(0);
 
   useEffect(() => {
+    window.clearTimeout(ttsExitTimer.current);
+    if (ttsPlayback.active) {
+      setDisplayedTts(ttsPlayback);
+      setTtsLeaving(false);
+      return;
+    }
+    if (displayedTts.active) {
+      setTtsLeaving(true);
+      ttsExitTimer.current = window.setTimeout(() => {
+        setDisplayedTts(ttsPlayback);
+        setTtsLeaving(false);
+      }, 260);
+    }
+    return () => window.clearTimeout(ttsExitTimer.current);
+  }, [displayedTts.active, ttsPlayback]);
+
+  useEffect(() => {
+    if (IS_MIRROR) return;
     const id = setInterval(
       () => fetch(`${SERVER_URL}/ping`).catch(() => {}),
       10 * 60 * 1000,
@@ -34,16 +60,16 @@ export function Overlay() {
   return (
     <>
       <TileController channel={chatChannel} />
-      <OverlayStage ref={stageRef} elements={elements} cursors={cursors} dvdCelebrationSettings={dvdCelebrationSettings} strokes={strokes} liveStrokes={liveStrokes} onMediaEnded={notifyMediaEnded} />
+      <OverlayStage ref={stageRef} elements={elements} cursors={cursors} dvdCelebrationSettings={dvdCelebrationSettings} strokes={strokes} liveStrokes={liveStrokes} onMediaEnded={IS_MIRROR ? undefined : notifyMediaEnded} />
       <ChatEmoteLayer spawn={chatEmoteSpawn} settings={chatEmoteSettings} />
-      {ttsPlayback.active && (
-        <div className={`overlay-tts-status ${ttsPlayback.paused ? "overlay-tts-status--paused" : ""}`} role="status" aria-live="polite">
+      {displayedTts.active && (
+        <div className={`overlay-tts-status ${displayedTts.paused ? "overlay-tts-status--paused" : ""}${ttsLeaving ? " overlay-tts-status--leaving" : ""}`} role="status" aria-live="polite">
           <span className="overlay-tts-status__icon">
-            {ttsPlayback.paused ? <Pause size={18} /> : <Volume2 size={18} />}
+            {displayedTts.paused ? <Pause size={22} /> : <Volume2 size={22} />}
           </span>
           <span>
-            <strong>{ttsPlayback.paused ? "TTS PAUSED" : "TTS PLAYING"}</strong>
-            {ttsPlayback.active && <small>{ttsPlayback.sender ? `${ttsPlayback.sender} · ` : ""}{ttsPlayback.prompt}</small>}
+            <strong>{displayedTts.paused ? "TTS PAUSED" : "TTS PLAYING"}</strong>
+            <small>{displayedTts.sender ? `${displayedTts.sender} · ` : ""}{displayedTts.prompt}</small>
           </span>
         </div>
       )}

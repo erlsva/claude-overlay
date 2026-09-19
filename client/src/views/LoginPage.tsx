@@ -31,7 +31,7 @@ export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPag
       <section className="login-card" aria-labelledby="login-title">
         <div className="login-card__eyebrow"><span /> PRIVATE STREAM CONTROL</div>
         <div className="login-card__copy">
-          <h1 id="login-title">Vicksy’s OBS Overlay</h1>
+          <h1 id="login-title">Vicksy’s Stream Overlay</h1>
           <p>A cozy little control room for bringing the stream to life.</p>
         </div>
         <img className="login-card__art" src={campfireFoxes} alt="Fox friends relaxing around a campfire" />

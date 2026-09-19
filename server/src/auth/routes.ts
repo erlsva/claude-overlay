@@ -10,7 +10,8 @@ import {
 import { getWhitelistEntry } from "../db/index.js";
 import { signToken, verifyToken } from "./jwt.js";
 import { loginRateLimit } from "../middleware/rateLimits.js";
-import { getConfiguredTwitchChannels, getDefaultTwitchChannel } from "../twitch/channels.js";
+import { getConfiguredTwitchChannels, getDefaultTwitchChannel, getStreamerLogins } from "../twitch/channels.js";
+import type { UserRole } from "../types.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();
 const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:5173";
@@ -31,6 +32,28 @@ export interface AuthUser {
   color: string;
   isOwner: boolean;
   isAdmin: boolean;
+  /** Primary label, kept for places that show a single tag. */
+  role: UserRole;
+  /** Every label that applies, e.g. Streamer and Super moderator. */
+  roles: UserRole[];
+}
+
+/**
+ * Display role. It is a label, not a new permission: the owner is set by
+ * OWNER_TWITCH_USERNAME, streamers are the configured channel accounts, and
+ * the existing admin flag is presented as "super moderator".
+ */
+export function rolesFor(login: string, isOwner: boolean, isAdmin: boolean): UserRole[] {
+  const roles: UserRole[] = [];
+  if (isOwner) roles.push("owner");
+  if (getStreamerLogins().includes(login)) roles.push("streamer");
+  // Streamers are moderators too, so being one does not hide the access level.
+  if (!isOwner) roles.push(isAdmin ? "super-moderator" : "moderator");
+  return roles;
+}
+
+export function roleFor(login: string, isOwner: boolean, isAdmin: boolean): UserRole {
+  return rolesFor(login, isOwner, isAdmin)[0];
 }
 
 function authorizeTokenUser(tokenUser: Record<string, unknown>): AuthUser | null {
@@ -48,6 +71,8 @@ function authorizeTokenUser(tokenUser: Record<string, unknown>): AuthUser | null
     color: String(tokenUser.color ?? "#9146FF"),
     isOwner,
     isAdmin: isOwner || (whitelistEntry?.isAdmin ?? false),
+    role: roleFor(login, isOwner, isOwner || (whitelistEntry?.isAdmin ?? false)),
+    roles: rolesFor(login, isOwner, isOwner || (whitelistEntry?.isAdmin ?? false)),
   };
 }
 

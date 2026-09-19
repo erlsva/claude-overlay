@@ -20,7 +20,7 @@ test("support reports include useful state and exclude credentials and content U
     notifications: [{ id: 1, kind: "error", message: "Upload failed", at: 1_700_000_000_000 }],
   }, new Date("2026-09-10T12:00:00.000Z"));
   assert.match(report, /App version: abc12345/);
-  assert.match(report, /OBS overlay: offline/);
+  assert.match(report, /Overlay: offline/);
   assert.match(report, /Upload failed/);
   assert.doesNotMatch(report, /secret-value|https:\/\/.*\/files\//i);
 });

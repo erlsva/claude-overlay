@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, Clipboard, Info, LifeBuoy, Trash2, X } from "lucide-react";
 import { buildDiagnosticReport, type DiagnosticSnapshot } from "../support/diagnostics";
 import { useNotificationHistory, useToast } from "./ToastProvider";
+import { usePresence } from "../hooks/usePresence";
 
 type SnapshotInput = Omit<DiagnosticSnapshot, "notifications">;
 
 export function SupportDiagnostics({ snapshot }: { snapshot: SnapshotInput }) {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const { success, error } = useToast();
   const { notifications, clearNotifications } = useNotificationHistory();
   const report = useMemo(() => buildDiagnosticReport({ ...snapshot, notifications }), [notifications, snapshot]);
@@ -33,13 +35,13 @@ export function SupportDiagnostics({ snapshot }: { snapshot: SnapshotInput }) {
         <LifeBuoy size={17} />
         {notifications.some((item) => item.kind === "error") && <span />}
       </button>
-      {open && (
-        <div className="support-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
-          <section className="support-dialog" role="dialog" aria-modal="true" aria-labelledby="support-title">
+      {presence.mounted && (
+        <div className="support-backdrop motion-backdrop" data-state={presence.state} onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
+          <section className="support-dialog motion-dialog" data-state={presence.state} role="dialog" aria-modal="true" aria-labelledby="support-title">
             <header><span><strong id="support-title">Support & notifications</strong><small>Everything needed to describe a problem without exposing private credentials</small></span><button className="ui-icon-button" onClick={() => setOpen(false)} title="Close support panel"><X size={16} /></button></header>
             <div className="support-summary">
               <Status label="Dashboard" ok={snapshot.dashboardConnected} />
-              <Status label="OBS" ok={snapshot.overlayConnected} detail={snapshot.overlayConnected ? String(snapshot.overlayCount) : undefined} />
+              <Status label="Overlay" ok={snapshot.overlayConnected} detail={snapshot.overlayConnected ? String(snapshot.overlayCount) : undefined} />
               <Status label="Chat" ok={snapshot.chatConnected} />
               <span className="support-version">v{snapshot.version}</span>
             </div>

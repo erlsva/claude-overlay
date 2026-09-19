@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   Check,
+  BookOpen,
   CircleAlert,
   Clipboard,
   Clock3,
@@ -20,7 +21,6 @@ import {
   X,
 } from "lucide-react";
 import { authHeaders } from "../hooks/useAuth";
-import { ActionScopeBadge } from "./ActionScopeBadge";
 import { useConfirm } from "./ConfirmProvider";
 import { useToast } from "./ToastProvider";
 
@@ -54,6 +54,7 @@ type Scene = {
   delivery?: string;
   effect?: string;
   duration?: number | null;
+  speechRate?: number;
 };
 
 type Plan = { planId: string; scenes: Scene[]; warnings: string[] };
@@ -89,6 +90,14 @@ async function api<T>(route: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/** One short line for the card; the full text stays in the tooltip and "Copy details". */
+function shorten(text: string, max = 110) {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  const firstSentence = oneLine.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? oneLine;
+  const chosen = firstSentence.length <= max ? firstSentence : oneLine;
+  return chosen.length <= max ? chosen : `${chosen.slice(0, max - 1).trimEnd()}…`;
+}
+
 const formatDuration = (seconds: number) =>
   seconds >= 60
     ? `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
@@ -105,7 +114,8 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
   const [playback, setPlayback] = useState<PlaybackState>({ enabled: true, active: false, paused: false });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [selected, setSelected] = useState<Clip | null>(null);
+  const [selected, setSelected] = useState<{ clip: Clip; origin: "job" | "library"; autoPlay?: boolean } | null>(null);
+  const [playingKey, setPlayingKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [volume, setVolume] = useState(0.25);
   const [pollEpoch, setPollEpoch] = useState(0);
@@ -123,9 +133,35 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
     }
   }, [livePlayback]);
   useEffect(() => {
-    if (previewAudioRef.current) previewAudioRef.current.volume = volume;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.volume = volume;
+    }
   }, [selected, volume]);
-  useEffect(() => () => window.clearTimeout(volumeSyncTimer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(volumeSyncTimer.current);
+  }, []);
+
+  const previewKey = (clip: Clip, origin: "job" | "library") => `${origin}:${clip.id}`;
+  // One button both starts and stops: it reads Stop while that clip is playing.
+  const togglePreview = (clip: Clip, origin: "job" | "library") => {
+    const audio = previewAudioRef.current;
+    if (audio && selected?.clip.id === clip.id && selected.origin === origin) {
+      if (audio.paused) {
+        audio.currentTime = 0;
+        void audio.play().catch(() => undefined);
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      return;
+    }
+    setPlayingKey(null);
+    setSelected({ clip, origin, autoPlay: true });
+  };
+  const closePreview = () => {
+    setPlayingKey(null);
+    setSelected(null);
+  };
 
   const changeVolume = (nextVolume: number) => {
     setVolume(nextVolume);
@@ -143,7 +179,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         .catch((cause) => {
           if (volumeSyncErrorShown.current) return;
           volumeSyncErrorShown.current = true;
-          toast.error(cause instanceof Error ? cause.message : "Could not update OBS TTS volume");
+          toast.error(cause instanceof Error ? cause.message : "Could not update the overlay's TTS volume");
         });
     }, 100);
   };
@@ -166,18 +202,19 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         if (job.status === "complete") {
           notifiedJobs.current.add(job.id);
           submittedJobs.current.delete(job.id);
-          if (job.warning) toast.info(`TTS clip saved, but ${job.warning}`);
+          if (job.warning) toast.info(`TTS clip saved. ${shorten(job.warning)}`);
           else
             toast.success(
               job.message === "Playback finished"
-                ? "TTS finished playing on OBS"
+                ? "TTS finished playing on the overlay"
                 : "TTS clip saved",
             );
-          if (job.clip && job.message === "Clip saved") setSelected(job.clip);
+          if (job.clip && job.message === "Clip saved")
+            setSelected({ clip: job.clip, origin: "job" });
         } else if (job.status === "failed") {
           notifiedJobs.current.add(job.id);
           submittedJobs.current.delete(job.id);
-          toast.error(job.error || "TTS generation failed");
+          toast.error(shorten(job.error || "TTS generation failed"));
         }
       }
     },
@@ -254,7 +291,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
       ]);
       toast.info(
         play
-          ? "TTS queued for OBS"
+          ? "TTS queued for the overlay"
           : isToken
             ? "Loading saved TTS clip"
             : "TTS generation queued",
@@ -292,7 +329,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         return;
       await api(`/clips/${clip.id}`, { method: "DELETE" });
       setClips((current) => current.filter((item) => item.id !== clip.id));
-      if (selected?.id === clip.id) setSelected(null);
+      if (selected?.clip.id === clip.id) closePreview();
       toast.success("Saved TTS clip deleted");
     });
 
@@ -304,53 +341,64 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         </span>
         <span>
           <h3>TTS Scene Studio</h3>
-          <small>
-            Build expressive speech and sound scenes, then replay favorites by
-            token.
-          </small>
+          <small>Create, play, and save reusable stream audio.</small>
         </span>
       </div>
 
-      <div className="tts-playback-control">
-        <span>
-          {playback.enabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
-          <span>
-            <strong>{playback.enabled ? "TTS is on" : "TTS is off"}</strong>
-            <small>{playback.active ? playback.paused ? "Paused on OBS" : "Playing on OBS" : "No active playback"}</small>
-          </span>
-        </span>
-        <button
-          className={`ui-icon-button ${playback.enabled ? "is-active" : ""}`}
-          disabled={busy}
-          aria-label={playback.enabled ? "Turn TTS playback off" : "Turn TTS playback on"}
-          onClick={() => void runAction(async () => {
-            const result = await api<{ state: PlaybackState }>("/playback", { method: "POST", body: JSON.stringify({ action: "enable", enabled: !playback.enabled }) });
-            setPlayback(result.state);
-            toast.info(result.state.enabled ? "TTS playback turned on" : "TTS playback turned off");
-          })}
-        >
-          {playback.enabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-        </button>
-      </div>
-
-      <div
-        className={`tts-readiness ${status?.configured ? "tts-readiness--ready" : ""}`}
-      >
+      <details className="tts-guide">
+        <summary><BookOpen size={13} /> How TTS prompts work</summary>
         <div>
-          {status?.configured ? <Check size={15} /> : <CircleAlert size={15} />}
-          <strong>
-            {status?.configured
-              ? "Generation ready"
-              : status
-                ? "Setup incomplete"
-                : "Checking TTS services…"}
-          </strong>
+          <p>Plain text is spoken. Use <code>((…))</code> for directed speech, generated effects, pauses, rooms, and timing.</p>
+          <code>{'((pirate screaming: "Run!" in a cave;speed=0.9x;8s))'}</code>
+          <code>{'((gigantic fart in a cathedral;5s))'}</code>
+          <code>{'((silence;2s))'}</code>
+          <p>Quoted words are spoken; unquoted blocks become sound effects. A duration is the whole scene, including its echo or reverb tail. Saved <code>(TTS:id)</code> tokens replay without spending generation credits.</p>
         </div>
-        {status && (
-          <small>
-            {status.storageProvider} · saved tokens survive Render restarts
-          </small>
-        )}
+      </details>
+
+      <div className="tts-status-card">
+        <div className="tts-status-row">
+          <span className="tts-status-row__icon">
+            {playback.enabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </span>
+          <span className="tts-status-row__text">
+            <strong>{playback.enabled ? "Overlay playback on" : "Overlay playback off"}</strong>
+            <small>{playback.active ? playback.paused ? "Paused on overlay" : "Playing on overlay" : "No active playback"}</small>
+          </span>
+          <button
+            type="button"
+            className="ui-switch"
+            role="switch"
+            aria-checked={playback.enabled}
+            disabled={busy}
+            aria-label={playback.enabled ? "Turn TTS playback off" : "Turn TTS playback on"}
+            title={playback.enabled ? "Turn TTS playback off" : "Turn TTS playback on"}
+            onClick={() => void runAction(async () => {
+              const result = await api<{ state: PlaybackState }>("/playback", { method: "POST", body: JSON.stringify({ action: "enable", enabled: !playback.enabled }) });
+              setPlayback(result.state);
+              toast.info(result.state.enabled ? "TTS playback turned on" : "TTS playback turned off");
+            })}
+          />
+        </div>
+        <div
+          className={`tts-status-row ${status?.configured ? "tts-status-row--ok" : status ? "tts-status-row--warn" : ""}`}
+        >
+          <span className="tts-status-row__icon">
+            {status?.configured ? <Check size={16} /> : <CircleAlert size={16} />}
+          </span>
+          <span className="tts-status-row__text">
+            <strong>
+              {status?.configured
+                ? "Generation ready"
+                : status
+                  ? "Setup incomplete"
+                  : "Checking TTS services…"}
+            </strong>
+            {status && !status.configured && (
+              <small>{status.storageProvider}</small>
+            )}
+          </span>
+        </div>
         {status && !status.configured && (
           <div className="tts-service-grid">
             <Service name="OpenAI" ready={status.services.openai} />
@@ -383,15 +431,11 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
             '((foxes barking while a warm voice says "Welcome, chat!" with echo;8s))'
           }
         />
-        <small>
-          Plain text is spoken. Inside ((…)), unquoted descriptions generate
-          sound. Use ((silence;2.5s)) for a custom 0.5–30 second pause.
-        </small>
       </label>
 
       <label className="tts-volume">
         <span>
-          <Volume2 size={13} /> OBS volume
+          <Volume2 size={13} /> Overlay volume
         </span>
         <input
           type="range"
@@ -403,9 +447,6 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         />
         <output>{Math.round(volume * 100)}%</output>
       </label>
-      <p className="tts-inline-note">
-        Generated clips are normalized to a consistent loudness and true-peak limited before storage. This slider controls both OBS and dashboard preview playback.
-      </p>
 
       <div className="tts-actions">
         <button
@@ -439,46 +480,41 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
           disabled={busy || !prompt.trim() || !canGenerate || !overlayConnected || !playback.enabled}
           onClick={() => void submit(true)}
         >
-          <Play size={13} /> Play on OBS <ActionScopeBadge scope="obs" />
+          <Play size={13} fill="currentColor" /> Play on overlay
         </button>
-        <button
-          className="ui-button"
-          disabled={busy || !playback.active}
-          onClick={() => void runAction(async () => {
-            const action = playback.paused ? "resume" : "pause";
-            const result = await api<{ changed: boolean; state: PlaybackState }>("/playback", { method: "POST", body: JSON.stringify({ action }) });
-            setPlayback(result.state);
-            result.changed ? toast.info(playback.paused ? "Resumed TTS on OBS" : "Paused TTS on OBS") : toast.info("No active TTS playback to control");
-          })}
-        >
-          {playback.paused ? <Play size={13} /> : <Pause size={13} />} {playback.paused ? "Resume OBS" : "Pause OBS"}
-        </button>
-        <button
-          className="ui-button tts-stop"
-          disabled={busy || !overlayConnected}
-          onClick={() =>
-            void runAction(async () => {
-              const result = await api<{ stopped: boolean }>("/stop", {
-                method: "POST",
-              });
-              result.stopped
-                ? toast.info("Stopped the active TTS on OBS")
-                : toast.info("No TTS clip is currently playing");
-            })
-          }
-        >
-          <Square size={11} fill="currentColor" /> Stop OBS
-        </button>
+        {playback.active && <>
+          <button
+            className="ui-button"
+            disabled={busy}
+            onClick={() => void runAction(async () => {
+              const action = playback.paused ? "resume" : "pause";
+              const result = await api<{ changed: boolean; state: PlaybackState }>("/playback", { method: "POST", body: JSON.stringify({ action }) });
+              setPlayback(result.state);
+              result.changed ? toast.info(playback.paused ? "Resumed TTS on the overlay" : "Paused TTS on the overlay") : toast.info("No active TTS playback to control");
+            })}
+          >
+            {playback.paused ? <Play size={13} /> : <Pause size={13} />} {playback.paused ? "Resume" : "Pause"}
+          </button>
+          <button
+            className="ui-button tts-stop"
+            disabled={busy}
+            onClick={() => void runAction(async () => {
+              const result = await api<{ stopped: boolean }>("/stop", { method: "POST" });
+              result.stopped ? toast.info("Stopped the active TTS on the overlay") : toast.info("No TTS clip is currently playing");
+            })}
+          >
+            <Square size={11} fill="currentColor" /> Stop
+          </button>
+        </>}
       </div>
       {!overlayConnected && (
         <p className="tts-inline-note">
-          <CircleAlert size={13} /> Open the OBS overlay before using Play on
-          OBS.
+          <CircleAlert size={13} /> Open the overlay before using Play on overlay.
         </p>
       )}
       {error && (
         <p className="tts-error" role="alert">
-          <CircleAlert size={14} /> {error}
+          <CircleAlert size={14} /> <span title={error}>{shorten(error)}</span>
         </p>
       )}
 
@@ -523,7 +559,10 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
                     scene.sound && scene.dialogue
                       ? `Background: ${scene.sound}`
                       : "",
-                    scene.effect !== "none" ? scene.effect : "",
+                    scene.effect !== "none" ? (scene.effect === "both" ? "echo + reverb" : scene.effect) : "",
+                    scene.speechRate && scene.speechRate !== 1
+                      ? `${scene.speechRate.toFixed(2)}× speech`
+                      : "",
                     scene.duration ? `${scene.duration}s` : "natural length",
                   ]
                     .filter(Boolean)
@@ -544,7 +583,8 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
             </span>
           </div>
           {jobs.slice(0, 4).map((job) => (
-            <div key={job.id} className={`tts-job tts-job--${job.status}${job.warning ? " tts-job--warning" : ""}`}>
+            <div className="tts-job-entry" key={job.id}>
+            <div className={`tts-job tts-job--${job.status}${job.warning ? " tts-job--warning" : ""}`}>
               {job.status === "queued" || job.status === "running" ? (
                 <LoaderCircle className="tts-spin" size={14} />
               ) : job.status === "complete" ? (
@@ -558,63 +598,44 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
                   {job.createdAt && ` · ${new Date(job.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                 </strong>
                 <small title={job.error || job.warning || job.message}>
-                  {job.error || job.warning || job.message}
+                  {shorten(job.error || job.warning || job.message)}
                 </small>
               </span>
-              {job.status === "failed" && job.error && (
+              {(job.error || job.warning) && (
                 <button
-                  className="ui-icon-button ui-button--compact"
+                  className="ui-icon-button ui-button--compact ui-icon-button--ghost"
                   onClick={() => void navigator.clipboard
-                    .writeText(`TTS job ${job.id}\n${job.error}`)
+                    .writeText(`TTS job ${job.id}\n${job.error || job.warning}`)
                     .then(() => toast.success("TTS error copied"))
                     .catch(() => toast.error("Could not copy the TTS error"))}
-                  title="Copy the complete error and job ID"
-                  aria-label="Copy complete TTS error"
+                  title="Copy details (full text and job ID)"
+                  aria-label="Copy details"
                 >
                   <Clipboard size={12} />
                 </button>
               )}
               {job.clip && (
                 <button
-                  className="ui-icon-button ui-button--compact"
-                  onClick={() => setSelected(job.clip!)}
-                  title="Preview this clip on the dashboard"
+                  className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+                  onClick={() => togglePreview(job.clip!, "job")}
+                  title={playingKey === previewKey(job.clip, "job") ? "Stop the preview" : "Preview this clip on the dashboard"}
+                  aria-label={playingKey === previewKey(job.clip, "job") ? "Stop the preview" : "Preview this clip on the dashboard"}
                 >
-                  <Headphones size={13} />
+                  {playingKey === previewKey(job.clip, "job") ? <Square size={12} fill="currentColor" /> : <Headphones size={13} />}
                 </button>
               )}
             </div>
+            {selected?.origin === "job" && selected.clip.id === job.clip?.id && (
+              <TtsPreview
+                clip={selected.clip}
+                audioRef={previewAudioRef}
+                autoPlay={selected.autoPlay}
+                onPlayingChange={(playing) => setPlayingKey(playing ? previewKey(selected.clip, selected.origin) : null)}
+                onClose={closePreview}
+              />
+            )}
+            </div>
           ))}
-        </div>
-      )}
-
-      {selected && (
-        <div className="tts-player">
-          <div className="tts-player__header">
-            <Headphones size={15} />
-            <span>
-              <strong>Dashboard preview</strong>
-              <small>
-                {selected.sender} · {formatDuration(selected.duration)}
-              </small>
-            </span>
-            <button
-              className="ui-icon-button ui-button--compact"
-              onClick={() => setSelected(null)}
-              title="Close dashboard TTS preview"
-              aria-label="Close dashboard TTS preview"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <p>{selected.prompt}</p>
-          <audio
-            ref={previewAudioRef}
-            key={selected.id}
-            controls
-            preload="metadata"
-            src={`${base}/clips/${selected.id}/audio`}
-          />
         </div>
       )}
 
@@ -638,44 +659,62 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         )}
         {filteredClips.map((clip) => (
           <article className="tts-clip" key={clip.id}>
-            <div>
+            <div className="tts-clip__meta">
               <strong>{clip.prompt}</strong>
               <small>
                 {clip.sender} · {formatDuration(clip.duration)} ·{" "}
                 {new Date(clip.createdAt).toLocaleString()}
               </small>
             </div>
-            <code>{clip.token}</code>
-            <div>
+            <div className="tts-clip__token">
+              <code title={clip.token}>{clip.token}</code>
               <button
-                className="ui-button ui-button--compact"
-                onClick={() => setSelected(clip)}
-              >
-                <Headphones size={12} /> Preview
-              </button>
-              <button
-                className="ui-button ui-button--compact"
-                disabled={!overlayConnected || busy}
-                onClick={() => void submit(true, clip.token)}
-              >
-                <Play size={12} /> OBS
-              </button>
-              <button
-                className="ui-icon-button ui-button--compact"
+                className="ui-icon-button ui-button--compact ui-icon-button--ghost"
                 onClick={() => void copyToken(clip)}
                 title="Copy reusable TTS token"
+                aria-label="Copy reusable TTS token"
               >
-                <Clipboard size={12} />
+                <Clipboard size={14} />
+              </button>
+            </div>
+            <div className="tts-clip__actions">
+              <button
+                className="ui-button ui-button--compact"
+                onClick={() => togglePreview(clip, "library")}
+              >
+                {playingKey === previewKey(clip, "library") ? (
+                  <><Square size={11} fill="currentColor" /> Stop</>
+                ) : (
+                  <><Headphones size={13} /> Preview</>
+                )}
               </button>
               <button
-                className="ui-icon-button ui-button--compact ui-danger"
+                className="ui-button ui-button--compact soundboard-action--obs"
+                disabled={!overlayConnected || busy}
+                onClick={() => void submit(true, clip.token)}
+                title={overlayConnected ? "Play this clip on the overlay" : "Open the overlay to play this clip"}
+              >
+                <Play size={12} fill="currentColor" /> Play on overlay
+              </button>
+              <button
+                className="ui-icon-button ui-button--compact ui-icon-button--ghost ui-icon-button--danger"
                 disabled={busy}
                 onClick={() => void removeClip(clip)}
                 title="Permanently delete this saved clip"
+                aria-label="Delete this saved clip"
               >
-                <Trash2 size={12} />
+                <Trash2 size={14} />
               </button>
             </div>
+            {selected?.origin === "library" && selected.clip.id === clip.id && (
+              <TtsPreview
+                clip={selected.clip}
+                audioRef={previewAudioRef}
+                autoPlay={selected.autoPlay}
+                onPlayingChange={(playing) => setPlayingKey(playing ? previewKey(selected.clip, selected.origin) : null)}
+                onClose={closePreview}
+              />
+            )}
           </article>
         ))}
         {!clips.length && (
@@ -694,6 +733,30 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         )}
       </div>
     </section>
+  );
+}
+
+function TtsPreview({ clip, audioRef, autoPlay, onPlayingChange, onClose }: { clip: Clip; audioRef: RefObject<HTMLAudioElement>; autoPlay?: boolean; onPlayingChange: (playing: boolean) => void; onClose: () => void }) {
+  return (
+    <div className="tts-player">
+      <div className="tts-player__header">
+        <Headphones size={15} />
+        <span><strong>Dashboard preview</strong><small>{clip.sender} · {formatDuration(clip.duration)}</small></span>
+        <button className="ui-icon-button ui-button--compact" onClick={onClose} title="Close the preview" aria-label="Close dashboard TTS preview"><X size={18} /></button>
+      </div>
+      <p>{clip.prompt}</p>
+      <audio
+        ref={audioRef}
+        key={clip.id}
+        controls
+        autoPlay={autoPlay}
+        preload="metadata"
+        src={`${base}/clips/${clip.id}/audio`}
+        onPlay={() => onPlayingChange(true)}
+        onPause={() => onPlayingChange(false)}
+        onEnded={() => onPlayingChange(false)}
+      />
+    </div>
   );
 }
 

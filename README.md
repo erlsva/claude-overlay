@@ -1,4 +1,4 @@
-# Vicksy OBS Overlay
+# Vicksy Stream Overlay
 
 A private, collaborative stream-overlay controller for Vicksy and Wixels. The
 dashboard lets approved users arrange media and drawings on a 1920×1080 OBS
@@ -34,6 +34,21 @@ Konva is not used by the current application code.
   configurable physics, sender labels, limits, and a chatter blacklist.
 - Receives authenticated Twitch follows, subscriptions, gift subscriptions,
   Bits, raids, and custom channel-point redemptions through EventSub webhooks.
+- Shows a live, silent **overlay preview** in the dashboard (top bar → Overlay →
+  monitor icon). It runs the real overlay at `/overlay?mirror=1`, including chat
+  emotes and the TTS notice, is muted at the browser level, and is never counted
+  as an overlay or able to acknowledge sounds and media. Drag its header to move
+  it, drag the corner to resize it, and double-click the header to reset it.
+- Keeps a small **shared media library** (toolbar → Library) of default videos,
+  images and sounds that survive restarts. Any moderator can add, use and delete
+  files. Ordinary uploads stay temporary; only library files are stored in Neon.
+  Files are validated by type and content, limited to 25 MB each and 300 MB in
+  total, and are served from `/library/files/<id>`. Without `DATABASE_URL` a
+  development server falls back to a folder under `DATA_DIR`; production
+  requires Neon.
+- Offers optional features behind owner-only **feature flags** (account menu):
+  TTS Studio (on by default) and **Scenes**, which saves and restores whole
+  layouts (off by default).
 - Restricts dashboard access with Twitch login, an owner account, and a
   database-backed whitelist/admin role system.
 
@@ -69,6 +84,7 @@ The application intentionally uses more than one kind of state:
 | Elements, drawings, cursor presence, history, playback | Server memory | No |
 | Soundboard, commands, emote settings, scenes, presets | `DATA_DIR/db.json` through LowDB | Only with a persistent disk |
 | Uploaded media | `UPLOAD_DIR` | Only with a persistent disk/object storage |
+| Shared media library (defaults) | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes |
 | Saved TTS metadata | Neon PostgreSQL (local JSON fallback outside production) | Yes in production |
 | Saved TTS MP3 audio | Discord webhook message attachments | Yes while the webhook message remains available |
 
@@ -131,6 +147,7 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `TWITCH_REDIRECT_URI` | Recommended | Dashboard-login callback, ending in `/auth/callback`. |
 | `TWITCH_EVENTS_REDIRECT_URI` | Recommended | Broadcaster callback, ending in `/auth/events/callback`. |
 | `EVENT_CHANNELS` | Yes | Comma-separated broadcaster logins; currently `vicksy,wixels`. |
+| `STREAMER_LOGINS` | Optional | Accounts shown with the purple Streamer badge (label only, no permissions). Defaults to `vicksy,wixels`; channels in `EVENT_CHANNELS` are always included. |
 | `CHAT_BOT_USERNAME` | For chat messages | Dedicated Twitch account used to send automated messages; defaults to `dankchapbot`. |
 | `DATABASE_URL` | Production | Neon pooled PostgreSQL connection URL with TLS enabled. |
 | `TWITCH_TOKEN_ENCRYPTION_KEY` | Yes for Events | Base64-encoded 32-byte key used to encrypt stored broadcaster tokens. |
@@ -141,6 +158,11 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `OPENAI_API_KEY` | For TTS generation | Interprets free-form TTS scene prompts into structured scenes. |
 | `OPENAI_MODEL` | Optional | Structured-output model used by TTS; defaults to `gpt-4.1-mini`. |
 | `ELEVENLABS_API_KEY` | For TTS generation | Generates speech and sound-effect audio. |
+| `TTS_SHOUT_VOICES` | Optional | Comma-separated ElevenLabs voice names or IDs used for shouting and screaming, e.g. `Harry, Angry Pirate`. Without it the most intense-sounding voice is used. |
+| `TTS_SCREAM_TONE` | Optional | Clean spectral shaping that makes shouted and screamed speech sound like a scream: `off` skips it, `1` is the default, `2` is double. |
+| `TTS_SCREAM_STRAIN` | Optional | Off by default. `1` pushes shouted and screamed speech into a saturator (crunchy, walkie-talkie-like); `0.5` half, `2` double. |
+| `TTS_SCREAM_LAYER` | Optional | Off by default. `1` mixes a generated wordless scream under shouted lines (one extra sound-effect request each); `2` is louder. |
+| `TTS_DEFAULT_VOICE` | Optional | Voice name or ID for characters that nothing else matches. |
 | `DISCORD_TTS_WEBHOOK_URL` | For TTS save/replay | Private webhook whose message attachments hold saved MP3 clips. |
 | `FFMPEG_PATH` | Optional | Explicit FFmpeg executable; otherwise `ffmpeg` must be available on `PATH`. |
 
@@ -188,7 +210,31 @@ These are separate OAuth flows:
 All access and refresh tokens are encrypted before being stored in PostgreSQL
 and are refreshed automatically.
 
+### Roles
+
+Roles are labels shown next to names; they do not add new permissions.
+
+| Role | Who | Notes |
+| --- | --- | --- |
+| Owner | `OWNER_TWITCH_USERNAME` | Also controls feature flags, the chatbot connection and who is a super moderator. |
+| Streamer | Logins in `STREAMER_LOGINS` (default `vicksy,wixels`) and `EVENT_CHANNELS` | The channel accounts the overlay is for. Label only, so it is the same in development. Shown next to the access level. |
+| Super moderator | Whitelisted user with the admin flag | Can add and remove people from the whitelist. |
+| Moderator | Any other whitelisted user | Full dashboard access except managing the whitelist. |
+
+A person can hold more than one label. A streamer is also a moderator, and the
+owner can star them as a super moderator too, so they show both badges.
+
+The **Setup guide** (account menu, help guide, or the welcome tour) has separate
+"I'm the streamer" and "I'm a moderator" tabs. The streamer tab shows the
+overlay URL, the browser-source size, the OBS settings to use and a
+**Test overlay audio** button. The same test is in the Go-live check. It
+confirms the overlay page produced sound; watch the source's meter in OBS to
+confirm the audio reaches the stream.
+
 ## TTS Scene Studio
+
+For prompt syntax, timing rules, speech-speed controls, storage, playback, and
+failure behavior, see the complete [TTS Scene Studio guide](docs/TTS.md).
 
 Studio → TTS turns expressive prompts into reusable overlay audio:
 
@@ -199,6 +245,9 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    for an exact 0.5–30 second
    sound-effect pause. Without a duration, a pause defaults to one second and
    is created locally without spending sound-generation credits.
+   Speech speed can be written naturally (`slowly`, `very quickly`) or set
+   precisely with `speed=0.85x` inside a directed scene. Supported rates are
+   0.75×–1.25× and are baked into the saved clip.
 2. **Review plan** shows the interpreted voices, sounds, effects, and timing
    before ElevenLabs credits are spent.
 3. **Generate & save** stores a 128 kbps MP3 and returns a `(TTS:<id>)` token.
@@ -209,8 +258,9 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    **Resume**, and **Stop OBS** affect the connected overlay browser source.
    The on/off control blocks new paid playback before generation begins. New
    TTS playback defaults to 25% volume.
-6. Finished clips are loudness-normalized with a -2 dB true-peak ceiling before
-   storage. OBS shows a small now-playing/paused TTS notice while a clip is active.
+6. Finished speech is loudness-normalized with true-peak protection. Standalone
+   effects use a quieter target and additional peak headroom. OBS shows an
+   animated now-playing/paused TTS notice while a clip is active.
 
 If OpenAI times out, returns a transient HTTP error, or produces malformed
 structured output, the server uses the deterministic local parser rather than
@@ -341,7 +391,7 @@ After deploying:
 1. Confirm the server starts and reports that PostgreSQL stores initialized.
 2. Log into the dashboard with an approved Twitch account.
 3. Open `/overlay` in OBS or a browser and verify the overlay status is online.
-4. Connect Vicksy and Wixels in **Studio → Events**.
+4. Connect Vicksy and Wixels in **Studio → Automations → Connections**.
 5. Run a simulated event, then verify one real Twitch event.
 6. Confirm an anonymous chat command follows the selected preview channel.
 7. If TTS is configured, review a plan, generate a short clip, preview it on

@@ -1,7 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/routes.js";
-import { saveChatEmoteSettings, saveStudioData } from "../db/index.js";
+import { getFeatureFlags, saveChatEmoteSettings, saveStudioData } from "../db/index.js";
 import type { CanvasStore } from "../state/canvasStore.js";
 import type {
   ClientToServerEvents,
@@ -42,7 +42,12 @@ export function registerSocketHandlers(
   onSoundEnded?: (playbackId: string, error?: string) => void,
 ) {
   const user = socket.data.jwtUser as AuthUser | undefined;
-  const isOverlay = socket.handshake.query.mode === "overlay";
+  // "mirror" is the dashboard's silent live preview. It renders like the overlay
+  // (same room, same events) but is never counted as an overlay and cannot
+  // acknowledge sounds or media, so it can't finish a command early.
+  const connectionMode = socket.handshake.query.mode;
+  const isOverlay = connectionMode === "overlay" || connectionMode === "mirror";
+  const countsAsOverlay = connectionMode === "overlay";
   socket.join(isOverlay ? "overlay" : "dashboard");
   const { canvasState, drawStrokes } = store;
 
@@ -51,23 +56,29 @@ export function registerSocketHandlers(
   socket.emit("draw:sync", drawStrokes);
   socket.emit("dvd:settings", store.dvdCelebrationSettings);
   socket.emit("chat-emote:settings", store.chatEmoteSettings);
+  socket.emit("features:updated", getFeatureFlags());
   if (!isOverlay) socket.emit("chat:channel", { channel: getTwitchChatChannel() });
   if (!isOverlay && user) {
     socket.emit("studio:sync", studioState(store));
     socket.emit("history:status", historyStatus(store));
   }
-  if (isOverlay) activeOverlays.add(socket.id);
+  if (countsAsOverlay) activeOverlays.add(socket.id);
   io.emit("overlay:status", {
     connected: activeOverlays.size > 0,
     count: activeOverlays.size,
   });
 
-  if (isOverlay) {
+  if (countsAsOverlay) {
     socket.on("media:ended", ({ id }) => {
       if (typeof id !== "string" || id.length > 100) return;
       const element = canvasState.elements.find((candidate) => candidate.id === id);
       if (!element || !["video", "audio"].includes(element.type) || !element.autoVisibility) return;
       onMediaEnded?.(id);
+    });
+    socket.on("overlay:test-result", ({ testId, ok, error }) => {
+      if (typeof testId !== "string" || testId.length > 64) return;
+      if (error !== undefined && (typeof error !== "string" || error.length > 300)) return;
+      io.to("dashboard").emit("overlay:test-result", { testId, ok: ok === true, ...(error ? { error } : {}) });
     });
     socket.on("sound:ended", ({ playbackId, error }) => {
       if (typeof playbackId !== "string" || playbackId.length > 100) return;
@@ -177,6 +188,14 @@ export function registerSocketHandlers(
     if (validMediaControl(payload)) socket.broadcast.emit("media:control", payload);
   });
   socket.on("overlay:refresh", () => io.emit("overlay:refresh"));
+  socket.on("overlay:test-audio", ({ testId }) => {
+    if (typeof testId !== "string" || testId.length > 64) return;
+    if (!activeOverlays.size) {
+      socket.emit("overlay:test-result", { testId, ok: false, error: "No overlay is connected." });
+      return;
+    }
+    io.to("overlay").emit("overlay:test-audio", { testId });
+  });
   socket.on("dvd:settings", (settings) => {
     if (
       !Number.isFinite(settings.volume) ||
@@ -286,17 +305,19 @@ export function registerSocketHandlers(
     if (current !== previous) log(`switched Twitch chat to ${current}`);
   });
   socket.on("scene:save", async ({ id, name }) => {
+    if (!getFeatureFlags().scenes) return;
     if (!validLabel(id, 100) || !validLabel(name, 60)) return;
     const scene = { id, name: name.trim(), elements: clone(canvasState.elements), strokes: clone(drawStrokes), updatedAt: new Date().toISOString() };
     store.scenes = [...store.scenes.filter((item) => item.id !== id), scene].slice(-50);
     await saveStudioData({ scenes: store.scenes }); log(`saved scene “${scene.name}”`);
   });
   socket.on("scene:load", ({ id }) => {
+    if (!getFeatureFlags().scenes) return;
     const scene = store.scenes.find((item) => item.id === id); if (!scene) return;
     checkpoint(store); canvasState.elements = clone(scene.elements); drawStrokes.splice(0, drawStrokes.length, ...clone(scene.strokes)); log(`loaded scene “${scene.name}”`);
     io.emit("state:sync", canvasState); io.emit("draw:sync", drawStrokes); io.to("dashboard").emit("history:status", historyStatus(store));
   });
-  socket.on("scene:delete", async ({ id }) => { const item = store.scenes.find(scene => scene.id === id); store.scenes = store.scenes.filter((scene) => scene.id !== id); await saveStudioData({ scenes: store.scenes }); if (item) log(`deleted scene “${item.name}”`); else syncStudio(); });
+  socket.on("scene:delete", async ({ id }) => { if (!getFeatureFlags().scenes) return; const item = store.scenes.find(scene => scene.id === id); store.scenes = store.scenes.filter((scene) => scene.id !== id); await saveStudioData({ scenes: store.scenes }); if (item) log(`deleted scene “${item.name}”`); else syncStudio(); });
   socket.on("preset:save", async ({ id, name, elementIds }) => {
     if (!validLabel(id, 100) || !validLabel(name, 60) || !Array.isArray(elementIds) || elementIds.length > 100) return;
     const elements = canvasState.elements.filter((element) => elementIds.includes(element.id)); if (!elements.length) return;
@@ -379,6 +400,7 @@ function registerPresence(socket: AppSocket, user: AuthUser, activeUsers: Map<st
     displayName: user.displayName,
     avatar: user.avatar,
     color: user.color,
+    role: user.role,
   };
   activeUsers.set(socket.id, { ...presence, socketId: socket.id });
 

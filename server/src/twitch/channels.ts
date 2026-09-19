@@ -21,6 +21,20 @@ export function getConfiguredTwitchChannels(): string[] {
   ];
 }
 
+/**
+ * Accounts labelled "Streamer". This is display-only, so unlike the channel list
+ * above it is the same in development: STREAMER_LOGINS (default vicksy,wixels)
+ * plus whatever channels this server is configured for.
+ */
+export function getStreamerLogins(): string[] {
+  const configured = process.env.STREAMER_LOGINS ?? "vicksy,wixels";
+  const listed = configured
+    .split(",")
+    .map((value) => value.trim().replace(/^#/, "").toLowerCase())
+    .filter((value) => twitchLoginPattern.test(value));
+  return [...new Set([...listed, ...getConfiguredTwitchChannels()])];
+}
+
 export function getDefaultTwitchChannel(): string {
   return getConfiguredTwitchChannels()[0] ?? "eple7";
 }

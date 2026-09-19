@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   BellRing,
+  Layers,
   AlertTriangle,
   ArrowRight,
   Link2,
@@ -29,6 +30,7 @@ import type {
   ChatEmoteSettings,
   ChatEmoteSpawn,
   TtsPlaybackState,
+  FeatureFlags,
 } from "../types";
 import { randomUUID } from "../utils";
 import { getFileLabel } from "../canvas/config";
@@ -36,6 +38,8 @@ import { authHeaders } from "../hooks/useAuth";
 import { useToast } from "./ToastProvider";
 import { ChatEmoteLayer } from "./ChatEmoteLayer";
 import previewEmote from "../assets/vicksyW.png";
+import { Segmented } from "./Segmented";
+import { SliderField } from "./SliderField";
 import { useTwitchEvents } from "../hooks/useTwitchEvents";
 import { useConfirm } from "./ConfirmProvider";
 import { ActionScopeBadge } from "./ActionScopeBadge";
@@ -48,7 +52,6 @@ type Tab =
   | "presets"
   | "sounds"
   | "triggers"
-  | "events"
   | "emotes"
   | "tts";
 
@@ -59,6 +62,7 @@ interface StudioPanelProps {
   isOwner: boolean;
   overlayConnected: boolean;
   ttsPlayback: TtsPlaybackState;
+  featureFlags: FeatureFlags;
   onClose: () => void;
   onSaveScene: (id: string, name: string) => void;
   onLoadScene: (id: string) => void;
@@ -74,6 +78,8 @@ interface StudioPanelProps {
   }) => void;
   onDeleteSound: (id: string) => void;
   onPreviewSound: (id: string) => void;
+  previewingSoundIds: string[];
+  onStopPreviewSound: (id: string) => void;
   onPlaySound: (id: string) => void;
   onStopSound: (id: string) => void;
   onSaveTrigger: (trigger: OverlayTrigger) => void;
@@ -82,7 +88,8 @@ interface StudioPanelProps {
     id: string,
     direction: FlyDirection,
     durationSeconds: number,
-  ) => boolean;
+    onDone?: () => void,
+  ) => (() => void) | null;
   chatEmoteSettings: ChatEmoteSettings;
   onChatEmoteSettingsChange: (settings: ChatEmoteSettings) => void;
 }
@@ -90,21 +97,18 @@ interface StudioPanelProps {
 const tabs: Array<[Tab, string, typeof Save]> = [
   ["sounds", "Sounds", AudioLines],
   ["tts", "TTS", Headphones],
-  ["triggers", "Commands", Radio],
-  ["events", "Events", BellRing],
+  ["triggers", "Automations", Radio],
+  ["scenes", "Scenes", Layers],
   ["emotes", "Emotes", MessageCircle],
 ];
 
+// Colour, border and radius come from the shared `.studio-panel` field rules.
 const fieldStyle = {
   width: "100%",
-  height: 32,
+  height: 34,
   boxSizing: "border-box" as const,
-  border: "1px solid #3a3a3f",
-  borderRadius: 5,
-  background: "#151515",
-  color: "#e5e7eb",
-  padding: "0 9px",
-  fontSize: 12,
+  padding: "0 12px",
+  fontSize: 13,
 };
 
 const triggerActionOptions: Array<{
@@ -119,10 +123,21 @@ const triggerActionOptions: Array<{
   { value: "play-media", label: "Play video/audio layer, then hide" },
   { value: "play-sound", label: "Play Soundboard clip" },
   { value: "enable-dvd", label: "Start DVD movement" },
-  { value: "refresh-overlay", label: "Refresh OBS overlay" },
+  { value: "refresh-overlay", label: "Refresh overlay" },
   { value: "send-chat", label: "Send Twitch chat message" },
   { value: "tts", label: "Generate / replay TTS" },
 ];
+
+const TRIGGER_EVENT_LABELS: Partial<Record<OverlayTrigger["event"], string>> = {
+  follow: "New follow",
+  subscribe: "Subscription",
+  "gift-subscribe": "Gift subs",
+  raid: "Raid",
+  bits: "Bits",
+  "channel-points": "Channel points",
+  ban: "Ban",
+  timeout: "Timeout",
+};
 
 const triggerActionLabel = (action: OverlayTrigger["action"]) =>
   triggerActionOptions.find((option) => option.value === action)?.label ??
@@ -133,20 +148,16 @@ const triggerTimingLabel = (step: TriggerStep, index: number) => {
   if (step.timing === "after-previous") return "after previous";
   return `after ${step.delaySeconds ?? 1}s`;
 };
-const rowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: 8,
-  border: "1px solid #303036",
-  borderRadius: 6,
-  background: "#181818",
-};
 
 export function StudioPanel(props: StudioPanelProps) {
   const toast = useToast();
   const confirm = useConfirm();
-  const [tab, setTab] = useState<Tab>("sounds");
+  const [selectedTab, setTab] = useState<Tab>("sounds");
+  const ttsEnabled = props.featureFlags.tts;
+  const scenesEnabled = props.featureFlags.scenes;
+  const visibleTabs = tabs.filter(([id]) => (id !== "tts" || ttsEnabled) && (id !== "scenes" || scenesEnabled));
+  // The owner can switch TTS off while this tab is open.
+  const tab: Tab = visibleTabs.some(([id]) => id === selectedTab) ? selectedTab : "sounds";
   const [name, setName] = useState("");
   const [soundUrl, setSoundUrl] = useState("");
   const [triggerAction, setTriggerAction] =
@@ -177,12 +188,22 @@ export function StudioPanel(props: StudioPanelProps) {
   const [stepDelay, setStepDelay] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [emotePreview, setEmotePreview] = useState<ChatEmoteSpawn | null>(null);
+  const [emoteRunning, setEmoteRunning] = useState(false);
+  const [emoteClear, setEmoteClear] = useState(0);
+  const [flyRunning, setFlyRunning] = useState(false);
+  const flyStopRef = useRef<(() => void) | null>(null);
   const [blacklistName, setBlacklistName] = useState("");
   const [blockedEmoteName, setBlockedEmoteName] = useState("");
   const [additionalEmoteName, setAdditionalEmoteName] = useState("");
   const [listSearch, setListSearch] = useState("");
+  const [builderOpen, setBuilderOpen] = useState(false);
+  // What the builder is creating or editing, independent of the list filter.
+  const [kind, setKind] = useState<"chat" | "event">("chat");
+  const [filter, setFilter] = useState<"all" | "chat" | "event">("all");
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const isEvent = kind === "event";
   const pendingStepBeforeChainEdit = useRef<TriggerStep | null>(null);
-  const twitchEvents = useTwitchEvents(tab === "events" || tab === "triggers");
+  const twitchEvents = useTwitchEvents(tab === "triggers");
   const eventStatus = twitchEvents.status;
   const chatbotHasWriteAccess = !!(
     eventStatus?.chatbot?.connected &&
@@ -195,6 +216,21 @@ export function StudioPanel(props: StudioPanelProps) {
     !chatbotHasWriteAccess ||
     unavailableChatChannels.length > 0
   );
+
+  // The builder stays out of the way once commands exist: the saved list comes
+  // first, and the form opens on demand, while editing, or on first use.
+  const hasTriggersForTab = props.studio.triggers.length > 0;
+  const isChatTrigger = (item: OverlayTrigger) => item.event === "chat-command";
+  const chatCount = props.studio.triggers.filter(isChatTrigger).length;
+  const eventCount = props.studio.triggers.length - chatCount;
+  const visibleTriggers = props.studio.triggers.filter(
+    (item) =>
+      (filter === "all" || (filter === "chat") === isChatTrigger(item)) &&
+      [item.name, item.match ?? "", item.event].some((value) =>
+        value.toLowerCase().includes(listSearch.trim().toLowerCase()),
+      ),
+  );
+  const builderVisible = builderOpen || !!editingTriggerId || !hasTriggersForTab;
 
   const currentTriggerStep = (): TriggerStep => ({
     action: triggerAction,
@@ -359,17 +395,17 @@ export function StudioPanel(props: StudioPanelProps) {
             (trigger) => trigger.id === editingTriggerId,
           )?.enabled ?? true)
         : true,
-      event: tab === "events" ? triggerEvent : "chat-command",
+      event: isEvent ? triggerEvent : "chat-command",
       match:
-        tab === "events" && triggerEvent !== "channel-points"
+        isEvent && triggerEvent !== "channel-points"
           ? undefined
           : triggerMatch.trim() || undefined,
       minimum:
-        tab === "events" &&
+        isEvent &&
         ["subscribe", "gift-subscribe", "raid", "bits"].includes(triggerEvent)
           ? triggerMinimum
           : undefined,
-      channel: tab === "events" ? triggerChannel || undefined : undefined,
+      channel: isEvent ? triggerChannel || undefined : undefined,
       ...steps[0],
       cooldownSeconds: cooldown,
       permission,
@@ -377,16 +413,18 @@ export function StudioPanel(props: StudioPanelProps) {
     });
     toast.success(
       editingTriggerId
-        ? `${tab === "events" ? "Event trigger" : "Chat command"} updated`
-        : `${tab === "events" ? "Event trigger" : "Chat command"} added`,
+        ? `${isEvent ? "Event trigger" : "Chat command"} updated`
+        : `${isEvent ? "Event trigger" : "Chat command"} added`,
     );
     resetTriggerForm();
+    setBuilderOpen(false);
   };
 
   const editTrigger = (trigger: OverlayTrigger) => {
     pendingStepBeforeChainEdit.current = null;
     setEditingChainIndex(null);
     setEditingTriggerId(trigger.id);
+    setKind(trigger.event === "chat-command" ? "chat" : "event");
     setName(trigger.name);
     setTriggerMatch(trigger.match ?? "");
     if (trigger.event !== "chat-command") setTriggerEvent(trigger.event);
@@ -402,7 +440,45 @@ export function StudioPanel(props: StudioPanelProps) {
 
   const cancelTriggerEdit = () => {
     resetTriggerForm();
+    setBuilderOpen(false);
     toast.info("Command editing cancelled");
+  };
+
+  const testTrigger = async (item: OverlayTrigger) => {
+    const steps = item.steps?.length ? item.steps : [item];
+    const sendsChat = steps.some((step) => step.action === "send-chat");
+    const usesTts = steps.some((step) => step.action === "tts");
+    if (sendsChat || usesTts) {
+      const effects = [
+        sendsChat && "post a message in Twitch chat",
+        usesTts && "generate paid TTS audio",
+      ].filter(Boolean).join(" and ");
+      if (!await confirm({
+        title: `Run “${item.name}” as a test?`,
+        message: `This will really ${effects}. Cooldowns and permissions are ignored.`,
+        confirmLabel: "Run test",
+      })) return;
+    }
+    if (!props.overlayConnected) {
+      toast.info("The overlay is offline, so nothing will show or play there.");
+    }
+    try {
+      const response = await fetch(`${SERVER_URL}/triggers/${item.id}/test`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders(),
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not run the test");
+      toast.success(`Test of “${item.name}” started`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not run the test");
+    }
+  };
+
+  const closeBuilder = () => {
+    resetTriggerForm();
+    setBuilderOpen(false);
   };
 
   const addChainedStep = () => {
@@ -471,8 +547,11 @@ export function StudioPanel(props: StudioPanelProps) {
           <X size={16} />
         </button>
       </div>
-      <div className="studio-tabs">
-        {tabs.map(([id, label, Icon]) => (
+      <div
+        className="studio-tabs"
+        style={{ "--tab-count": visibleTabs.length } as React.CSSProperties}
+      >
+        {visibleTabs.map(([id, label, Icon]) => (
           <button
             key={id}
             className={tab === id ? "active" : ""}
@@ -480,7 +559,6 @@ export function StudioPanel(props: StudioPanelProps) {
               setTab(id);
               setListSearch("");
             }}
-            title={`Open ${label}`}
           >
             <Icon size={15} />
             <span>{label}</span>
@@ -489,13 +567,13 @@ export function StudioPanel(props: StudioPanelProps) {
         <span
           className="studio-tab-indicator"
           style={{
-            transform: `translateX(${tabs.findIndex(([id]) => id === tab) * 100}%)`,
+            transform: `translateX(${visibleTabs.findIndex(([id]) => id === tab) * 100}%)`,
           }}
           aria-hidden="true"
         />
       </div>
       <div className="studio-panel__body">
-        {tab === "tts" && <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />}
+        {tab === "tts" && ttsEnabled && <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />}
         {tab === "scenes" && (
           <Section
             title="Scenes"
@@ -508,6 +586,12 @@ export function StudioPanel(props: StudioPanelProps) {
               onCreate={createScene}
               label="Save scene"
             />
+            {props.studio.scenes.length === 0 && (
+              <div className="studio-empty-state">
+                <strong>No saved scenes yet</strong>
+                <span>Arrange your layers, name the layout above and save it. Loading a scene replaces the current canvas, and Undo brings it back.</span>
+              </div>
+            )}
             {props.studio.scenes.map((item) => (
               <Item
                 key={item.id}
@@ -577,7 +661,7 @@ export function StudioPanel(props: StudioPanelProps) {
         {tab === "sounds" && (
           <Section
             title="Soundboard"
-            description="Soundboard clips play directly through OBS without creating or showing a canvas layer."
+            description="Clips play on the overlay without a canvas layer. Preview stays in this browser; Play and Stop control the overlay."
           >
             <input
               style={fieldStyle}
@@ -610,13 +694,7 @@ export function StudioPanel(props: StudioPanelProps) {
               </button>
               <label
                 className="ui-button"
-                title="Upload an audio file to the soundboard"
-                style={{
-                  border: "1px solid #3a3a3f",
-                  background: "#202024",
-                  color: "#cbd1da",
-                  cursor: uploading ? "wait" : "pointer",
-                }}
+                style={{ cursor: uploading ? "wait" : "pointer" }}
               >
                 {uploading ? "Uploading…" : "Upload file"}
                 <input
@@ -652,66 +730,13 @@ export function StudioPanel(props: StudioPanelProps) {
               .filter((item) => item.name.toLowerCase().includes(listSearch.trim().toLowerCase()))
               .map((item) => (
               <div key={item.id} className="soundboard-item">
-                <div style={{ minWidth: 0 }}>
-                  <strong style={{ fontSize: 12, display: "block" }}>
-                    {item.name}
-                  </strong>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      fontSize: 9,
-                      color: "#8b95a5",
-                    }}
-                  >
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={item.volume}
-                      onChange={(event) =>
-                        props.onSaveSound({
-                          ...item,
-                          volume: Number(event.target.value),
-                        })
-                      }
-                      style={{ width: 76, accentColor: "var(--accent-border)" }}
-                    />
-                    {Math.round(item.volume * 100)}%
-                  </label>
-                </div>
-                <div className="soundboard-item__actions">
+                <div className="soundboard-item__head">
+                  <span className="soundboard-item__icon" aria-hidden="true">
+                    <AudioLines size={15} />
+                  </span>
+                  <strong>{item.name}</strong>
                   <button
-                    className="ui-button ui-button--compact soundboard-action"
-                    onClick={() => props.onPreviewSound(item.id)}
-                    title={`Preview ${item.name} locally without playing it on stream`}
-                  >
-                    <Headphones size={13} />
-                    Preview
-                    <ActionScopeBadge scope="dashboard" />
-                  </button>
-                  <button
-                    className="ui-button ui-button--compact soundboard-action soundboard-action--obs"
-                    onClick={() => props.onPlaySound(item.id)}
-                    title={`Play ${item.name} on the OBS overlay only`}
-                  >
-                    <Play size={12} />
-                    Play on Overlay
-                    <ActionScopeBadge scope="obs" />
-                  </button>
-                  <button
-                    className="ui-button ui-button--compact soundboard-action soundboard-action--stop"
-                    onClick={() => props.onStopSound(item.id)}
-                    title={`Immediately stop every instance of ${item.name} currently playing on OBS`}
-                  >
-                    <Square size={11} fill="currentColor" />
-                    Stop on Overlay
-                    <ActionScopeBadge scope="obs" />
-                  </button>
-                  <button
-                    className="ui-button ui-button--compact ui-danger soundboard-action"
+                    className="ui-icon-button ui-button--compact ui-icon-button--ghost"
                     onClick={async () => {
                       if (!await confirm({
                         title: `Delete “${item.name}”?`,
@@ -723,119 +748,321 @@ export function StudioPanel(props: StudioPanelProps) {
                       toast.success(`Sound “${item.name}” deleted`);
                     }}
                     title={`Delete ${item.name}`}
+                    aria-label={`Delete ${item.name}`}
                   >
-                    <Trash2 size={13} />
-                    Delete
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <label className="soundboard-item__volume">
+                  <span>Volume</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={item.volume}
+                    onChange={(event) =>
+                      props.onSaveSound({
+                        ...item,
+                        volume: Number(event.target.value),
+                      })
+                    }
+                  />
+                  <output>{Math.round(item.volume * 100)}%</output>
+                </label>
+                <div className="soundboard-item__actions">
+                  <button
+                    className="ui-button ui-button--compact"
+                    onClick={() =>
+                      props.previewingSoundIds.includes(item.id)
+                        ? props.onStopPreviewSound(item.id)
+                        : props.onPreviewSound(item.id)
+                    }
+                  >
+                    {props.previewingSoundIds.includes(item.id) ? (
+                      <>
+                        <Square size={11} fill="currentColor" />
+                        Stop preview
+                      </>
+                    ) : (
+                      <>
+                        <Headphones size={13} />
+                        Preview
+                      </>
+                    )}
+                  </button>
+                  <button
+                    className="ui-button ui-button--compact soundboard-action--obs"
+                    onClick={() => props.onPlaySound(item.id)}
+                  >
+                    <Play size={12} fill="currentColor" />
+                    Play on overlay
+                  </button>
+                  <button
+                    className="ui-button ui-button--compact"
+                    onClick={() => props.onStopSound(item.id)}
+                    title={`Immediately stop every instance of ${item.name} currently playing on the overlay`}
+                  >
+                    <Square size={11} fill="currentColor" />
+                    Stop
                   </button>
                 </div>
               </div>
             ))}
           </Section>
         )}
-        {(tab === "triggers" || tab === "events") && (
+        {tab === "triggers" && (
           <Section
-            title={tab === "events" ? "Event actions" : "Chat commands"}
-            description={
-              tab === "events"
-                ? "Run media, sound, chat, and chained actions when Twitch events arrive."
-                : props.studio.twitchConnected
-                  ? "Anonymous Twitch chat listener connected."
-                  : "Connecting to public Twitch chat automatically…"
-            }
+            title="Automations"
+            description="Run media, sounds, chat messages and TTS when someone uses a chat command or a Twitch event happens."
           >
-            {tab === "triggers" && chatConnectionWarning && (
-              <div
-                className="command-chat-warning"
-                role="status"
-                aria-live="polite"
-              >
-                <AlertTriangle size={16} aria-hidden="true" />
-                <div>
-                  <strong>Chat-message actions are not fully connected</strong>
-                  {!eventStatus.configured ? (
-                    <span>
-                      Event storage is unavailable, so chat authorization
-                      cannot be read.
-                    </span>
-                  ) : (
-                    <>
-                      {!chatbotHasWriteAccess && (
-                        <span>
-                          {eventStatus.chatbot?.displayName ??
-                            eventStatus.chatbot?.login ??
-                            "DankChapBot"} needs to be connected with
-                          permission to send chat messages.
-                        </span>
-                      )}
-                      {unavailableChatChannels.length > 0 && (
-                        <span>
-                          Connect{" "}
-                          {unavailableChatChannels
-                            .map((item) => item.displayName ?? item.channel)
-                            .join(" and ")} so commands can target{" "}
-                          {unavailableChatChannels.length === 1
-                            ? "that channel"
-                            : "those channels"}.
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="ui-button ui-button--compact"
-                  onClick={() => setTab("events")}
-                  title="Open Twitch account and chatbot connections"
+            <div className="connection-strip">
+              <div className="connection-strip__pills">
+                <span
+                  className={`status-pill ${props.studio.twitchConnected ? "status-pill--ok" : "status-pill--bad"}`}
+                  title="Anonymous Twitch chat listener, used for chat commands and emotes"
                 >
-                  <Link2 size={12} /> Open Events
-                </button>
+                  <i aria-hidden="true" />
+                  Chat listener
+                </span>
+                {(eventStatus?.channels ?? []).map((item) => (
+                  <span
+                    key={item.channel}
+                    className={`status-pill ${item.connected ? "status-pill--ok" : "status-pill--bad"}`}
+                    title={item.connected ? "Twitch events connected" : "Not connected. Twitch events from this channel will not arrive."}
+                  >
+                    <i aria-hidden="true" />
+                    <span style={{ textTransform: "capitalize" }}>{item.channel}</span>
+                  </span>
+                ))}
+                {eventStatus?.chatbot && (
+                  <span
+                    className={`status-pill ${chatbotHasWriteAccess ? "status-pill--ok" : "status-pill--bad"}`}
+                    title="Sends automated chat messages"
+                  >
+                    <i aria-hidden="true" />
+                    Chatbot
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="ui-button ui-button--compact"
+                aria-expanded={connectionsOpen}
+                onClick={() => setConnectionsOpen((open) => !open)}
+              >
+                <Link2 size={12} />{" "}
+                {connectionsOpen ? "Hide" : chatConnectionWarning ? "Fix connections" : "Connections"}
+              </button>
+            </div>
+            {chatConnectionWarning && !connectionsOpen && (
+              <p className="connection-strip__hint">
+                <AlertTriangle size={13} aria-hidden="true" /> Chat-message actions are not fully connected yet.
+              </p>
+            )}
+            {connectionsOpen && (
+              <div className="connection-panel">
+                <p className="connection-panel__intro">
+                  Broadcasters provide event access; the separate chatbot account sends automated messages.
+                </p>
+            {!eventStatus?.configured && (
+              <div className="connection-card connection-card--error">
+                Event storage is unavailable. Check the server database
+                configuration.
               </div>
             )}
-            <div className="command-builder-map" aria-label="Automation workflow">
-              <span>
-                <b>WHEN</b>
-                <strong>
-                  {tab === "events"
-                    ? "Twitch event"
-                    : triggerMatch.trim() || "Chat command"}
-                </strong>
-              </span>
-              <ArrowRight size={13} aria-hidden="true" />
-              <span>
-                <b>DO</b>
-                <strong>{triggerActionLabel(triggerAction)}</strong>
-              </span>
-              <ArrowRight size={13} aria-hidden="true" />
-              <span>
-                <b>THEN</b>
-                <strong>
-                  {chainedSteps.length + 1}{" "}
-                  {chainedSteps.length === 0 ? "action" : "actions"}
-                </strong>
-              </span>
+            {eventStatus?.configured && (
+              <div className="connection-card">
+                <div className="connection-card__head">
+                  <span className="connection-card__name">
+                    <strong>Chatbot</strong>
+                    {eventStatus.chatbot?.connected && (
+                      <small>as {eventStatus.chatbot.displayName}</small>
+                    )}
+                  </span>
+                  <span className={`status-pill ${eventStatus.chatbot?.connected ? "status-pill--ok" : "status-pill--bad"}`}>
+                    <i aria-hidden="true" />
+                    {eventStatus.chatbot?.connected ? "Connected" : "Not connected"}
+                  </span>
+                </div>
+                <p className="connection-card__hint">
+                  Outgoing automation messages are sent by this account. Broadcaster tokens are never used to write chat.
+                </p>
+                <div className="connection-card__actions">
+                  <button
+                    className={`ui-button ui-button--compact${eventStatus.chatbot?.connected ? "" : " studio-primary"}`}
+                    disabled={!props.isOwner}
+                    onClick={() => void twitchEvents.connectChatbot()}
+                    title={props.isOwner ? `Authorize ${eventStatus.chatbot?.login ?? "the chatbot"} to send automated messages` : "Only the overlay owner can manage the chatbot connection"}
+                  >
+                    <Link2 size={13} /> {eventStatus.chatbot?.connected ? "Reconnect" : "Connect chatbot"}
+                  </button>
+                  {eventStatus.chatbot?.connected && props.isOwner && (
+                    <button
+                      className="ui-button ui-button--compact ui-button--quiet-danger"
+                      onClick={() => void twitchEvents.disconnectChatbot()}
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {(eventStatus?.channels ?? []).map((status) => {
+              const channel = status.channel;
+              const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
+              const hasBanAccess = status.scopes.includes("channel:moderate");
+              return (
+                <div key={channel} className="connection-card">
+                  <div className="connection-card__head">
+                    <span className="connection-card__name">
+                      <strong style={{ textTransform: "capitalize" }}>{channel}</strong>
+                      {status?.connected &&
+                        status.displayName &&
+                        status.displayName.toLowerCase() !== channel.toLowerCase() && (
+                          <small>as {status.displayName}</small>
+                        )}
+                    </span>
+                    <span className={`status-pill ${status?.connected ? "status-pill--ok" : "status-pill--bad"}`}>
+                      <i aria-hidden="true" />
+                      {status?.connected ? "Connected" : "Not connected"}
+                    </span>
+                  </div>
+                  <p className="connection-card__hint">
+                    Event access for follows, subscriptions, Bits, channel
+                    points, Hype Trains, bans, and timeouts.
+                  </p>
+                  {status.connected && hasLegacyChatAccess && (
+                    <p className="connection-card__note">
+                      This connection still has the old chat-writing permission.
+                      Reconnect it to replace that token with event-only access.
+                    </p>
+                  )}
+                  {status.connected && !hasBanAccess && (
+                    <p className="connection-card__note">
+                      Reconnect this broadcaster once to enable ban and timeout events.
+                    </p>
+                  )}
+                  <div className="connection-card__actions">
+                    <button
+                      className={`ui-button ui-button--compact${status?.connected ? "" : " studio-primary"}`}
+                      onClick={() => void twitchEvents.connect(channel)}
+                    >
+                      <Link2 size={13} />{" "}
+                      {status?.connected ? "Reconnect" : "Connect"}
+                    </button>
+                    {status?.connected && (
+                      <button
+                        className="ui-button ui-button--compact ui-button--quiet-danger"
+                        onClick={() => void twitchEvents.disconnect(channel)}
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                  <details className="connection-card__tests">
+                    <summary>Send a test event</summary>
+                    <div className="connection-card__chips">
+                      {(
+                        [
+                          "follow",
+                          "subscribe",
+                          "gift-subscribe",
+                          "bits",
+                          "raid",
+                          "channel-points",
+                          "ban",
+                          "timeout",
+                        ] as const
+                      ).map((type) => (
+                        <button
+                          key={type}
+                          className="ui-button ui-button--compact"
+                          disabled={!status?.connected}
+                          title={`Run a local simulated ${type} event`}
+                          onClick={() => void twitchEvents.test(channel, type)}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              );
+            })}
+              </div>
+            )}
+            {!builderVisible && (
+              <button
+                type="button"
+                className="ui-button studio-new-button"
+                onClick={() => {
+                  setKind(filter === "event" ? "event" : "chat");
+                  setBuilderOpen(true);
+                }}
+              >
+                <Plus size={14} />
+                New automation
+              </button>
+            )}
+            {builderVisible && (
+            <div className="command-builder">
+            <div className="command-builder__bar">
+              <strong>
+                {editingTriggerId ? "Edit automation" : "New automation"}
+              </strong>
+              {hasTriggersForTab && (
+                <button
+                  type="button"
+                  className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+                  onClick={closeBuilder}
+                  title="Close the builder and discard this draft"
+                  aria-label="Close builder"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
+            <p className="command-builder__summary" aria-label="Automation workflow">
+              <b>When</b>{" "}
+              {isEvent
+                ? "a Twitch event"
+                : triggerMatch.trim() || "a chat command"}
+              {" "}<ArrowRight size={12} aria-hidden="true" /> <b>do</b>{" "}
+              {triggerActionLabel(triggerAction).toLowerCase()}
+              {chainedSteps.length > 0 && ` + ${chainedSteps.length} more`}
+            </p>
             <div className="command-builder-card">
               <header>
                 <b>1</b>
                 <span>
                   <strong>When this happens</strong>
                   <small>
-                    {tab === "events"
+                    {isEvent
                       ? "Choose the Twitch event that starts the workflow."
                       : "Choose the public chat command that starts the workflow."}
                   </small>
                 </span>
               </header>
+            <Segmented
+              label="What starts this automation"
+              value={kind}
+              onChange={setKind}
+              options={[
+                { value: "chat", label: "Chat command" },
+                { value: "event", label: "Twitch event" },
+              ]}
+            />
             <input
               style={fieldStyle}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={
-                tab === "events" ? "Event action name" : "Command name"
+                isEvent ? "Event action name" : "Command name"
               }
               maxLength={60}
             />
-            {tab === "events" && (
+            {isEvent && (
               <>
                 <select
                   style={fieldStyle}
@@ -848,7 +1075,6 @@ export function StudioPanel(props: StudioPanelProps) {
                       >,
                     )
                   }
-                  title="Choose the Twitch event that starts this action"
                 >
                   <option value="follow">New follow</option>
                   <option value="subscribe">
@@ -910,7 +1136,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 )}
               </>
             )}
-            {tab === "triggers" && (
+            {!isEvent && (
               <input
                 style={fieldStyle}
                 value={triggerMatch}
@@ -939,7 +1165,9 @@ export function StudioPanel(props: StudioPanelProps) {
                 setTargetId("");
               }}
             >
-              {triggerActionOptions.map((option) => (
+              {triggerActionOptions
+                .filter((option) => ttsEnabled || option.value !== "tts" || triggerAction === "tts")
+                .map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -1059,10 +1287,10 @@ export function StudioPanel(props: StudioPanelProps) {
               <label
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 150px",
+                  gridTemplateColumns: "1fr 190px",
                   alignItems: "center",
                   gap: 8,
-                  color: "#aab2bf",
+                  color: "var(--text-secondary)",
                   fontSize: 11,
                 }}
               >
@@ -1094,10 +1322,10 @@ export function StudioPanel(props: StudioPanelProps) {
               <label
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 150px",
+                  gridTemplateColumns: "1fr 190px",
                   alignItems: "center",
                   gap: 8,
-                  color: "#aab2bf",
+                  color: "var(--text-secondary)",
                   fontSize: 11,
                 }}
               >
@@ -1151,7 +1379,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   gridTemplateColumns: "1fr 90px",
                   alignItems: "center",
                   gap: 8,
-                  color: "#aab2bf",
+                  color: "var(--text-secondary)",
                   fontSize: 11,
                 }}
               >
@@ -1176,27 +1404,41 @@ export function StudioPanel(props: StudioPanelProps) {
               <button
                 type="button"
                 className="ui-button ui-button--compact"
-                disabled={!targetId}
+                disabled={!targetId && !flyRunning}
                 onClick={() => {
-                  if (
-                    !targetId ||
-                    !props.onPreviewFly(targetId, flyDirection, duration)
-                  ) {
+                  if (flyRunning) {
+                    // Do not wait for the browser's cancel event; the button should flip right away.
+                    const stopFlight = flyStopRef.current;
+                    flyStopRef.current = null;
+                    setFlyRunning(false);
+                    stopFlight?.();
+                    return;
+                  }
+                  const stop = targetId
+                    ? props.onPreviewFly(targetId, flyDirection, duration, () => {
+                        if (flyStopRef.current !== stop) return;
+                        flyStopRef.current = null;
+                        setFlyRunning(false);
+                      })
+                    : null;
+                  if (!stop) {
                     toast.error("Choose an available media element to preview");
                     return;
                   }
+                  flyStopRef.current = stop;
+                  setFlyRunning(true);
                   toast.info("Playing dashboard-only flight preview");
                 }}
-                title="Preview this flight only on your dashboard; OBS and other users are not affected"
                 style={{
                   width: "100%",
-                  border: "1px solid #3a3a3f",
-                  background: "#202024",
-                  color: "#d7dce4",
+                  border: "1px solid var(--line-strong)",
+                  background: "var(--bg-control)",
+                  color: "var(--text-primary)",
                   cursor: targetId ? "pointer" : "not-allowed",
                 }}
               >
-                <Play size={12} /> Preview flight
+                {flyRunning ? <Square size={11} fill="currentColor" /> : <Play size={12} />}
+                {flyRunning ? "Stop preview" : "Preview flight"}
                 <ActionScopeBadge scope="dashboard" />
               </button>
             )}
@@ -1211,7 +1453,6 @@ export function StudioPanel(props: StudioPanelProps) {
                       event.target.value as NonNullable<TriggerStep["timing"]>,
                     )
                   }
-                  title="Choose whether this action starts immediately, after a delay, or when the previous timed media action finishes"
                 >
                   <option value="immediate">At the same time</option>
                   <option value="delay">After a delay</option>
@@ -1315,7 +1556,6 @@ export function StudioPanel(props: StudioPanelProps) {
                   !targetId) ||
                 (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
               }
-              title="Keep this action and configure another action for the same chat command"
             >
               {editingChainIndex !== null ? (
                 <Save size={13} />
@@ -1341,14 +1581,14 @@ export function StudioPanel(props: StudioPanelProps) {
                   </small>
                 </span>
               </header>
-            {tab === "triggers" && (
+            {!isEvent && (
               <label
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 150px",
+                  gridTemplateColumns: "1fr 190px",
                   alignItems: "center",
                   gap: 8,
-                  color: "#aab2bf",
+                  color: "var(--text-secondary)",
                   fontSize: 11,
                 }}
               >
@@ -1367,7 +1607,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 </select>
               </label>
             )}
-            {tab === "triggers" &&
+            {!isEvent &&
               permission === "everyone" &&
               (triggerAction === "tts" || chainedSteps.some((step) => step.action === "tts")) && (
                 <p className="command-cost-warning">
@@ -1380,7 +1620,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 gridTemplateColumns: "1fr 90px",
                 alignItems: "center",
                 gap: 8,
-                color: "#aab2bf",
+                color: "var(--text-secondary)",
                 fontSize: 11,
               }}
             >
@@ -1410,65 +1650,66 @@ export function StudioPanel(props: StudioPanelProps) {
               {editingTriggerId ? <Save size={14} /> : <Plus size={14} />}{" "}
               {editingTriggerId
                 ? "Save changes"
-                : tab === "events"
+                : isEvent
                   ? "Add event action"
                   : "Add command"}
             </button>
             {editingTriggerId && (
-              <button
-                className="ui-button"
-                onClick={cancelTriggerEdit}
-                style={{
-                  border: "1px solid #3a3a3f",
-                  background: "#202024",
-                  color: "#cbd1da",
-                  cursor: "pointer",
-                }}
-              >
+              <button className="ui-button" onClick={cancelTriggerEdit}>
                 <X size={14} /> Cancel editing
               </button>
             )}
             </div>
-            {props.studio.triggers.some((item) =>
-              tab === "events" ? item.event !== "chat-command" : item.event === "chat-command",
-            ) && (
+            </div>
+            )}
+            {hasTriggersForTab && (
+              <Segmented
+                label="Filter automations"
+                value={filter}
+                onChange={setFilter}
+                options={([["all", "All", props.studio.triggers.length], ["chat", "Chat", chatCount], ["event", "Twitch", eventCount]] as const).map(
+                  ([value, label, count]) => ({
+                    value,
+                    label: <>{label} <span className="segmented__count">{count}</span></>,
+                  }),
+                )}
+              />
+            )}
+            {hasTriggersForTab && (
               <label className="studio-search">
                 <Search size={13} aria-hidden="true" />
                 <input
                   value={listSearch}
                   onChange={(event) => setListSearch(event.target.value)}
-                  placeholder={tab === "events" ? "Search event actions…" : "Search commands…"}
-                  aria-label={tab === "events" ? "Search event actions" : "Search commands"}
+                  placeholder="Search automations…"
+                  aria-label="Search automations"
                 />
               </label>
             )}
-            {!props.studio.triggers.some((item) =>
-              tab === "events" ? item.event !== "chat-command" : item.event === "chat-command",
-            ) && (
+            {!hasTriggersForTab && (
               <div className="studio-empty-state">
-                <strong>{tab === "events" ? "No event actions yet" : "No chat commands yet"}</strong>
-                <span>{tab === "events" ? "Choose an event and action above, then save it." : "Name a command, choose what it should do, then add it."}</span>
+                <strong>No automations yet</strong>
+                <span>Choose what starts it, what it should do, then add it.</span>
               </div>
             )}
-            {props.studio.triggers
-              .filter((item) =>
-                (tab === "events"
-                  ? item.event !== "chat-command"
-                  : item.event === "chat-command") &&
-                [item.name, item.match ?? "", item.event].some((value) =>
-                  value.toLowerCase().includes(listSearch.trim().toLowerCase()),
-                ),
-              )
-              .map((item) => (
+            {hasTriggersForTab && visibleTriggers.length === 0 && (
+              <div className="studio-empty-state">
+                <strong>No matching automations</strong>
+                <span>Try another filter or search term.</span>
+              </div>
+            )}
+            {visibleTriggers.map((item) => (
                 <Item
                   key={item.id}
                   name={item.name}
-                  detail={`${item.event === "chat-command" ? (item.match ?? "command") : item.event} → ${item.steps?.length ? `${item.steps.length} actions` : triggerActionLabel(item.action)}${item.minimum ? ` · min ${item.minimum}` : ""}`}
+                  leading={isChatTrigger(item) ? <MessageCircle size={15} /> : <BellRing size={15} />}
+                  detail={`${isChatTrigger(item) ? (item.match ?? "chat command") : (TRIGGER_EVENT_LABELS[item.event] ?? item.event)} → ${item.steps?.length ? `${item.steps.length} actions` : triggerActionLabel(item.action)}${item.minimum ? ` · min ${item.minimum}` : ""}`}
                   onEdit={() => editTrigger(item)}
+                  onTest={() => void testTrigger(item)}
                   onPrimary={() => {
                     props.onSaveTrigger({ ...item, enabled: !item.enabled });
                     toast.success(
-                      `Command “${item.name}” ${item.enabled ? "disabled" : "enabled"}`,
+                      `Automation “${item.name}” ${item.enabled ? "disabled" : "enabled"}`,
                     );
                   }}
                   primary={item.enabled ? "Active" : "Disabled"}
@@ -1477,201 +1718,69 @@ export function StudioPanel(props: StudioPanelProps) {
                     if (!await confirm({
                       title: `Delete “${item.name}”?`,
                       message: "This permanently removes the saved command or event action.",
-                      confirmLabel: "Delete action",
+                      confirmLabel: "Delete automation",
                       danger: true,
                     })) return;
                     props.onDeleteTrigger(item.id);
-                    toast.success(`Command “${item.name}” deleted`);
+                    toast.success(`Automation “${item.name}” deleted`);
                   }}
                 />
               ))}
           </Section>
         )}
-        {tab === "events" && (
-          <Section
-            title="Twitch connections"
-            description="Broadcasters provide event access; the separate chatbot account sends automated messages."
-          >
-            {!eventStatus?.configured && (
-              <div style={{ ...rowStyle, color: "#fca5a5" }}>
-                Event storage is unavailable. Check the server database
-                configuration.
-              </div>
-            )}
-            {eventStatus?.configured && (
-              <div style={{ ...rowStyle, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong>Chatbot</strong>
-                  <span style={{ color: eventStatus.chatbot?.connected ? "#86efac" : "#fca5a5", fontSize: 11 }}>
-                    {eventStatus.chatbot?.connected
-                      ? `Connected as ${eventStatus.chatbot.displayName}`
-                      : "Not connected"}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button
-                    className="ui-button studio-primary"
-                    disabled={!props.isOwner}
-                    onClick={() => void twitchEvents.connectChatbot()}
-                    title={props.isOwner ? `Authorize ${eventStatus.chatbot?.login ?? "the chatbot"} to send automated messages` : "Only the overlay owner can manage the chatbot connection"}
-                  >
-                    <Link2 size={13} /> {eventStatus.chatbot?.connected ? "Reconnect chatbot" : "Connect chatbot"}
-                  </button>
-                  {eventStatus.chatbot?.connected && props.isOwner && (
-                    <button
-                      className="ui-button ui-danger"
-                      onClick={() => void twitchEvents.disconnectChatbot()}
-                      title="Remove the chatbot's stored authorization"
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </div>
-                <div style={{ color: "#8f99a8", fontSize: 10 }}>
-                  Outgoing automation messages are sent by this account. Broadcaster tokens are never used to write chat.
-                </div>
-              </div>
-            )}
-            {(eventStatus?.channels ?? []).map((status) => {
-              const channel = status.channel;
-              const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
-              const hasBanAccess = status.scopes.includes("channel:moderate");
-              return (
-                <div
-                  key={channel}
-                  style={{ ...rowStyle, display: "grid", gap: 8 }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <strong style={{ textTransform: "capitalize" }}>
-                      {channel}
-                    </strong>
-                    <span
-                      style={{
-                        color: status?.connected ? "#86efac" : "#fca5a5",
-                        fontSize: 11,
-                      }}
-                    >
-                      {status?.connected
-                        ? `Connected as ${status.displayName}`
-                        : "Not connected"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button
-                      className="ui-button studio-primary"
-                      onClick={() => void twitchEvents.connect(channel)}
-                      title={`Authorize event access using the ${channel} Twitch account`}
-                    >
-                      <Link2 size={13} />{" "}
-                      {status?.connected ? "Reconnect" : "Connect"}
-                    </button>
-                    {status?.connected && (
-                      <button
-                        className="ui-button ui-danger"
-                        onClick={() => void twitchEvents.disconnect(channel)}
-                        title={`Disconnect ${channel} Twitch event access`}
-                      >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ color: "#8f99a8", fontSize: 10 }}>
-                    Event access for follows, subscriptions, Bits, channel
-                    points, Hype Trains, bans, and timeouts.
-                  </div>
-                  {status.connected && hasLegacyChatAccess && (
-                    <div style={{ color: "#fbbf24", fontSize: 11 }}>
-                      This connection still has the old chat-writing permission.
-                      Reconnect it to replace that token with event-only access.
-                    </div>
-                  )}
-                  {status.connected && !hasBanAccess && (
-                    <div style={{ color: "#fbbf24", fontSize: 11 }}>
-                      Reconnect this broadcaster once to enable ban and timeout events.
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                    {(
-                      [
-                        "follow",
-                        "subscribe",
-                        "gift-subscribe",
-                        "bits",
-                        "raid",
-                        "channel-points",
-                        "ban",
-                        "timeout",
-                      ] as const
-                    ).map((type) => (
-                      <button
-                        key={type}
-                        className="ui-button ui-button--compact"
-                        disabled={!status?.connected}
-                        title={`Run a local simulated ${type} event`}
-                        onClick={() => void twitchEvents.test(channel, type)}
-                      >
-                        Test {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </Section>
-        )}
         {tab === "emotes" && (
           <Section
             title="Chat emotes"
-            description="Animate 7TV and Twitch emotes on OBS without adding them to Layers or storing their images."
+            description="Animate 7TV and Twitch emotes on the overlay without adding them to Layers or storing their images."
           >
-            <button
-              type="button"
-              className="ui-button"
-              aria-pressed={props.chatEmoteSettings.enabled}
-              onClick={() => {
-                const enabled = !props.chatEmoteSettings.enabled;
-                props.onChatEmoteSettingsChange({
-                  ...props.chatEmoteSettings,
-                  enabled,
-                });
-                toast.success(
-                  `Chat emotes ${enabled ? "enabled" : "disabled"}`,
-                );
-              }}
-              title="Enable or disable automatic 7TV and Twitch emotes from the currently monitored chat"
-              style={{
-                width: "100%",
-                justifyContent: "space-between",
-                border: `1px solid ${props.chatEmoteSettings.enabled ? "#16a34a" : "#7f1d1d"}`,
-                background: props.chatEmoteSettings.enabled
-                  ? "#052e16"
-                  : "#2a1717",
-                color: props.chatEmoteSettings.enabled ? "#bbf7d0" : "#fecaca",
-              }}
-            >
-              <span>Chat emotes</span>
+            <div className="switch-card">
               <span>
-                {props.chatEmoteSettings.enabled ? "Enabled" : "Disabled"}
+                <strong>Chat emotes</strong>
+                <small>
+                  {props.chatEmoteSettings.enabled
+                    ? "Emotes from chat are animating on the overlay."
+                    : "Turned off. No chat emotes appear on the overlay."}
+                </small>
               </span>
-            </button>
+              <button
+                type="button"
+                className="ui-switch"
+                role="switch"
+                aria-checked={props.chatEmoteSettings.enabled}
+                aria-label="Chat emotes"
+                onClick={() => {
+                  const enabled = !props.chatEmoteSettings.enabled;
+                  props.onChatEmoteSettingsChange({
+                    ...props.chatEmoteSettings,
+                    enabled,
+                  });
+                  toast.success(
+                    `Chat emotes ${enabled ? "enabled" : "disabled"}`,
+                  );
+                }}
+                title="Enable or disable automatic 7TV and Twitch emotes from the currently monitored chat"
+              />
+            </div>
             <div className="chat-emote-preview">
               <ChatEmoteLayer
                 preview
                 spawn={emotePreview}
                 settings={props.chatEmoteSettings}
+                onActiveChange={setEmoteRunning}
+                clearSignal={emoteClear}
               />
               <span>Dashboard-only preview</span>
             </div>
             <button
               type="button"
-              className="ui-button ui-button--compact soundboard-action"
+              className="ui-button"
               onClick={() => {
+                if (emoteRunning) {
+                  setEmoteClear((count) => count + 1);
+                  setEmoteRunning(false);
+                  return;
+                }
+                setEmoteRunning(true);
                 setEmotePreview({
                   id: randomUUID(),
                   emoteId: "preview",
@@ -1682,10 +1791,9 @@ export function StudioPanel(props: StudioPanelProps) {
                 });
                 toast.info("Playing a dashboard-only emote preview");
               }}
-              title="Preview the selected emote movement locally without showing anything on OBS"
             >
-              <Play size={13} /> Preview movement
-              <ActionScopeBadge scope="dashboard" />
+              {emoteRunning ? <Square size={12} fill="currentColor" /> : <Play size={13} />}
+              {emoteRunning ? "Stop preview" : "Preview movement (dashboard only)"}
             </button>
             <div className="chat-emote-card">
               <strong className="chat-emote-card__title">Behavior</strong>
@@ -1703,7 +1811,6 @@ export function StudioPanel(props: StudioPanelProps) {
                       `Sender names ${event.target.checked ? "shown" : "hidden"}`,
                     );
                   }}
-                    title="Display the Twitch sender's name above each emote"
                 />
               </label>
               {props.chatEmoteSettings.showNames && (
@@ -1721,7 +1828,6 @@ export function StudioPanel(props: StudioPanelProps) {
                         `Name backgrounds ${event.target.checked ? "shown" : "hidden"}`,
                       );
                     }}
-                    title="Show or hide the colored background behind sender names"
                   />
                 </label>
               )}
@@ -1738,29 +1844,21 @@ export function StudioPanel(props: StudioPanelProps) {
                           nameBackgroundColor: event.target.value,
                         })
                       }
-                      title="Choose the background color behind sender names"
                     />
                   </label>
                 )}
               {props.chatEmoteSettings.showNames && (
-                <label className="chat-emote-range">
-                  <span>Name text size</span>
-                  <input
-                    type="range"
-                    min="9"
-                    max="32"
-                    step="1"
-                    value={props.chatEmoteSettings.nameFontSize}
-                    onChange={(event) =>
-                      props.onChatEmoteSettingsChange({
-                        ...props.chatEmoteSettings,
-                        nameFontSize: Number(event.target.value),
-                      })
-                    }
-                    title="Set the sender-name text size"
-                  />
-                  <strong>{props.chatEmoteSettings.nameFontSize}px</strong>
-                </label>
+                <SliderField
+                  label="Name text size"
+                  value={props.chatEmoteSettings.nameFontSize}
+                  min={9}
+                  max={32}
+                  step={1}
+                  unit="px"
+                  onChange={(nameFontSize) =>
+                    props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, nameFontSize })
+                  }
+                />
               )}
               <label className="chat-emote-setting chat-emote-setting--motion">
                 <span>Movement</span>
@@ -1777,7 +1875,6 @@ export function StudioPanel(props: StudioPanelProps) {
                             : "Using wall-to-wall bounce",
                     );
                   }}
-                  title="Choose how chat emotes move across the overlay"
                 >
                   <option value="parade">Bottom parade</option>
                   <option value="corners">Corner route</option>
@@ -1829,27 +1926,18 @@ export function StudioPanel(props: StudioPanelProps) {
                     props.chatEmoteSettings.motion === "floor",
                 )
                 .map(([label, key, min, max, step, suffix]) => (
-                  <label className="chat-emote-range" key={key}>
-                    <span>{label}</span>
-                    <input
-                      type="range"
-                      min={min}
-                      max={max}
-                      step={step}
-                      value={props.chatEmoteSettings[key]}
-                      onChange={(event) =>
-                        props.onChatEmoteSettingsChange({
-                          ...props.chatEmoteSettings,
-                          [key]: Number(event.target.value),
-                        })
-                      }
-                      title={`Set ${label.toLowerCase()}`}
-                    />
-                    <strong>
-                      {props.chatEmoteSettings[key]}
-                      {suffix}
-                    </strong>
-                  </label>
+                  <SliderField
+                    key={key}
+                    label={label}
+                    value={props.chatEmoteSettings[key]}
+                    min={min}
+                    max={max}
+                    step={step}
+                    unit={suffix.trim()}
+                    onChange={(next) =>
+                      props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, [key]: next })
+                    }
+                  />
                 ))}
             </div>
             <div className="chat-emote-card">
@@ -1896,7 +1984,6 @@ export function StudioPanel(props: StudioPanelProps) {
                     toast.success(`${additionalEmoteName} can now appear after the first emote`);
                     setAdditionalEmoteName("");
                   }}
-                  title="Allow this emote after the first emote in a message"
                 >
                   <Plus size={13} /> Allow
                 </button>
@@ -1946,7 +2033,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 toast.success(`${name} blocked from chat emotes`);
               }}>
                 <input style={fieldStyle} value={blockedEmoteName} onChange={(event) => setBlockedEmoteName(event.target.value)} maxLength={64} placeholder="Exact emote name" aria-label="Emote name to block" title="Enter a Twitch or 7TV emote name, including its channel prefix if present" />
-                <button type="submit" className="ui-button ui-button--compact" title="Block this emote from future chat messages" disabled={!/^\S{1,64}$/.test(blockedEmoteName.trim()) || (props.chatEmoteSettings.blockedEmotes ?? []).length >= 100 || (props.chatEmoteSettings.blockedEmotes ?? []).some((name) => name.toLowerCase() === blockedEmoteName.trim().toLowerCase())}>
+                <button type="submit" className="ui-button ui-button--compact" disabled={!/^\S{1,64}$/.test(blockedEmoteName.trim()) || (props.chatEmoteSettings.blockedEmotes ?? []).length >= 100 || (props.chatEmoteSettings.blockedEmotes ?? []).some((name) => name.toLowerCase() === blockedEmoteName.trim().toLowerCase())}>
                   <Plus size={13} /> Block
                 </button>
               </form>
@@ -2010,7 +2097,6 @@ export function StudioPanel(props: StudioPanelProps) {
                     toast.success(`@${blacklistName} blocked from chat emotes`);
                     setBlacklistName("");
                   }}
-                  title="Add this username to the chat-emote blacklist"
                 >
                   <Plus size={13} /> Block
                 </button>
@@ -2119,6 +2205,8 @@ function Item({
   primary,
   onDelete,
   onEdit,
+  onTest,
+  leading,
   active,
 }: {
   name: string;
@@ -2127,64 +2215,70 @@ function Item({
   primary: string;
   onDelete: () => void;
   onEdit?: () => void;
+  onTest?: () => void;
+  leading?: React.ReactNode;
   active?: boolean;
 }) {
   return (
-    <div style={rowStyle}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <strong
-          style={{
-            fontSize: 12,
-            display: "block",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {name}
-        </strong>
-        <small style={{ fontSize: 10, color: "#8b95a5" }}>{detail}</small>
-      </div>
-      {onEdit && (
-        <button
-          className="ui-icon-button ui-button--compact"
-          onClick={onEdit}
-          title={`Edit ${name}`}
-        >
-          <Pencil size={12} />
-        </button>
+    <div className={`studio-item${active === false ? " studio-item--off" : ""}${leading ? " studio-item--icon" : ""}`}>
+      {leading && (
+        <span className="studio-item__icon" aria-hidden="true">
+          {leading}
+        </span>
       )}
-      <button
-        className="ui-button ui-button--compact"
-        onClick={onPrimary}
-        title={
-          active === undefined
-            ? `${primary} ${name}`
-            : `${active ? "Disable" : "Enable"} ${name}`
-        }
-        role={active === undefined ? undefined : "switch"}
-        aria-checked={active}
-        style={
-          active === undefined
-            ? undefined
-            : {
-                minWidth: 70,
-                border: `1px solid ${active ? "#166534" : "#6b2b32"}`,
-                background: active ? "#0f3925" : "#302024",
-                color: active ? "#86efac" : "#d7a0a6",
-                fontWeight: 700,
-                cursor: "pointer",
-              }
-        }
-      >
-        {primary === "Play" ? <Play size={12} /> : primary}
-      </button>
-      <button
-        className="ui-icon-button ui-button--compact ui-danger"
-        onClick={onDelete}
-        title={`Delete ${name}`}
-      >
-        <Trash2 size={13} />
-      </button>
+      <div className="studio-item__body">
+        <strong>{name}</strong>
+        <small>{detail}</small>
+      </div>
+      <div className="studio-item__actions">
+        {onTest && (
+          <button
+            className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+            onClick={onTest}
+            title={`Run ${name} now as a test`}
+            aria-label={`Run ${name} now as a test`}
+          >
+            <Play size={14} />
+          </button>
+        )}
+        {onEdit && (
+          <button
+            className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+            onClick={onEdit}
+            title={`Edit ${name}`}
+            aria-label={`Edit ${name}`}
+          >
+            <Pencil size={14} />
+          </button>
+        )}
+        {active === undefined ? (
+          <button
+            className="ui-button ui-button--compact"
+            onClick={onPrimary}
+            title={`${primary} ${name}`}
+          >
+            {primary === "Play" ? <Play size={12} /> : primary}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="ui-switch"
+            onClick={onPrimary}
+            role="switch"
+            aria-checked={active}
+            aria-label={`${name} is ${active ? "enabled" : "disabled"}`}
+            title={`${active ? "Disable" : "Enable"} ${name}`}
+          />
+        )}
+        <button
+          className="ui-icon-button ui-button--compact ui-icon-button--ghost ui-icon-button--danger"
+          onClick={onDelete}
+          title={`Delete ${name}`}
+          aria-label={`Delete ${name}`}
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,8 @@ type ActionScope = "dashboard" | "obs" | "both";
 
 const scopeDetails = {
   dashboard: { label: "Dashboard only", Icon: Monitor },
-  obs: { label: "Plays on OBS", Icon: Radio },
-  both: { label: "Dashboard + OBS", Icon: ScreenShare },
+  obs: { label: "Plays on overlay", Icon: Radio },
+  both: { label: "Dashboard + overlay", Icon: ScreenShare },
 } as const;
 
 export function ActionScopeBadge({ scope }: { scope: ActionScope }) {

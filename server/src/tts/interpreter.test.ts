@@ -81,6 +81,16 @@ test("authored cave and echo directions override a dry model plan", () => {
   assert.equal(echoPlan.scenes[0].effect, "echo");
 });
 
+test("authored speech speed overrides an omitted planner value", () => {
+  const plan = decodePlan(
+    response([{ ...scene, dialogue: "Wait for me" }]),
+    voices,
+    1,
+    '((pirate says "Wait for me";speed=0.8x;8s))',
+  );
+  assert.equal(plan.scenes[0].speechRate, 0.8);
+});
+
 test("pause blocks override model narration with exact custom silence", () => {
   const prompt = "First. ((pause;2.5s)) Second.";
   const plan = decodePlan(
@@ -192,4 +202,77 @@ test("refusals and wrong scene counts fall back while preserving authored order"
 test("top-level output_text responses are accepted", () => {
   const payload = { status: "completed", output_text: JSON.stringify({ scenes: [scene], warnings: [] }) };
   assert.equal(decodePlan(payload, voices).scenes[0].dialogue, scene.dialogue);
+});
+
+test("a duration the user never wrote is discarded instead of squeezing the performance", () => {
+  const invented = { ...scene, dialogue: "[screaming] I CAN'T HOLD IT IN!", duration: 3 };
+  const plan = decodePlan(response([invented]), voices, 1, '((man yelling in a cave: "I CAN\'T HOLD IT IN"))');
+  assert.equal(plan.scenes[0].duration, null);
+  const sound = decodePlan(response([{ ...scene, dialogue: "", sound: "rain", duration: 12 }]), voices, 1, "((rain))");
+  assert.equal(sound.scenes[0].duration, null);
+});
+
+test("shouting is decided by the user's words, not the planner's explanation", () => {
+  const yelled = decodePlan(response([{ ...scene, intensity: "scream" }]), voices, 1, '((man yelling: "NOW"))');
+  assert.equal(yelled.scenes[0].intensity, "shout");
+  const screamed = decodePlan(response([{ ...scene, intensity: "normal" }]), voices, 1, '((man screaming: "NOW"))');
+  assert.equal(screamed.scenes[0].intensity, "scream");
+  const calm = decodePlan(response([{ ...scene, intensity: "normal" }]), voices, 1, '((man saying: "hello"))');
+  assert.equal(calm.scenes[0].intensity, "normal");
+  const plain = decodePlan(response([{ ...scene, intensity: "scream" }]), voices, 1, "hello there");
+  assert.equal(plain.scenes[0].intensity, "normal");
+});
+
+test("planner wording that would spoil a generated sound is removed", () => {
+  const foxes = {
+    ...scene,
+    dialogue: "",
+    sound: "varied frantic fox screams with high-pitched, intense tones for 10 seconds, overlapping and echoing nature calls",
+  };
+  const plan = decodePlan(response([foxes]), voices, 1, "((foxes screaming;10 seconds))");
+  assert.doesNotMatch(plan.scenes[0].sound, /high-pitched|seconds|echo/i);
+  assert.match(plan.scenes[0].sound, /fox screams/);
+  assert.equal(plan.scenes[0].duration, 10);
+  // Words the user chose themselves are kept.
+  const chosen = decodePlan(response([{ ...foxes, sound: "a shrill high-pitched whistle" }]), voices, 1, "((shrill whistle;3s))");
+  assert.match(chosen.scenes[0].sound, /shrill/);
+});
+
+test("the planner is told the new intensity field and no longer prefers one voice", async () => {
+  let body: any;
+  const fetcher: typeof fetch = async (_url, options) => {
+    body = JSON.parse(String(options?.body));
+    return new Response(JSON.stringify(response([scene])));
+  };
+  await interpretPrompt("sad man", "test-key", voices, fetcher);
+  assert.deepEqual(body.text.format.schema.properties.scenes.items.properties.intensity.enum, ["normal", "shout", "scream"]);
+  assert.ok(body.text.format.schema.properties.scenes.items.required.includes("intensity"));
+  assert.doesNotMatch(body.instructions, /Callum/);
+  assert.match(body.instructions, /never invent one/i);
+  assert.match(body.instructions, /Never invent whispering/);
+});
+
+test("the planner's effect for each requested combination is decided by the user's words", () => {
+  const prompt = "((Multiple loud farts,Reverb Echo;6s)) ((Extreme fart sound,Indoor;6s)) ((Huge fart from down a well,Echo;4s))";
+  const planned = (sound: string) => ({ ...scene, dialogue: "", sound, effect: "none" as const, duration: null });
+  const plan = decodePlan(response([planned("multiple loud farts"), planned("extremely loud deep fart"), planned("one huge fart")]), voices, 3, prompt);
+  assert.deepEqual(plan.scenes.map((item) => [item.effect, item.room ?? null]), [["both", null], ["reverb", "indoor"], ["both", "well"]]);
+  assert.equal(plan.scenes[1].effectStrength, "extreme");
+  assert.deepEqual(plan.scenes.map((item) => item.duration), [6, 6, 4]);
+});
+
+test("the planner may return both, and is told the rules for it", async () => {
+  let body: any;
+  const fetcher: typeof fetch = async (_url, options) => {
+    body = JSON.parse(String(options?.body));
+    return new Response(JSON.stringify(response([{ ...scene, effect: "both" }])));
+  };
+  await interpretPrompt("sad man", "test-key", voices, fetcher);
+  assert.ok(body.text.format.schema.properties.scenes.items.properties.effect.enum.includes("both"));
+  assert.match(body.instructions, /effect is both/);
+  // A directed block with no room words of its own keeps the planner's choice.
+  const plan = decodePlan(response([{ ...scene, dialogue: "hi", effect: "both" }]), voices, 1, '((man says "hi";5s))');
+  assert.equal(plan.scenes[0].effect, "both");
+  // Plain undirected speech never gets an effect.
+  assert.equal(decodePlan(response([{ ...scene, effect: "both" }]), voices, 1, "hello there").scenes[0].effect, "none");
 });

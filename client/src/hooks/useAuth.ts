@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { UserRole } from '../types';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
 
@@ -10,6 +11,8 @@ export interface AuthUser {
   color: string;
   isOwner: boolean;
   isAdmin: boolean;
+  role: UserRole;
+  roles?: UserRole[];
 }
 
 const TOKEN_KEY = 'auth_token';

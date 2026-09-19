@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { activeSoundDuration, atempoFilters, elevenErrorMessage, FINAL_TTS_FILTER, run, speechTempo } from "./audio.js";
+import { activeSoundDuration, atempoFilters, elevenErrorMessage, FINAL_SOUND_EFFECT_FILTER, FINAL_TTS_FILTER, MAX_AUTO_SPEECH_TEMPO, run, speechTempo } from "./audio.js";
 import { parsePrompt } from "./shared/scene.js";
 import { readWav } from "./dsp.js";
 
@@ -36,15 +36,18 @@ test("transient sounds reserve room for reverb inside the total duration", () =>
   assert.equal(activeSoundDuration(rain, false), 7);
 });
 
-test("overlong speech is tempo-fitted inside an explicit scene duration", () => {
+test("automatic speech fitting is capped at a natural-sounding speed", () => {
   const cave = parsePrompt('((man in cave screaming and yelling: "ABOBA" over and over;10s))').scenes[0];
   assert.equal(cave.effect, "reverb");
   assert.equal(cave.duration, 10);
-  assert.equal(speechTempo(cave, 14), 14 / 9.25);
-  assert.equal(speechTempo(cave, 17.8), 17.8 / 9.25);
+  assert.equal(speechTempo(cave, 14), MAX_AUTO_SPEECH_TEMPO);
+  assert.equal(speechTempo(cave, 17.8), MAX_AUTO_SPEECH_TEMPO);
   assert.equal(speechTempo({ ...cave, duration: null }, 17.8), 1);
   assert.deepEqual(atempoFilters(1.8), ["atempo=1.800000"]);
+  assert.deepEqual(atempoFilters(0.8), ["atempo=0.800000"]);
   assert.deepEqual(atempoFilters(4.5), ["atempo=2", "atempo=2", "atempo=1.125000"]);
+  assert.match(FINAL_SOUND_EFFECT_FILTER, /I=-18/);
+  assert.match(FINAL_SOUND_EFFECT_FILTER, /TP=-3/);
 });
 
 test("ElevenLabs permission failures remain actionable without exposing credentials", async () => {

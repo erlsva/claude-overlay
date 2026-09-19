@@ -85,6 +85,18 @@ test("billable speech that overruns a scene is preserved with a warning", () => 
   assert.deepEqual(warning, { natural: 10.8, requested: 10 });
 });
 
+test("minor speech overrun is preserved without a noisy warning", () => {
+  const dry = new Float32Array(Math.round(RATE * 10.3));
+  const scene = parsePrompt('((man saying "This is nearly exact";10s))').scenes[0];
+  let warned = false;
+  const output = effectTail(dry, scene, { start: 9.8, end: 10.3 }, () => {
+    warned = true;
+  });
+
+  assert.equal(output.length, dry.length);
+  assert.equal(warned, false);
+});
+
 test("room reverb remains active when natural speech has no decay time left", () => {
   const dry = new Float32Array(RATE * 2);
   dry[0] = 0.8;

@@ -869,15 +869,15 @@ function createMediaElement(
     const wrap = document.createElement("div");
     wrap.style.cssText =
       "width:100%;height:100%;min-height:86px;display:flex;flex-direction:column;" +
-      "box-sizing:border-box;background:#17171b;border:1px solid #34343c;border-radius:8px;overflow:hidden;";
+      "box-sizing:border-box;background:var(--bg-raised);border:1px solid var(--line);border-radius:8px;overflow:hidden;";
 
     const name = el.displayName || getFileLabel(src) || "Audio";
     const label = document.createElement("div");
     label.title = `${name} · Drag to move · Use the round handle above the selection to rotate`;
     label.style.cssText =
-      "height:30px;flex-shrink:0;padding:0 10px;box-sizing:border-box;color:#d6d8de;" +
+      "height:30px;flex-shrink:0;padding:0 10px;box-sizing:border-box;color:var(--text-primary);" +
       "font:600 11px Inter,sans-serif;display:flex;align-items:center;gap:6px;cursor:move;" +
-      "background:#202027;border-bottom:1px solid #34343c;user-select:none;";
+      "background:var(--bg-control);border-bottom:1px solid var(--line);user-select:none;";
     const labelIcon = document.createElement("span");
     labelIcon.innerHTML = iconHTML(FileAudio, 12);
     labelIcon.style.cssText = "display:flex;flex-shrink:0;";
@@ -1223,21 +1223,14 @@ export function ElementPanel({
 
   const arrowBtn = (disabled: boolean, label: string, onClick: () => void) => (
     <button
-      className="ui-icon-button ui-button--compact"
+      className="ui-icon-button ui-button--compact ui-icon-button--ghost layer-row__arrow"
+      disabled={disabled}
       onClick={(e) => {
         e.stopPropagation();
         if (!disabled) onClick();
       }}
       title={`Move layer ${label}`}
-      style={{
-        background: "none",
-        border: "none",
-        cursor: disabled ? "default" : "pointer",
-        padding: "1px 2px",
-        color: disabled ? "#444" : "#999",
-        lineHeight: 1,
-        display: "block",
-      }}
+      aria-label={`Move layer ${label}`}
     >
       {label === "up" ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
     </button>
@@ -1254,8 +1247,8 @@ export function ElementPanel({
     const sel = selectedIds.has(el.id);
     const label =
       el.type === "text"
-        ? parseTextSrc(el.src).text.slice(0, 18) || "Text"
-        : (el.displayName || getFileLabel(el.src)).slice(0, 22) || el.type;
+        ? parseTextSrc(el.src).text.slice(0, 60) || "Text"
+        : (el.displayName || getFileLabel(el.src)).slice(0, 80) || el.type;
     const isTop = inGroup ? memberIdx === 0 : slotIdx === 0;
     const isBottom = inGroup
       ? memberIdx === groupSize! - 1
@@ -1264,66 +1257,30 @@ export function ElementPanel({
       <div
         key={el.id}
         onClick={(e) => onSelect(el.id, e.shiftKey || e.metaKey || e.ctrlKey)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 3,
-          padding: `4px 6px 4px ${inGroup ? 14 : 8}px`,
-          cursor: "pointer",
-          background: sel ? "#1e2030" : "transparent",
-          borderLeft: sel
-            ? "2px solid var(--accent-border)"
-            : "2px solid transparent",
-        }}
+        className={`layer-row${sel ? " is-selected" : ""}${inGroup ? " is-grouped" : ""}${el.visible ? "" : " is-hidden"}`}
       >
-        <span style={{ fontSize: 10 }}>{icon(el.type)}</span>
-        <span
-          style={{
-            fontSize: 11,
-            flex: 1,
-            color: el.visible ? "#d1d5db" : "#7c8593",
-            fontWeight: 500,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontFamily: "Inter,sans-serif",
-          }}
-        >
+        <span className="layer-row__icon">{icon(el.type)}</span>
+        <span className="layer-row__label" title={label}>
           {label}
         </span>
-        {el.type !== "text" && (
-          <button
-            className="ui-icon-button ui-button--compact"
-            title="Rename this media in the dashboard"
-            aria-label={`Rename ${label}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              const value = window.prompt(
-                "Media name",
-                el.displayName || getFileLabel(el.src) || el.type,
-              )?.trim();
-              if (value) onElementChange(el.id, { displayName: value.slice(0, 120) });
-            }}
-            style={{
-              width: 22,
-              height: 22,
-              padding: 0,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              background: "#1d1d20",
-              border: "1px solid #34343a",
-              color: "#aeb6c2",
-              cursor: "pointer",
-            }}
-          >
-            <Pencil size={11} />
-          </button>
-        )}
-        <div
-          style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
-        >
+        <div className="layer-row__tools">
+          {el.type !== "text" && (
+            <button
+              className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+              title="Rename this media in the dashboard"
+              aria-label={`Rename ${label}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                const value = window.prompt(
+                  "Media name",
+                  el.displayName || getFileLabel(el.src) || el.type,
+                )?.trim();
+                if (value) onElementChange(el.id, { displayName: value.slice(0, 120) });
+              }}
+            >
+              <Pencil size={13} />
+            </button>
+          )}
           {arrowBtn(isTop, "up", () =>
             inGroup
               ? moveMember(groupId!, el.id, "up")
@@ -1334,46 +1291,30 @@ export function ElementPanel({
               ? moveMember(groupId!, el.id, "down")
               : moveSlot(slotIdx, "down"),
           )}
+          <button
+            className="ui-icon-button ui-button--compact ui-icon-button--ghost ui-icon-button--danger"
+            title="Delete this layer. Use Ctrl/Cmd + Z immediately afterward to undo"
+            aria-label={`Delete ${label}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(el.id);
+            }}
+          >
+            <X size={14} />
+          </button>
         </div>
         <button
-          className="ui-icon-button ui-button--compact"
+          className="ui-icon-button ui-button--compact ui-icon-button--ghost layer-row__eye"
           title={
-            el.visible ? "Hide this layer from OBS" : "Show this layer in OBS"
+            el.visible ? "Hide this layer from the overlay" : "Show this layer on the overlay"
           }
+          aria-label={el.visible ? `Hide ${label}` : `Show ${label}`}
           onClick={(e) => {
             e.stopPropagation();
             onToggleVisible(el.id);
           }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "0 2px",
-            color: el.visible ? "#999" : "#555",
-            flexShrink: 0,
-            display: "flex",
-          }}
         >
-          {el.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-        </button>
-        <button
-          className="ui-icon-button ui-button--compact ui-danger"
-          title="Delete this layer. Use Ctrl/Cmd + Z immediately afterward to undo"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(el.id);
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "0 2px",
-            color: "#777",
-            flexShrink: 0,
-            display: "flex",
-          }}
-        >
-          <X size={13} />
+          {el.visible ? <Eye size={15} /> : <EyeOff size={15} />}
         </button>
       </div>
     );
@@ -1384,29 +1325,16 @@ export function ElementPanel({
       className="layers-panel"
       style={{
         width: "var(--sidebar-width)",
-        background: "#111",
-        borderRight: "1px solid #222",
+        background: "var(--bg-panel)",
+        borderRight: "1px solid var(--line)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
         flexShrink: 0,
       }}
     >
-      <div
-        style={{
-          padding: "8px 10px 4px",
-          fontSize: 10,
-          color: "#8b95a5",
-          fontWeight: 600,
-          borderBottom: "1px solid #1e1e1e",
-          fontFamily: "Inter,sans-serif",
-          letterSpacing: "0.08em",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <span>LAYERS</span>
+      <div className="layers-panel__header">
+        <span>Layers</span>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 4 }}>
           {selectedElement && !selectedElement.locked && (
             <span style={{ display: "none" }}>
@@ -1418,11 +1346,11 @@ export function ElementPanel({
                   display: "flex",
                   alignItems: "center",
                   gap: 3,
-                  background: "#1e2030",
-                  border: "1px solid #334",
+                  background: "var(--bg-control)",
+                  border: "1px solid var(--line-strong)",
                   borderRadius: 3,
                   color: "var(--accent-text)",
-                  fontSize: 9,
+                  fontSize: 11,
                   padding: "2px 5px",
                   cursor: "pointer",
                 }}
@@ -1437,11 +1365,11 @@ export function ElementPanel({
                   display: "flex",
                   alignItems: "center",
                   gap: 3,
-                  background: "#1e2030",
-                  border: "1px solid #334",
+                  background: "var(--bg-control)",
+                  border: "1px solid var(--line-strong)",
                   borderRadius: 3,
                   color: "var(--accent-text)",
-                  fontSize: 9,
+                  fontSize: 11,
                   padding: "2px 5px",
                   cursor: "pointer",
                 }}
@@ -1463,15 +1391,15 @@ export function ElementPanel({
                     gap: 3,
                     background: selectedElement.dvdEnabled
                       ? "var(--accent-surface-strong)"
-                      : "#1e2030",
+                      : "var(--bg-control)",
                     border: selectedElement.dvdEnabled
                       ? "1px solid var(--accent-border)"
-                      : "1px solid #334",
+                      : "1px solid var(--line-strong)",
                     borderRadius: 3,
                     color: selectedElement.dvdEnabled
                       ? "var(--accent-text)"
                       : "#aaa",
-                    fontSize: 9,
+                    fontSize: 11,
                     padding: "2px 5px",
                     cursor: "pointer",
                   }}
@@ -1481,8 +1409,8 @@ export function ElementPanel({
               )}
               {canFlipSelected && (
                 <>
-                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("x")} title="Flip selected media left to right" style={{ background: "#1e2030", border: "1px solid #334", color: "var(--accent-text)", cursor: "pointer" }}><FlipHorizontal2 size={12} /></button>
-                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("y")} title="Flip selected media top to bottom" style={{ background: "#1e2030", border: "1px solid #334", color: "var(--accent-text)", cursor: "pointer" }}><FlipVertical2 size={12} /></button>
+                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("x")} title="Flip selected media left to right" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: "var(--accent-text)", cursor: "pointer" }}><FlipHorizontal2 size={12} /></button>
+                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("y")} title="Flip selected media top to bottom" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: "var(--accent-text)", cursor: "pointer" }}><FlipVertical2 size={12} /></button>
                 </>
               )}
             </span>
@@ -1491,13 +1419,12 @@ export function ElementPanel({
             <button
               className="ui-button ui-button--compact"
               onClick={onGroup}
-              title="Group selected"
               style={{
-                background: "#1e2030",
-                border: "1px solid #334",
+                background: "var(--bg-control)",
+                border: "1px solid var(--line-strong)",
                 borderRadius: 3,
                 color: "var(--accent-text)",
-                fontSize: 9,
+                fontSize: 11,
                 padding: "1px 4px",
                 cursor: "pointer",
               }}
@@ -1511,11 +1438,11 @@ export function ElementPanel({
               onClick={onUngroup}
               title="Ungroup"
               style={{
-                background: "#1e2030",
-                border: "1px solid #334",
+                background: "var(--bg-control)",
+                border: "1px solid var(--line-strong)",
                 borderRadius: 3,
                 color: "#f87171",
-                fontSize: 9,
+                fontSize: 11,
                 padding: "1px 4px",
                 cursor: "pointer",
               }}
@@ -1526,23 +1453,12 @@ export function ElementPanel({
         </div>
       </div>
       {elements.length > 0 && (
-        <div style={{ padding: "6px 8px", borderBottom: "1px solid #1e1e1e" }}>
+        <div className="layers-panel__search">
           <input
             value={layerSearch}
             onChange={(event) => setLayerSearch(event.target.value)}
             placeholder="Search layers…"
             aria-label="Search layers"
-            style={{
-              width: "100%",
-              height: 30,
-              boxSizing: "border-box",
-              padding: "0 8px",
-              border: "1px solid #34343a",
-              borderRadius: 5,
-              background: "#171719",
-              color: "#e1e5eb",
-              fontSize: 11,
-            }}
           />
         </div>
       )}
@@ -1555,7 +1471,7 @@ export function ElementPanel({
             display: "flex",
             alignItems: "center",
             gap: 7,
-            borderBottom: "1px solid #1e1e1e",
+            borderBottom: "1px solid var(--line)",
             background: "var(--accent-surface)",
             flexShrink: 0,
           }}
@@ -1563,8 +1479,8 @@ export function ElementPanel({
           <Disc size={12} color="var(--accent-text)" />
           <span
             style={{
-              color: "#aaa",
-              fontSize: 10,
+              color: "var(--text-secondary)",
+              fontSize: 11,
               fontFamily: "Inter,sans-serif",
             }}
           >
@@ -1588,7 +1504,7 @@ export function ElementPanel({
             style={{
               width: 30,
               color: "var(--accent-text)",
-              fontSize: 9,
+              fontSize: 11,
               fontFamily: "monospace",
               textAlign: "right",
             }}
@@ -1611,7 +1527,6 @@ export function ElementPanel({
                 type="button"
                 className="ui-button selected-text-edit-button"
                 onClick={() => onEditText(selectedElement.id)}
-                title="Edit this text layer's content and styling"
               >
                 <Pencil size={13} /> Edit text and style
               </button>
@@ -1677,7 +1592,6 @@ export function ElementPanel({
                   onChange={(event) =>
                     setSelectedAnimation(event.target.value as SelectedAnimation)
                   }
-                  title="Choose a one-time animation for this media"
                 >
                   <optgroup label="Reactions">
                     <option value="bounce">Bounce</option>
@@ -1726,7 +1640,7 @@ export function ElementPanel({
               <button
                 className="ui-button selected-animation-play"
                 onClick={playSelectedAnimation}
-                title="Play this animation now on the dashboard and OBS overlay"
+                title="Play this animation now on the dashboard and overlay"
               >
                 <Play size={13} /> Play animation
               </button>
@@ -1745,11 +1659,6 @@ export function ElementPanel({
                   locked: !selectedElement.locked,
                 })
               }
-              title={
-                selectedElement.locked
-                  ? "Unlock this element for editing"
-                  : "Lock this element to prevent accidental movement, resizing, or deletion"
-              }
             >
               {selectedElement.locked ? <Unlock size={13} /> : <Lock size={13} />}
               {selectedElement.locked ? "Unlock layer" : "Lock layer"}
@@ -1762,13 +1671,13 @@ export function ElementPanel({
           Select a layer to edit opacity, animations, locking, and effects.
         </div>
       )}
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div className="layers-list">
         {slots.length === 0 && (
           <div
             style={{
               padding: 16,
               fontSize: 11,
-              color: "#737d8c",
+              color: "var(--text-muted)",
               textAlign: "center",
               fontFamily: "Inter,sans-serif",
             }}
@@ -1777,7 +1686,7 @@ export function ElementPanel({
           </div>
         )}
         {slots.length > 0 && visibleSlots.length === 0 && (
-          <div style={{ padding: 16, fontSize: 11, color: "#737d8c", textAlign: "center" }}>
+          <div style={{ padding: 16, fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
             No layers match “{layerSearch}”.
           </div>
         )}
@@ -1794,7 +1703,7 @@ export function ElementPanel({
             <div
               key={slot.groupId}
               style={{
-                margin: "4px 5px",
+                margin: "4px 0",
                 border: "1px solid rgba(var(--accent-rgb),0.45)",
                 borderRadius: 5,
                 background: "rgba(var(--accent-rgb),0.04)",
@@ -1826,7 +1735,7 @@ export function ElementPanel({
                 >
                   {slot.members[0]?.groupName || "Group"}{" "}
                   <span
-                    style={{ color: "#8b95a5", fontWeight: 500, fontSize: 10 }}
+                    style={{ color: "var(--text-muted)", fontWeight: 500, fontSize: 11 }}
                   >
                     ({slot.members.length})
                   </span>
@@ -1856,8 +1765,8 @@ export function ElementPanel({
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
-                    background: "#1d1d20",
-                    border: "1px solid #34343a",
+                    background: "var(--bg-raised)",
+                    border: "1px solid var(--line)",
                     color: "var(--accent-text)",
                     cursor: "pointer",
                   }}
@@ -1867,7 +1776,7 @@ export function ElementPanel({
                 <div
                   style={{
                     display: "flex",
-                    flexDirection: "column",
+                    flexDirection: "row",
                     flexShrink: 0,
                   }}
                 >
@@ -2055,9 +1964,12 @@ export interface CanvasStageProps {
     ((id: string, changes: Partial<CanvasElement>) => void) | null
   >;
   previewFlyRef?: React.MutableRefObject<
-    ((id: string, direction: FlyDirection, durationSeconds: number) => boolean) | null
+    ((id: string, direction: FlyDirection, durationSeconds: number, onDone?: () => void) => (() => void) | null) | null
   >;
   showTwitchEmbed?: boolean;
+  /** True while the player itself takes the mouse (play, pause, mute) and the canvas is paused. */
+  twitchInteractionEnabled?: boolean;
+  onTwitchInteractionChange?: (enabled: boolean) => void;
   twitchChannel?: string;
   drawingLayer?: React.ReactNode;
 }
@@ -2077,6 +1989,8 @@ export function CanvasStage({
   directUpdateRef,
   previewFlyRef,
   showTwitchEmbed = false,
+  twitchInteractionEnabled = false,
+  onTwitchInteractionChange,
   twitchChannel = "",
   drawingLayer,
 }: CanvasStageProps) {
@@ -2089,7 +2003,9 @@ export function CanvasStage({
   const volumeCommitTimersRef = useRef<Map<string, number>>(new Map());
   const groupBoxMapRef = useRef<Map<string, HTMLElement>>(new Map());
   const twitchEmbedRef = useRef<HTMLDivElement>(null);
-  const [twitchInteractionEnabled, setTwitchInteractionEnabled] = useState(false);
+  const interactionChangeRef = useRef(onTwitchInteractionChange);
+  interactionChangeRef.current = onTwitchInteractionChange;
+  const setTwitchInteractionEnabled = useCallback((enabled: boolean) => interactionChangeRef.current?.(enabled), []);
   const [twitchNeedsReconnect, setTwitchNeedsReconnect] = useState(false);
   const [twitchPlayerGeneration, setTwitchPlayerGeneration] = useState(0);
   const snapXGuideRef = useRef<HTMLDivElement>(null);
@@ -2299,10 +2215,10 @@ export function CanvasStage({
     const presentIds = new Set(elements.map((e) => e.id));
 
     if (previewFlyRef) {
-      previewFlyRef.current = (id, direction, durationSeconds) => {
+      previewFlyRef.current = (id, direction, durationSeconds, onDone) => {
         const node = nodeMap.get(id);
         const element = elementsRef.current.find((item) => item.id === id);
-        if (!node || !element) return false;
+        if (!node || !element) return null;
         const [movement, lane] = direction.split(
           /-(?=top$|center$|bottom$|left$|right$)/,
         ) as [string, string];
@@ -2332,7 +2248,7 @@ export function CanvasStage({
           toY = movement === "top-to-bottom" ? STREAM_OFFSET_Y + STREAM_H : STREAM_OFFSET_Y - element.height;
         }
         node.getAnimations().forEach((animation) => animation.cancel());
-        node.animate(
+        const flight = node.animate(
           [
             { left: `${fromX}px`, top: `${fromY}px`, opacity: 1 },
             { left: `${toX}px`, top: `${toY}px`, opacity: 1 },
@@ -2342,7 +2258,9 @@ export function CanvasStage({
             easing: "linear",
           },
         );
-        return true;
+        flight.onfinish = () => onDone?.();
+        flight.oncancel = () => onDone?.();
+        return () => flight.cancel();
       };
     }
 
@@ -3026,7 +2944,7 @@ export function CanvasStage({
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        background: "#161616",
+        background: "var(--bg-app)",
         userSelect: "none",
       }}
       onContextMenu={(e) => e.preventDefault()}
@@ -3039,7 +2957,7 @@ export function CanvasStage({
           transformOrigin: "0 0",
           width: WORKSPACE_W,
           height: WORKSPACE_H,
-          background: "#111",
+          background: "var(--bg-panel)",
         }}
       >
         {/* Twitch.Player container — inside workspace so zoom/pan applies automatically */}
@@ -3071,7 +2989,7 @@ export function CanvasStage({
             position: "absolute",
             left: STREAM_OFFSET_X,
             top: STREAM_OFFSET_Y - 22,
-            fontSize: 10,
+            fontSize: 11,
             color: "var(--accent-border)",
             fontFamily: "Inter,sans-serif",
             userSelect: "none",
@@ -3081,45 +2999,6 @@ export function CanvasStage({
         >
           1920 × 1080 — stream viewport
         </div>
-        <button
-          type="button"
-          className="ui-button ui-button--compact"
-          onClick={(event) => {
-            event.stopPropagation();
-            setTwitchInteractionEnabled((enabled) => !enabled);
-          }}
-          title={
-            twitchInteractionEnabled
-              ? "Lock Twitch input and restore canvas zoom, pan, selection, and dragging"
-              : "Temporarily unlock Twitch input so you can press its Play button"
-          }
-          aria-pressed={twitchInteractionEnabled}
-          style={{
-            position: "absolute",
-            left: STREAM_OFFSET_X + STREAM_W - 112,
-            top: STREAM_OFFSET_Y - 29,
-            width: 112,
-            height: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 5,
-            padding: "0 7px",
-            border: `1px solid ${
-              twitchInteractionEnabled ? "#f59e0b" : "#3a3a3f"
-            }`,
-            borderRadius: 4,
-            background: twitchInteractionEnabled ? "#3a2608" : "#1b1b1d",
-            color: twitchInteractionEnabled ? "#fbbf24" : "#b7bec8",
-            fontSize: 10,
-            fontWeight: 700,
-            cursor: "pointer",
-            zIndex: 5,
-          }}
-        >
-          {twitchInteractionEnabled ? <Unlock size={12} /> : <Lock size={12} />}
-          {twitchInteractionEnabled ? "Finish input" : "Play stream"}
-        </button>
         <div
           className="viewport-rect"
           style={{
@@ -3208,7 +3087,7 @@ export function CanvasStage({
             title="Reset zoom and center the 1920×1080 stream area"
             style={{
               background: "rgba(0,0,0,0.7)",
-              color: "#aaa",
+              color: "var(--text-secondary)",
               fontSize: 11,
               pointerEvents: "all",
               padding: "0 10px",

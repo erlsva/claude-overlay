@@ -4,67 +4,88 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
-  ClipboardCheck,
+  ImagePlus,
   Layers3,
+  MonitorPlay,
   Radio,
+  Rocket,
+  SlidersHorizontal,
   Sparkles,
   Type,
-  WandSparkles,
   X,
 } from "lucide-react";
 import { ActionScopeBadge } from "./ActionScopeBadge";
+import { usePresence } from "../hooks/usePresence";
 
 const steps = [
   {
     eyebrow: "Your workspace",
     title: "Everything has a home",
     description:
-      "Layers and activity live on the left, the 1920×1080 stream area is in the middle, and Studio opens from the right for automation and effects.",
+      "Layers are on the left, the 1920×1080 stream area is in the middle, and Studio opens from the right.",
     Icon: Layers3,
     points: [
       "Select a layer to reveal its editing controls.",
-      "Drag outside the stream area to stage media without showing it on OBS.",
-      "Use middle-mouse to pan and the mouse wheel to zoom.",
+      "Drag outside the stream area to stage media without showing it on the overlay.",
+      "Middle-mouse pans and the mouse wheel zooms.",
+    ],
+  },
+  {
+    eyebrow: "Media",
+    title: "Bring in media",
+    description:
+      "Use Add media or drop a file onto the canvas. Text and Draw sit right beside it.",
+    Icon: ImagePlus,
+    points: [
+      "Ctrl/Cmd + V pastes an image, GIF or text straight onto the canvas.",
+      "Library keeps shared default videos, images and sounds that survive restarts.",
+      "Everyone with access can add to the Library or remove from it.",
+    ],
+  },
+  {
+    eyebrow: "Studio",
+    title: "Sounds, automations and emotes",
+    description:
+      "Studio is where the overlay reacts to chat, Twitch events and your own buttons.",
+    Icon: SlidersHorizontal,
+    points: [
+      "Sounds: Preview plays only in your browser, Play on overlay is heard on stream.",
+      "Automations: chat commands and Twitch events live together. Press ▶ to run one as a test.",
+      "Emotes: tune how chat emotes move, and block emotes or chatters.",
     ],
   },
   {
     eyebrow: "Know the audience",
-    title: "Preview safely before going live",
+    title: "See where things play",
     description:
-      "Actions now say where they run. Dashboard previews are private to you; OBS actions are visible or audible to the stream.",
+      "Actions say where they run. Dashboard-only actions are private to you; overlay actions are seen or heard by viewers.",
     Icon: Radio,
     scopes: true,
     points: [
-      "Preview a sound or movement without affecting the stream.",
-      "Use OBS actions only when you are ready for viewers to see or hear them.",
-      "Canvas edits are shared with other dashboard users in real time.",
+      "Try a sound or movement privately before it goes live.",
+      "Canvas edits are shared with everyone on the dashboard in real time.",
     ],
   },
   {
-    eyebrow: "Automation",
-    title: "Build commands like a sentence",
+    eyebrow: "Watch it live",
+    title: "Keep an eye on the overlay",
     description:
-      "The command builder follows a simple flow: choose what starts it, choose what happens, then control who can use it and save.",
-    Icon: WandSparkles,
-    flow: true,
+      "The Overlay group in the top bar shows a silent live copy of what viewers see, and refreshes the overlay in OBS.",
+    Icon: MonitorPlay,
     points: [
-      "Commands listen to public chat without broadcaster authentication.",
-      "Events require Vicksy or Wixels to connect their Twitch account.",
-      "DankChapBot needs its own connection to send automated chat messages.",
+      "Overlay Online means OBS has loaded the page. If it says Offline, nothing you play reaches the stream.",
+      "The Preview eye shows the Twitch stream behind the canvas. The pointer button next to it lets you use the player’s own play and mute controls.",
+      "Go-live check catches missing connections and misplaced media.",
     ],
   },
   {
-    eyebrow: "Ready for stream",
-    title: "Check before viewers arrive",
+    eyebrow: "One last thing",
+    title: "Finish with the setup guide",
     description:
-      "Connection indicators show what is live. The go-live check catches missing OBS, Twitch permissions, broken command targets, and misplaced media.",
-    Icon: CheckCircle2,
-    points: [
-      "Green status means the dashboard or OBS connection is online.",
-      "Warnings explain what needs attention and where to fix it.",
-      "Open the ? guide any time for every shortcut and control.",
-    ],
+      "It has the overlay URL and OBS settings, a sound test and what each role can do. Streamers should go through it once before going live.",
+    Icon: Rocket,
     checklist: true,
+    points: [],
   },
 ] as const;
 
@@ -76,7 +97,6 @@ export function OnboardingTour({
   overlayConnected,
   onStartText,
   onOpenSetup,
-  onOpenReadiness,
 }: {
   open: boolean;
   userName: string;
@@ -85,9 +105,9 @@ export function OnboardingTour({
   overlayConnected: boolean;
   onStartText: () => void;
   onOpenSetup: () => void;
-  onOpenReadiness: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const presence = usePresence(open);
 
   useEffect(() => {
     if (!open) return;
@@ -99,15 +119,16 @@ export function OnboardingTour({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose, open]);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
   const current = steps[step];
   const CurrentIcon = current.Icon;
   const lastStep = step === steps.length - 1;
 
   return (
-    <div className="onboarding-backdrop" role="presentation">
+    <div className="onboarding-backdrop motion-backdrop" data-state={presence.state} role="presentation">
       <section
-        className="onboarding-dialog"
+        className="onboarding-dialog motion-dialog"
+        data-state={presence.state}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
@@ -115,7 +136,7 @@ export function OnboardingTour({
         <header>
           <div className="onboarding-brand">
             <Sparkles size={15} aria-hidden="true" />
-            Vicksy OBS Overlay
+            Stream Overlay
           </div>
           <button
             className="ui-icon-button"
@@ -127,7 +148,7 @@ export function OnboardingTour({
           </button>
         </header>
 
-        <div className="onboarding-content">
+        <div className="onboarding-content" key={step}>
           <div className="onboarding-visual" aria-hidden="true">
             <CurrentIcon size={42} strokeWidth={1.6} />
             {"scopes" in current && current.scopes && (
@@ -137,12 +158,6 @@ export function OnboardingTour({
                 <ActionScopeBadge scope="both" />
               </div>
             )}
-            {"flow" in current && current.flow && (
-              <div className="onboarding-flow-sample">
-                <span>WHEN</span><ArrowRight size={12} /><span>DO</span>
-                <ArrowRight size={12} /><span>THEN</span>
-              </div>
-            )}
           </div>
           <div className="onboarding-copy">
             <span className="onboarding-eyebrow">
@@ -150,14 +165,15 @@ export function OnboardingTour({
             </span>
             <h2 id="onboarding-title">{current.title}</h2>
             <p>{current.description}</p>
-            <ul>
-              {current.points.map((point) => <li key={point}>{point}</li>)}
-            </ul>
+            {current.points.length > 0 && (
+              <ul>
+                {current.points.map((point) => <li key={point}>{point}</li>)}
+              </ul>
+            )}
             {"checklist" in current && current.checklist && (
               <div className="onboarding-checklist">
-                <ChecklistItem done={hasLayers} label="Create your first layer" action="Add text" Icon={Type} onClick={onStartText} />
-                <ChecklistItem done={overlayConnected} label="Connect the OBS browser source" action="View setup" Icon={Radio} onClick={onOpenSetup} />
-                <ChecklistItem done={false} label="Run the pre-stream checks" action="Open check" Icon={ClipboardCheck} onClick={onOpenReadiness} />
+                <ChecklistItem done={hasLayers} label="Add your first layer" action="Add text" Icon={Type} onClick={onStartText} />
+                <ChecklistItem done={overlayConnected} label="Overlay is online in OBS" action="Set it up" Icon={Radio} onClick={onOpenSetup} />
               </div>
             )}
           </div>
@@ -181,13 +197,18 @@ export function OnboardingTour({
                 <ArrowLeft size={13} /> Back
               </button>
             )}
-            <button
-              className="ui-button studio-primary"
-              onClick={() => lastStep ? onClose() : setStep(step + 1)}
-            >
-              {lastStep ? "Start creating" : "Next"}
-              {lastStep ? <CheckCircle2 size={14} /> : <ArrowRight size={14} />}
-            </button>
+            {lastStep ? (
+              <>
+                <button className="ui-button" onClick={onClose}>Skip for now</button>
+                <button className="ui-button studio-primary" onClick={onOpenSetup}>
+                  <Rocket size={14} /> Open setup guide
+                </button>
+              </>
+            ) : (
+              <button className="ui-button studio-primary" onClick={() => setStep(step + 1)}>
+                Next <ArrowRight size={14} />
+              </button>
+            )}
           </div>
         </footer>
       </section>

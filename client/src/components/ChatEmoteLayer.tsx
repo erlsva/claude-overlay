@@ -19,6 +19,10 @@ interface ChatEmoteLayerProps {
   spawn: ChatEmoteSpawn | null;
   settings: ChatEmoteSettings;
   preview?: boolean;
+  /** Preview only: true while any emote is on screen. */
+  onActiveChange?: (active: boolean) => void;
+  /** Preview only: changing this number removes every emote right away. */
+  clearSignal?: number;
 }
 
 function loadImageAspectRatio(imageUrl: string) {
@@ -36,7 +40,7 @@ function loadImageAspectRatio(imageUrl: string) {
   });
 }
 
-export function ChatEmoteLayer({ spawn, settings, preview = false }: ChatEmoteLayerProps) {
+export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChange, clearSignal = 0 }: ChatEmoteLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const nodesRef = useRef(new Map<string, HTMLDivElement>());
@@ -51,6 +55,14 @@ export function ChatEmoteLayer({ spawn, settings, preview = false }: ChatEmoteLa
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    if (preview) onActiveChange?.(particles.length > 0);
+  }, [preview, particles.length]);
+
+  useEffect(() => {
+    if (clearSignal) setParticles([]);
+  }, [clearSignal]);
 
   useEffect(() => {
     if (!preview && !settings.enabled) setParticles([]);

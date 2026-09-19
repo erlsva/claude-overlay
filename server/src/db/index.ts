@@ -2,7 +2,7 @@ import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import { mkdirSync } from 'fs';
 import path from 'path';
-import type { ChatEmoteSettings, ElementPreset, OverlayTrigger, SavedScene, SoundboardItem } from '../types.js';
+import type { ChatEmoteSettings, ElementPreset, FeatureFlags, OverlayTrigger, SavedScene, SoundboardItem } from '../types.js';
 import { postgres } from './postgres.js';
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
@@ -22,6 +22,7 @@ interface DbSchema {
   sounds: SoundboardItem[];
   triggers: OverlayTrigger[];
   chatEmoteSettings?: ChatEmoteSettings;
+  featureFlags?: FeatureFlags;
   twitchAuth?: { encryptedAccessToken: string; encryptedRefreshToken: string; expiresAt: number; userId: string };
 }
 
@@ -35,6 +36,17 @@ db.data.sounds ??= [];
 db.data.triggers ??= [];
 
 let whitelistCache: WhitelistEntry[] = [...db.data.whitelist];
+const DEFAULT_FEATURE_FLAGS: FeatureFlags = { tts: true, scenes: false };
+let featureFlagsCache: FeatureFlags = { ...DEFAULT_FEATURE_FLAGS, ...db.data.featureFlags };
+
+async function ensureAppSettingsTable(): Promise<void> {
+  if (!postgres) return;
+  await postgres.query(`CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+}
 
 export async function initializeWhitelistStore(): Promise<void> {
   if (!postgres) return;
@@ -104,17 +116,45 @@ export function getChatEmoteSettings(): ChatEmoteSettings | undefined {
 
 export async function initializeChatEmoteSettingsStore(): Promise<ChatEmoteSettings | undefined> {
   if (!postgres) return db.data.chatEmoteSettings;
-  await postgres.query(`CREATE TABLE IF NOT EXISTS app_settings (
-    key TEXT PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  )`);
+  await ensureAppSettingsTable();
   const result = await postgres.query("SELECT value FROM app_settings WHERE key = 'chat_emotes'");
   if (result.rows[0]?.value) return result.rows[0].value as ChatEmoteSettings;
   if (db.data.chatEmoteSettings) {
     await postgres.query("INSERT INTO app_settings (key, value) VALUES ('chat_emotes', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify(db.data.chatEmoteSettings)]);
   }
   return db.data.chatEmoteSettings;
+}
+
+export async function initializeFeatureFlagsStore(): Promise<FeatureFlags> {
+  if (!postgres) return featureFlagsCache;
+  await ensureAppSettingsTable();
+  const result = await postgres.query("SELECT value FROM app_settings WHERE key = 'feature_flags'");
+  const stored = result.rows[0]?.value as Partial<FeatureFlags> | undefined;
+  featureFlagsCache = {
+    ...DEFAULT_FEATURE_FLAGS,
+    ...(stored && typeof stored === 'object' ? stored : {}),
+  };
+  if (!stored && db.data.featureFlags) {
+    await postgres.query("INSERT INTO app_settings (key, value) VALUES ('feature_flags', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify(featureFlagsCache)]);
+  }
+  return featureFlagsCache;
+}
+
+export function getFeatureFlags(): FeatureFlags {
+  return { ...featureFlagsCache };
+}
+
+export async function saveFeatureFlags(flags: FeatureFlags): Promise<void> {
+  featureFlagsCache = { ...DEFAULT_FEATURE_FLAGS, ...flags };
+  if (postgres) {
+    await ensureAppSettingsTable();
+    await postgres.query(`INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('feature_flags', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [JSON.stringify(featureFlagsCache)]);
+    return;
+  }
+  db.data.featureFlags = featureFlagsCache;
+  await db.write();
 }
 
 export async function saveChatEmoteSettings(settings: ChatEmoteSettings): Promise<void> {

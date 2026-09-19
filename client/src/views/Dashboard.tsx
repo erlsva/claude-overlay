@@ -16,6 +16,7 @@ import {
 import type { TextConfig } from "../canvas/config";
 import { DEFAULT_TEXT_CONFIG } from "../canvas/config";
 import { useSocket } from "../hooks/useSocket";
+import { usePresence } from "../hooks/usePresence";
 import { randomUUID } from "../utils";
 import type { AuthUser } from "../hooks/useAuth";
 import { authHeaders } from "../hooks/useAuth";
@@ -34,15 +35,23 @@ import {
   Settings,
   MessageCircle,
   Volume2,
+  LogOut,
+  MonitorPlay,
+  MousePointerClick,
+  Rocket,
   X,
 } from "lucide-react";
 import { useToast } from "../components/ToastProvider";
 import { HelpGuide } from "../components/HelpGuide";
 import { SelectionHint } from "../components/SelectionHint";
 import { OnboardingTour } from "../components/OnboardingTour";
+import { Segmented } from "../components/Segmented";
 import TileController from "../components/TileController";
 import { ReadinessCheck } from "../components/ReadinessCheck";
 import { SupportDiagnostics } from "../components/SupportDiagnostics";
+import { SetupGuide } from "../components/SetupGuide";
+import { OverlayMirror } from "../components/OverlayMirror";
+import { RoleTag } from "../components/RoleTag";
 import { useConfirm } from "../components/ConfirmProvider";
 import {
   CUSTOM_ACCENT_STORAGE_KEY,
@@ -56,7 +65,7 @@ import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChan
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
-const ONBOARDING_VERSION = "v1";
+const ONBOARDING_VERSION = "v2";
 const APP_VERSION = import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VERSION ?? "local";
 const UI_SCALE_STORAGE_KEY = "overlay_dashboard_ui_scale";
 const UI_SCALE_OPTIONS = [100, 110, 125] as const;
@@ -118,7 +127,8 @@ export function Dashboard({
         id: string,
         direction: FlyDirection,
         durationSeconds: number,
-      ) => boolean)
+        onDone?: () => void,
+      ) => (() => void) | null)
     | null
   >(null);
 
@@ -157,7 +167,9 @@ export function Dashboard({
     historyStatus,
     chatChannel: twitchChannel,
     ttsPlayback,
+    featureFlags,
     setChatChannel: setTwitchChannel,
+    testOverlayAudio,
     undo,
     redo,
     saveScene,
@@ -169,6 +181,8 @@ export function Dashboard({
     saveSound,
     deleteSound,
     previewSound,
+    previewingSoundIds,
+    stopPreviewSound,
     playSound,
     stopSound,
     saveTrigger,
@@ -189,6 +203,24 @@ export function Dashboard({
   const copiedElementsRef = useRef<CanvasElement[]>([]);
   const mediaUploadRef = useRef<((file: File) => Promise<void>) | null>(null);
   const [showWhitelist, setShowWhitelist] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [showMirror, setShowMirror] = useState(() => {
+    try {
+      return localStorage.getItem("overlay_mirror") === "on";
+    } catch {
+      return false;
+    }
+  });
+  const toggleMirror = useCallback(() => {
+    setShowMirror((visible) => {
+      try {
+        localStorage.setItem("overlay_mirror", visible ? "off" : "on");
+      } catch {
+        // The preference is a convenience; the toggle still works without storage.
+      }
+      return !visible;
+    });
+  }, []);
   const [drawMode, setDrawMode] = useState(false);
   const [drawColor, setDrawColor] = useState("#ff4444");
   const [drawSize, setDrawSize] = useState(6);
@@ -197,14 +229,20 @@ export function Dashboard({
   const [toolMode, setToolMode] = useState<DrawToolMode>("pen");
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [showTwitchEmbed, setShowTwitchEmbed] = useState(true);
+  const [twitchInteraction, setTwitchInteraction] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [dvdSoundUploading, setDvdSoundUploading] = useState(false);
   const [activityMenuOpen, setActivityMenuOpen] = useState(false);
   const [presenceMenuOpen, setPresenceMenuOpen] = useState(false);
+  const profilePresence = usePresence(profileMenuOpen);
+  const activityPresence = usePresence(activityMenuOpen);
+  const connectionPresence = usePresence(presenceMenuOpen);
+  const mirrorPresence = usePresence(showMirror);
   const [showStudio, setShowStudio] = useState(true);
   const [theme, setTheme] = useState<DashboardTheme>(loadStoredTheme);
   const [customAccent, setCustomAccent] = useState(loadStoredAccent);
   const [uiScale, setUiScale] = useState<DashboardUiScale>(loadDashboardUiScale);
+  const [featureSaving, setFeatureSaving] = useState(false);
   const onboardingStorageKey = `overlay_onboarding_${ONBOARDING_VERSION}_${user.login.toLowerCase()}`;
   const [showOnboarding, setShowOnboarding] = useState(
     () => localStorage.getItem(onboardingStorageKey) !== "complete",
@@ -224,6 +262,26 @@ export function Dashboard({
   useEffect(() => {
     localStorage.setItem(UI_SCALE_STORAGE_KEY, String(uiScale));
   }, [uiScale]);
+
+  const setFeatureEnabled = useCallback(async (key: "tts" | "scenes", enabled: boolean) => {
+    setFeatureSaving(true);
+    try {
+      const response = await fetch(`${SERVER_URL}/features`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        // Send only the flag being changed so the server never resets another one.
+        body: JSON.stringify({ [key]: enabled }),
+      });
+      const body = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not update feature flags");
+      toast.success(`${key === "tts" ? "TTS Studio" : "Scenes"} ${enabled ? "enabled" : "disabled"}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update feature flags");
+    } finally {
+      setFeatureSaving(false);
+    }
+  }, [toast]);
 
   const handleDvdSoundUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -607,7 +665,7 @@ export function Dashboard({
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        background: "#0d0d0d",
+        background: "var(--bg-app)",
         color: "white",
         overflow: "hidden",
         ...(theme === "custom" ? customAccentVariables(customAccent) : {}),
@@ -615,150 +673,90 @@ export function Dashboard({
     >
       <TileController channel={twitchChannel} />
       {/* Top bar */}
-      <div
-        className="dashboard-topbar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 12px",
-          height: 48,
-          background: "#111",
-          borderBottom: "1px solid #222",
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 18,
-            fontWeight: 600,
-            color: "var(--accent-text)",
-            letterSpacing: "0.05em",
-          }}
-        >
-          OBS Overlay |{" "}
-          {twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {chatEmoteSettings.enabled && (
-            <span
-              className="chat-emote-active-indicator"
-              title="Chat emote mode is active on the OBS overlay. Live chat emotes are intentionally not mirrored on the dashboard; use Studio → Emotes for a local preview."
-            >
-              <span className="chat-emote-active-indicator__dot" />
-              <MessageCircle size={13} />
-              Chat emotes active
-            </span>
-          )}
-          {ttsPlayback.enabled && (
-            <span
-              className="chat-emote-active-indicator"
-              title="TTS playback is enabled for the OBS overlay. Open Studio → TTS to generate clips or turn TTS off."
-            >
-              <span className="chat-emote-active-indicator__dot" />
-              <Volume2 size={13} />
-              TTS active
-            </span>
-          )}
-          {isAdmin && (
-            <>
-              <button
-                className="ui-icon-button"
-                onClick={() => setShowWhitelist(true)}
-                style={{
-                  background: "#18181b",
-                  border: "1px solid #34343a",
-                  color: "#ccc",
-                  cursor: "pointer",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                title="Whitelist settings"
-              >
-                <Settings size={16} />
-              </button>
-            </>
-          )}
-          <span
-            style={{
-              height: 30,
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "0 9px",
-              border: "1px solid #303036",
-              borderRadius: 5,
-              background: "#171719",
-              color: "#929aa7",
-              fontSize: 11,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Preview:{" "}
-            <strong style={{ color: "var(--accent-text)", marginLeft: 4 }}>
-              {twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}
-            </strong>
+      <div className="dashboard-topbar">
+        <div className="topbar-left">
+          <span className="topbar-title">
+            Stream Overlay <i aria-hidden="true">|</i>{" "}
+            {twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}
           </span>
-          <button
-            className="ui-icon-button"
-            onClick={() => setShowTwitchEmbed((v) => !v)}
-            title={
-              showTwitchEmbed
-                ? "Hide the Twitch stream preview"
-                : "Show the Twitch stream preview"
-            }
-            style={{
-              background: showTwitchEmbed ? "var(--accent-surface)" : "none",
-              border: showTwitchEmbed
-                ? "1px solid var(--accent-border)"
-                : "1px solid #333",
-              color: showTwitchEmbed ? "var(--accent-text)" : "#ccc",
-              cursor: "pointer",
-            }}
-          >
-            {showTwitchEmbed ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-          {CAN_SWITCH_TWITCH_CHANNEL && <button
-            className="ui-icon-button"
-            onClick={() => {
-              const currentIndex = TWITCH_CHANNELS.indexOf(twitchChannel);
-              const nextChannel = TWITCH_CHANNELS[(currentIndex + 1) % TWITCH_CHANNELS.length];
-              setTwitchChannel(nextChannel);
-              toast.info(
-                `Switching preview and chat listener to ${nextChannel}`,
-              );
-            }}
-            style={{
-              background:
-                twitchChannel === TWITCH_CHANNELS[1] ? "var(--accent-surface)" : "none",
-              border:
-                twitchChannel === TWITCH_CHANNELS[1]
-                  ? "1px solid var(--accent-border)"
-                  : "1px solid #333",
-              color: twitchChannel === TWITCH_CHANNELS[1] ? "var(--accent-text)" : "#ccc",
-              cursor: "pointer",
-            }}
-            title={`Switch preview from ${twitchChannel} to ${TWITCH_CHANNELS[(TWITCH_CHANNELS.indexOf(twitchChannel) + 1) % TWITCH_CHANNELS.length]} (This will change the preview/layout for everyone)`}
-          >
-            <Repeat2 size={15} />
-          </button>}
-          <button
-            className="ui-icon-button"
-            onClick={() => {
-              refreshOverlay();
-              toast.success("OBS overlay refresh requested");
-            }}
-            style={{
-              background: "none",
-              border: "1px solid #444",
-              color: "#ccc",
-              cursor: "pointer",
-            }}
-            title="Refresh OBS overlay (Refreshes the overlay on the streamers OBS)"
-          >
-            <RotateCcw size={14} />
-          </button>
+        </div>
+        <div className="topbar-right">
+          <div className="topbar-group" role="group" aria-label="Twitch preview">
+            <span className="topbar-group__label">
+              Preview
+              <strong>
+                {twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}
+              </strong>
+            </span>
+            <button
+              className={`ui-icon-button topbar-group__button${showTwitchEmbed ? " is-active" : ""}`}
+              onClick={() => setShowTwitchEmbed((v) => !v)}
+              aria-pressed={showTwitchEmbed}
+              aria-label={showTwitchEmbed ? "Hide the Twitch stream preview" : "Show the Twitch stream preview"}
+              title={
+                showTwitchEmbed
+                  ? "Hide the Twitch stream preview"
+                  : "Show the Twitch stream preview"
+              }
+            >
+              {showTwitchEmbed ? <Eye size={15} /> : <EyeOff size={15} />}
+            </button>
+            <button
+              className={`ui-icon-button topbar-group__button${twitchInteraction ? " is-active" : ""}`}
+              onClick={() => setTwitchInteraction((value) => !value)}
+              disabled={!showTwitchEmbed}
+              aria-pressed={twitchInteraction}
+              aria-label="Use the stream player controls"
+              title={
+                twitchInteraction
+                  ? "Done with the player. Turn canvas editing back on"
+                  : "Use the stream player (play, pause, mute). Canvas editing is paused while this is on"
+              }
+            >
+              <MousePointerClick size={15} />
+            </button>
+            {CAN_SWITCH_TWITCH_CHANNEL && (
+              <button
+                className={`ui-icon-button topbar-group__button${twitchChannel === TWITCH_CHANNELS[1] ? " is-active" : ""}`}
+                onClick={() => {
+                  const currentIndex = TWITCH_CHANNELS.indexOf(twitchChannel);
+                  const nextChannel = TWITCH_CHANNELS[(currentIndex + 1) % TWITCH_CHANNELS.length];
+                  setTwitchChannel(nextChannel);
+                  toast.info(
+                    `Switching preview and chat listener to ${nextChannel}`,
+                  );
+                }}
+                aria-label="Switch Twitch preview channel"
+                title={`Switch preview from ${twitchChannel} to ${TWITCH_CHANNELS[(TWITCH_CHANNELS.indexOf(twitchChannel) + 1) % TWITCH_CHANNELS.length]} (This will change the preview/layout for everyone)`}
+              >
+                <Repeat2 size={15} />
+              </button>
+            )}
+          </div>
+          <span className="topbar-divider" aria-hidden="true" />
+          <div className="topbar-group" role="group" aria-label="Overlay">
+            <span className="topbar-group__label">Overlay</span>
+            <button
+              className={`ui-icon-button topbar-group__button${showMirror ? " is-active" : ""}`}
+              onClick={toggleMirror}
+              aria-pressed={showMirror}
+              aria-label={showMirror ? "Hide the live overlay preview" : "Show the live overlay preview"}
+              title={showMirror ? "Hide the live overlay preview" : "Show a live, silent copy of what the overlay is showing, including emotes"}
+            >
+              <MonitorPlay size={15} />
+            </button>
+            <button
+              className="ui-icon-button topbar-group__button"
+              onClick={() => {
+                refreshOverlay();
+                toast.success("Overlay refresh requested");
+              }}
+              aria-label="Refresh overlay"
+              title="Refresh the overlay (reloads the browser source in the streamer's OBS)"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
           <ReadinessCheck
             connected={connected}
             overlayConnected={overlayConnected}
@@ -768,21 +766,28 @@ export function Dashboard({
             chatEmotesEnabled={chatEmoteSettings.enabled}
             elements={elements}
             studio={studio}
+            onTestAudio={testOverlayAudio}
           />
+          <span className="topbar-divider" aria-hidden="true" />
+          {isAdmin && (
+            <button
+              className="ui-icon-button topbar-icon"
+              onClick={() => setShowWhitelist(true)}
+              aria-label="Whitelist settings"
+              title="Whitelist settings"
+            >
+              <Settings size={16} />
+            </button>
+          )}
           <button
-            className="ui-button"
+            className={`ui-button topbar-studio${showStudio ? " is-active" : ""}`}
             onClick={() => setShowStudio((value) => !value)}
+            aria-pressed={showStudio}
             title={
               showStudio
                 ? "Close production tools"
                 : "Open the Soundboard, chat commands, emotes, and overlay effects"
             }
-            style={{
-              background: showStudio ? "var(--accent-surface)" : "#181818",
-              border: `1px solid ${showStudio ? "var(--accent-border)" : "#3a3a3a"}`,
-              color: showStudio ? "var(--accent-text)" : "#c2c8d0",
-              cursor: "pointer",
-            }}
           >
             <PanelRightOpen size={14} /> Studio
           </button>
@@ -824,6 +829,32 @@ export function Dashboard({
         onRedo={redo}
         canUndo={historyStatus.canUndo}
         canRedo={historyStatus.canRedo}
+        trailing={
+          (chatEmoteSettings.enabled || ttsPlayback.enabled) && (
+            <>
+            {chatEmoteSettings.enabled && (
+              <span
+                className="chat-emote-active-indicator"
+                title="Chat emote mode is active on the overlay. Live chat emotes are intentionally not mirrored on the dashboard; use Studio → Emotes for a local preview."
+              >
+                <span className="chat-emote-active-indicator__dot" />
+                <MessageCircle size={13} />
+                Chat emotes active
+              </span>
+            )}
+            {ttsPlayback.enabled && (
+              <span
+                className="chat-emote-active-indicator"
+                title="TTS playback is enabled for the overlay. Open Studio → TTS to generate clips or turn TTS off."
+              >
+                <span className="chat-emote-active-indicator__dot" />
+                <Volume2 size={13} />
+                TTS active
+              </span>
+            )}
+            </>
+          )
+        }
       />
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
@@ -848,9 +879,9 @@ export function Dashboard({
             <div
               style={{
                 position: "relative",
-                borderTop: "1px solid #222",
+                borderTop: "1px solid var(--line)",
                 padding: 8,
-                background: "#0d0d0d",
+                background: "var(--bg-app)",
                 flexShrink: 0,
               }}
             >
@@ -859,7 +890,7 @@ export function Dashboard({
                   display: "block",
                   padding: "0 0 7px",
                   marginBottom: 7,
-                  borderBottom: "1px solid #222",
+                  borderBottom: "1px solid var(--line)",
                 }}
               >
                 <button
@@ -877,12 +908,12 @@ export function Dashboard({
                     width: "100%",
                     minHeight: 32,
                     padding: "0 7px",
-                    border: `1px solid ${activityMenuOpen ? "var(--accent-border)" : "#2d2d31"}`,
+                    border: `1px solid ${activityMenuOpen ? "var(--accent-border)" : "var(--line)"}`,
                     borderRadius: 5,
                     background: activityMenuOpen
                       ? "var(--accent-surface)"
-                      : "#171719",
-                    color: "#aeb6c2",
+                      : "var(--bg-raised)",
+                    color: "var(--text-secondary)",
                     cursor: "pointer",
                     textAlign: "left",
                   }}
@@ -892,7 +923,7 @@ export function Dashboard({
                     Activity
                   </span>
                   <span style={{ flex: 1 }} />
-                  <span style={{ color: "#7f8997", fontSize: 9 }}>
+                  <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
                     {studio.activity.length} {activityMenuOpen ? "▲" : "▼"}
                   </span>
                 </button>
@@ -902,15 +933,15 @@ export function Dashboard({
                       key={item.id}
                       style={{
                         padding: "5px 7px",
-                        border: "1px solid #27272b",
+                        border: "1px solid var(--line)",
                         borderRadius: 4,
-                        background: "#141416",
+                        background: "var(--bg-sunken)",
                       }}
                     >
                       <div
                         style={{
-                          color: "#b9c0ca",
-                          fontSize: 10,
+                          color: "var(--text-secondary)",
+                          fontSize: 11,
                           lineHeight: 1.35,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -920,7 +951,7 @@ export function Dashboard({
                         <strong>{item.user}</strong> {item.action}
                       </div>
                       <div
-                        style={{ color: "#7f8895", fontSize: 9, marginTop: 1 }}
+                        style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 1 }}
                       >
                         {new Date(item.at).toLocaleString()}
                       </div>
@@ -929,8 +960,8 @@ export function Dashboard({
                   {studio.activity.length === 0 && (
                     <div
                       style={{
-                        color: "#737b87",
-                        fontSize: 10,
+                        color: "var(--text-muted)",
+                        fontSize: 11,
                         padding: "4px 7px",
                       }}
                     >
@@ -939,10 +970,12 @@ export function Dashboard({
                   )}
                 </div>
               </div>
-              {activityMenuOpen && (
+              {activityPresence.mounted && (
                 <div
                   role="dialog"
                   aria-label="Complete activity history"
+                  className="motion-popover"
+                  data-state={activityPresence.state}
                   style={{
                     position: "fixed",
                     left: "calc(var(--sidebar-width) + 10px)",
@@ -952,8 +985,8 @@ export function Dashboard({
                     maxHeight: "min(440px, calc(100vh - 32px))",
                     overflowY: "auto",
                     padding: 7,
-                    background: "#181818",
-                    border: "1px solid #3a3a3f",
+                    background: "var(--bg-raised)",
+                    border: "1px solid var(--line-strong)",
                     borderRadius: 7,
                     boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
                     zIndex: 3000,
@@ -968,15 +1001,15 @@ export function Dashboard({
                       top: -7,
                       padding: "8px 4px",
                       margin: "-7px -1px 3px",
-                      borderBottom: "1px solid #2a2a2a",
-                      background: "#181818",
-                      color: "#d1d5db",
+                      borderBottom: "1px solid var(--line)",
+                      background: "var(--bg-raised)",
+                      color: "var(--text-primary)",
                     }}
                   >
                     <Activity size={14} color="var(--accent-text)" />
                     <strong style={{ fontSize: 12 }}>All activity</strong>
                     <span style={{ flex: 1 }} />
-                    <span style={{ color: "#8d96a3", fontSize: 10 }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
                       {studio.activity.length}
                     </span>
                     <button
@@ -985,9 +1018,9 @@ export function Dashboard({
                       title="Close activity history"
                       aria-label="Close activity history"
                       style={{
-                        border: "1px solid #3a3a3f",
-                        background: "#222",
-                        color: "#cbd1da",
+                        border: "1px solid var(--line-strong)",
+                        background: "var(--bg-control)",
+                        color: "var(--text-primary)",
                         cursor: "pointer",
                       }}
                     >
@@ -1001,7 +1034,7 @@ export function Dashboard({
                         display: "flex",
                         gap: 7,
                         padding: "7px 4px",
-                        borderBottom: "1px solid #242424",
+                        borderBottom: "1px solid var(--line)",
                       }}
                     >
                       <Activity
@@ -1012,14 +1045,14 @@ export function Dashboard({
                       <div style={{ minWidth: 0 }}>
                         <div
                           style={{
-                            color: "#c8ced7",
+                            color: "var(--text-secondary)",
                             fontSize: 11,
                             lineHeight: 1.4,
                           }}
                         >
                           <strong>{item.user}</strong> {item.action}
                         </div>
-                        <small style={{ color: "#89919d", fontSize: 9 }}>
+                        <small style={{ color: "var(--text-muted)", fontSize: 11 }}>
                           {new Date(item.at).toLocaleString()}
                         </small>
                       </div>
@@ -1027,15 +1060,17 @@ export function Dashboard({
                   ))}
                   {studio.activity.length === 0 && (
                     <div
-                      style={{ padding: 10, color: "#707784", fontSize: 10 }}
+                      style={{ padding: 10, color: "var(--text-muted)", fontSize: 11 }}
                     >
                       No activity yet
                     </div>
                   )}
                 </div>
               )}
-              {presenceMenuOpen && (
+              {connectionPresence.mounted && (
                 <div
+                  className="motion-popover"
+                  data-state={connectionPresence.state}
                   style={{
                     position: "fixed",
                     left: "calc(var(--sidebar-width) + 10px)",
@@ -1045,8 +1080,8 @@ export function Dashboard({
                     maxHeight: "min(440px, calc(100vh - 32px))",
                     overflowY: "auto",
                     padding: 9,
-                    background: "#181818",
-                    border: "1px solid #333",
+                    background: "var(--bg-raised)",
+                    border: "1px solid var(--line)",
                     borderRadius: 6,
                     boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
                     zIndex: 3000,
@@ -1059,10 +1094,10 @@ export function Dashboard({
                       gap: 7,
                       padding: "2px 3px 8px",
                       marginBottom: 7,
-                      borderBottom: "1px solid #2a2a2f",
+                      borderBottom: "1px solid var(--line)",
                     }}
                   >
-                    <strong style={{ color: "#e2e5ea", fontSize: 12 }}>
+                    <strong style={{ color: "var(--text-primary)", fontSize: 12 }}>
                       Connection status
                     </strong>
                     <span style={{ flex: 1 }} />
@@ -1072,9 +1107,9 @@ export function Dashboard({
                       title="Close connection status"
                       aria-label="Close connection status"
                       style={{
-                        border: "1px solid #3a3a3f",
-                        background: "#222",
-                        color: "#cbd1da",
+                        border: "1px solid var(--line-strong)",
+                        background: "var(--bg-control)",
+                        color: "var(--text-primary)",
                         cursor: "pointer",
                       }}
                     >
@@ -1087,9 +1122,9 @@ export function Dashboard({
                       gap: 5,
                       padding: "3px 4px 8px",
                       marginBottom: 6,
-                      borderBottom: "1px solid #2a2a2a",
+                      borderBottom: "1px solid var(--line)",
                       fontSize: 11,
-                      color: "#b6beca",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     <div
@@ -1103,7 +1138,7 @@ export function Dashboard({
                           background: overlayConnected ? "#4ade80" : "#f87171",
                         }}
                       />
-                      OBS overlay: {overlayConnected ? "online" : "offline"}
+                      Overlay: {overlayConnected ? "online" : "offline"}
                       {overlayCount > 1 ? ` (${overlayCount} sources)` : ""}
                     </div>
                     <div
@@ -1142,8 +1177,8 @@ export function Dashboard({
                   <div
                     style={{
                       padding: "2px 4px 6px",
-                      color: "#a3aab5",
-                      fontSize: 10,
+                      color: "var(--text-muted)",
+                      fontSize: 11,
                       fontWeight: 600,
                       letterSpacing: "0.06em",
                     }}
@@ -1159,7 +1194,7 @@ export function Dashboard({
                         alignItems: "center",
                         gap: 8,
                         padding: "4px 5px",
-                        color: "#d1d5db",
+                        color: "var(--text-primary)",
                         fontSize: 12,
                         fontWeight: 500,
                       }}
@@ -1183,13 +1218,14 @@ export function Dashboard({
                       >
                         {activeUser.displayName}
                       </span>
+                      <RoleTag role={activeUser.role} />
                     </div>
                   ))}
                   {activeUsers.length === 0 && (
                     <div
                       style={{
                         padding: "7px 5px",
-                        color: "#8b95a5",
+                        color: "var(--text-muted)",
                         fontSize: 11,
                       }}
                     >
@@ -1204,7 +1240,7 @@ export function Dashboard({
                   setProfileMenuOpen(false);
                   setActivityMenuOpen(false);
                 }}
-                title="Show OBS overlay status and everyone currently on the dashboard"
+                title="Show overlay status and everyone currently on the dashboard"
                 aria-expanded={presenceMenuOpen}
                 style={{
                   width: "100%",
@@ -1214,10 +1250,10 @@ export function Dashboard({
                   gap: 7,
                   padding: "0 6px",
                   marginBottom: 6,
-                  background: presenceMenuOpen ? "#1b1b1b" : "transparent",
-                  border: "1px solid #242424",
+                  background: presenceMenuOpen ? "var(--bg-raised)" : "transparent",
+                  border: "1px solid var(--line)",
                   borderRadius: 5,
-                  color: "#c4cad4",
+                  color: "var(--text-secondary)",
                   cursor: "pointer",
                 }}
               >
@@ -1234,7 +1270,7 @@ export function Dashboard({
                   }}
                 />
                 <span style={{ fontSize: 11, fontWeight: 600 }}>
-                  {overlayConnected ? "OBS Online" : "OBS Offline"}
+                  {overlayConnected ? "Overlay Online" : "Overlay Offline"}
                 </span>
                 <span style={{ flex: 1 }} />
                 <span style={{ display: "flex", alignItems: "center" }}>
@@ -1250,7 +1286,7 @@ export function Dashboard({
                         marginLeft: index === 0 ? 0 : -6,
                         borderRadius: "50%",
                         border: `2px solid ${activeUser.color}`,
-                        background: "#111",
+                        background: "var(--bg-panel)",
                       }}
                     />
                   ))}
@@ -1258,8 +1294,8 @@ export function Dashboard({
                     <span
                       style={{
                         marginLeft: 4,
-                        color: "#a3aab5",
-                        fontSize: 10,
+                        color: "var(--text-muted)",
+                        fontSize: 11,
                         fontWeight: 600,
                       }}
                     >
@@ -1268,194 +1304,140 @@ export function Dashboard({
                   )}
                 </span>
               </button>
-              {profileMenuOpen && (
-                <div
-                  style={{
-                    position: "fixed",
-                    left: 8,
-                    bottom: 60,
-                    width: "calc(var(--sidebar-width) - 16px)",
-                    maxHeight: "calc(100vh - 80px)",
-                    overflowY: "auto",
-                    padding: 6,
-                    background: "#181818",
-                    border: "1px solid #333",
-                    borderRadius: 6,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
-                    zIndex: 3000,
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "3px 4px 7px",
-                      color: "#a3aab5",
-                      fontSize: 9,
-                      fontFamily: "Inter,sans-serif",
-                      letterSpacing: "0.08em",
+              {profilePresence.mounted && (
+                <div className="account-menu motion-popover" data-state={profilePresence.state} role="menu" aria-label="Account and settings">
+                  <button
+                    type="button"
+                    className="account-menu__link"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setShowSetup(true);
                     }}
                   >
-                    DASHBOARD THEME
-                  </div>
-                  <div style={{ display: "flex", gap: 5, marginBottom: 7 }}>
-                    {(["fox", "custom"] as const).map((option) => (
-                      <button
-                        className="ui-button ui-button--compact"
-                        key={option}
-                        onClick={() => setTheme(option)}
-                        title={
-                          option === "fox"
-                            ? "Use the default Fox Orange accent"
-                            : "Use your custom accent color"
-                        }
-                        style={{
-                          flex: 1,
-                          background:
-                            theme === option
-                              ? "var(--accent-surface-strong)"
-                              : "#202020",
-                          border:
-                            theme === option
-                              ? "1px solid var(--accent-border)"
-                              : "1px solid #333",
-                          color:
-                            theme === option ? "var(--accent-text)" : "#888",
-                          cursor: "pointer",
-                          fontSize: 10,
-                          padding: "6px 4px",
-                          borderRadius: 4,
-                        }}
-                      >
-                        {option === "fox" ? "Fox Orange" : "Custom"}
-                      </button>
-                    ))}
-                  </div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      marginBottom: 8,
-                      color: "#b6beca",
-                      fontSize: 10,
-                    }}
-                  >
-                    <span>Custom accent</span>
-                    <input
-                      type="color"
-                      value={customAccent}
-                      onChange={(event) => {
-                        setCustomAccent(event.target.value);
-                        setTheme("custom");
-                      }}
-                      title="Choose a custom dashboard accent color"
-                      style={{
-                        width: 42,
-                        height: 26,
-                        padding: 2,
-                        border: "1px solid #3a3a3a",
-                        borderRadius: 5,
-                        background: "#111",
-                        cursor: "pointer",
-                      }}
+                    <Rocket size={16} />
+                    <span>
+                      Setup guide
+                      <small>Overlay URL, OBS settings, audio test</small>
+                    </span>
+                  </button>
+                  <section className="account-menu__group">
+                    <h4>Theme</h4>
+                    <Segmented
+                      label="Dashboard theme"
+                      value={theme}
+                      onChange={setTheme}
+                      options={[
+                        { value: "fox", label: "Fox Orange" },
+                        { value: "custom", label: "Custom" },
+                      ]}
                     />
-                  </label>
-                  <div className="dashboard-ui-scale-settings">
-                    <div>
-                      <span>INTERFACE SIZE</span>
-                      <small>Dashboard only</small>
-                    </div>
-                    <div role="group" aria-label="Dashboard interface size">
-                      {UI_SCALE_OPTIONS.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          className={uiScale === option ? "active" : ""}
-                          aria-pressed={uiScale === option}
-                          onClick={() => {
-                            setUiScale(option);
-                            toast.success(`Dashboard interface set to ${option}%`);
-                          }}
-                          title={`Set dashboard controls and panels to ${option}% without changing the stream canvas`}
-                        >
-                          {option}%
-                        </button>
-                      ))}
-                    </div>
-                    <p>Canvas size and OBS coordinates stay unchanged.</p>
-                  </div>
-                  <div style={{ display: "grid", gap: 7 }}>
-                    <button
-                      className="ui-button ui-button--compact"
-                      onClick={() => {
-                        const visible = !showCursorOnOverlay;
-                        setShowCursorOnOverlay(visible);
-                        toast.success(
-                          visible
-                            ? "Your cursor is now visible on overlay"
-                            : "Your cursor is now hidden from overlay",
-                        );
-                      }}
-                      title="Choose whether your cursor is visible on the OBS stream overlay; dashboard users always see it"
-                      aria-pressed={showCursorOnOverlay}
-                      style={{
-                        width: "100%",
-                        justifyContent: "space-between",
-                        background: showCursorOnOverlay ? "#052e16" : "#2a1717",
-                        border: showCursorOnOverlay
-                          ? "1px solid #16a34a"
-                          : "1px solid #7f1d1d",
-                        color: showCursorOnOverlay ? "#bbf7d0" : "#fecaca",
-                      }}
-                    >
-                      <span>Overlay cursor</span>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 5,
-                          fontSize: 10,
-                          fontWeight: 800,
-                          letterSpacing: "0.04em",
-                          textTransform: "uppercase",
+                    <label className="account-menu__row">
+                      <span>Custom accent</span>
+                      <input
+                        type="color"
+                        value={customAccent}
+                        onChange={(event) => {
+                          setCustomAccent(event.target.value);
+                          setTheme("custom");
                         }}
-                      >
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            width: 7,
-                            height: 7,
-                            borderRadius: "50%",
-                            background: showCursorOnOverlay
-                              ? "#22c55e"
-                              : "#ef4444",
-                            boxShadow: showCursorOnOverlay
-                              ? "0 0 7px rgba(34,197,94,.7)"
-                              : "none",
-                          }}
-                        />
-                        {showCursorOnOverlay ? "Visible" : "Hidden"}
-                      </span>
-                    </button>
-                    <button
-                      className="ui-button ui-danger"
-                      onClick={onLogout}
-                      title="Log out of the dashboard"
-                      style={{
-                        width: "100%",
-                        background: "#450a0a",
-                        border: "1px solid #7f1d1d",
-                        color: "#fca5a5",
-                        cursor: "pointer",
-                        fontSize: 12,
-                        padding: "7px 10px",
-                        borderRadius: 4,
-                        textAlign: "left",
+                        title="Choose a custom dashboard accent color"
+                        className="account-menu__color"
+                      />
+                    </label>
+                  </section>
+
+                  <section className="account-menu__group">
+                    <h4>
+                      Interface size <small>Dashboard only</small>
+                    </h4>
+                    <Segmented
+                      label="Dashboard interface size"
+                      value={uiScale}
+                      onChange={(option) => {
+                        setUiScale(option);
+                        toast.success(`Dashboard interface set to ${option}%`);
                       }}
-                    >
-                      Log out
-                    </button>
-                  </div>
+                      options={UI_SCALE_OPTIONS.map((option) => ({ value: option, label: `${option}%` }))}
+                    />
+                    <p className="account-menu__hint">
+                      Canvas size and overlay coordinates stay unchanged.
+                    </p>
+                  </section>
+
+                  <section className="account-menu__group">
+                    <h4>Stream</h4>
+                    <div className="account-menu__row account-menu__row--switch">
+                      <span>
+                        <strong>Show my cursor</strong>
+                        <small>Visible on the overlay. Dashboard users always see it.</small>
+                      </span>
+                      <button
+                        type="button"
+                        className="ui-switch"
+                        role="switch"
+                        aria-checked={showCursorOnOverlay}
+                        aria-label="Show my cursor on the overlay"
+                        title="Choose whether your cursor is visible on the overlay; dashboard users always see it"
+                        onClick={() => {
+                          const visible = !showCursorOnOverlay;
+                          setShowCursorOnOverlay(visible);
+                          toast.success(
+                            visible
+                              ? "Your cursor is now visible on overlay"
+                              : "Your cursor is now hidden from overlay",
+                          );
+                        }}
+                      />
+                    </div>
+                  </section>
+
+                  {user.isOwner && (
+                    <section className="account-menu__group">
+                      <h4>
+                        Feature flags <small>Owner only</small>
+                      </h4>
+                      <div className="account-menu__row account-menu__row--switch">
+                        <span>
+                          <strong>TTS Studio</strong>
+                          <small>Tab, generation, replay and trigger actions</small>
+                        </span>
+                        <button
+                          type="button"
+                          className="ui-switch"
+                          role="switch"
+                          aria-checked={featureFlags.tts}
+                          aria-label="TTS Studio"
+                          disabled={featureSaving}
+                          title={featureFlags.tts ? "Turn TTS Studio off for everyone" : "Turn TTS Studio on for everyone"}
+                          onClick={() => void setFeatureEnabled("tts", !featureFlags.tts)}
+                        />
+                      </div>
+                      <div className="account-menu__row account-menu__row--switch">
+                        <span>
+                          <strong>Scenes</strong>
+                          <small>Save and restore whole layouts</small>
+                        </span>
+                        <button
+                          type="button"
+                          className="ui-switch"
+                          role="switch"
+                          aria-checked={featureFlags.scenes}
+                          aria-label="Scenes"
+                          disabled={featureSaving}
+                          title={featureFlags.scenes ? "Turn Scenes off for everyone" : "Turn Scenes on for everyone"}
+                          onClick={() => void setFeatureEnabled("scenes", !featureFlags.scenes)}
+                        />
+                      </div>
+                    </section>
+                  )}
+
+                  <button
+                    type="button"
+                    className="account-menu__logout"
+                    onClick={onLogout}
+                  >
+                    <LogOut size={14} /> Log out
+                  </button>
                 </div>
               )}
               <button
@@ -1476,10 +1458,10 @@ export function Dashboard({
                   alignItems: "center",
                   gap: 8,
                   padding: 6,
-                  background: profileMenuOpen ? "#1b1b1b" : "transparent",
+                  background: profileMenuOpen ? "var(--bg-raised)" : "transparent",
                   border: "1px solid transparent",
                   borderRadius: 5,
-                  color: "#ccc",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                   textAlign: "left",
                 }}
@@ -1507,28 +1489,17 @@ export function Dashboard({
                 >
                   {user.displayName}
                 </span>
-                {!user.isOwner && user.isAdmin && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 600,
-                      color: "#34d399",
-                      background: "#064e3b",
-                      borderRadius: 3,
-                      padding: "1px 4px",
-                    }}
-                  >
-                    admin
-                  </span>
-                )}
-                <span style={{ color: "#9ca3af", fontSize: 10 }}>
+                <RoleTag role={user.role} />
+                <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
                   {profileMenuOpen ? "▼" : "▲"}
                 </span>
               </button>
             </div>
           }
         />
-        <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+        {/* Own stacking layer: canvas layers and the floating preview stay below dialogs, and dialogs stay above Studio. */}
+        <div style={{ flex: 1, position: "relative", minHeight: 0, isolation: "isolate", zIndex: 3 }}>
+          {mirrorPresence.mounted && <OverlayMirror state={mirrorPresence.state} onClose={toggleMirror} />}
           <CanvasStage
             elements={elements}
             cursors={cursors}
@@ -1544,6 +1515,8 @@ export function Dashboard({
             directUpdateRef={directUpdateRef}
             previewFlyRef={previewFlyRef}
             showTwitchEmbed={showTwitchEmbed}
+            twitchInteractionEnabled={twitchInteraction && showTwitchEmbed}
+            onTwitchInteractionChange={setTwitchInteraction}
             twitchChannel={twitchChannel}
             drawingLayer={
               <DrawingCanvas
@@ -1572,7 +1545,7 @@ export function Dashboard({
                 .join(", ")}{liveStrokes.size > 2 ? ` +${liveStrokes.size - 2}` : ""} drawing
             </div>
           )}
-          <HelpGuide onOpenTour={() => setShowOnboarding(true)} />
+          <HelpGuide onOpenTour={() => setShowOnboarding(true)} onOpenSetup={() => setShowSetup(true)} />
           <SupportDiagnostics snapshot={{
             version: APP_VERSION,
             user: user.displayName,
@@ -1600,6 +1573,7 @@ export function Dashboard({
             isOwner={user.isOwner}
             overlayConnected={overlayConnected}
             ttsPlayback={ttsPlayback}
+            featureFlags={featureFlags}
             onClose={() => setShowStudio(false)}
             onSaveScene={saveScene}
             onLoadScene={loadScene}
@@ -1610,12 +1584,14 @@ export function Dashboard({
             onSaveSound={saveSound}
             onDeleteSound={deleteSound}
             onPreviewSound={previewSound}
+            previewingSoundIds={previewingSoundIds}
+            onStopPreviewSound={stopPreviewSound}
             onPlaySound={playSound}
             onStopSound={stopSound}
             onSaveTrigger={saveTrigger}
             onDeleteTrigger={deleteTrigger}
-            onPreviewFly={(id, direction, durationSeconds) =>
-              previewFlyRef.current?.(id, direction, durationSeconds) ?? false
+            onPreviewFly={(id, direction, durationSeconds, onDone) =>
+              previewFlyRef.current?.(id, direction, durationSeconds, onDone) ?? null
             }
             chatEmoteSettings={chatEmoteSettings}
             onChatEmoteSettingsChange={setChatEmoteSettings}
@@ -1640,6 +1616,15 @@ export function Dashboard({
           onClose={() => setEditingTextId(null)}
         />
       )}
+      <SetupGuide
+        open={showSetup}
+        onClose={() => setShowSetup(false)}
+        role={user.role}
+        roles={user.roles}
+        overlayConnected={overlayConnected}
+        onTestAudio={testOverlayAudio}
+        onOpenReadiness={() => window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')?.click(), 0)}
+      />
       <OnboardingTour
         open={showOnboarding}
         userName={user.displayName}
@@ -1652,11 +1637,7 @@ export function Dashboard({
         }}
         onOpenSetup={() => {
           closeOnboarding();
-          setProfileMenuOpen(true);
-        }}
-        onOpenReadiness={() => {
-          closeOnboarding();
-          window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')?.click(), 0);
+          setShowSetup(true);
         }}
       />
     </div>

@@ -5,11 +5,13 @@ import {
   ClipboardCheck,
   Info,
   RefreshCw,
+  Volume2,
   X,
 } from "lucide-react";
 import type { CanvasElement, StudioState, TriggerStep } from "../types";
 import { STREAM_H, STREAM_OFFSET_X, STREAM_OFFSET_Y, STREAM_W } from "../canvas/config";
 import { authHeaders } from "../hooks/useAuth";
+import { usePresence } from "../hooks/usePresence";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
@@ -55,6 +57,7 @@ export function ReadinessCheck({
   chatEmotesEnabled,
   elements,
   studio,
+  onTestAudio,
 }: {
   connected: boolean;
   overlayConnected: boolean;
@@ -64,8 +67,17 @@ export function ReadinessCheck({
   chatEmotesEnabled: boolean;
   elements: CanvasElement[];
   studio: StudioState;
+  onTestAudio?: () => Promise<{ ok: boolean; message: string }>;
 }) {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
+  const [audioTest, setAudioTest] = useState<{ running: boolean; ok?: boolean; message?: string }>({ running: false });
+  const runAudioTest = async () => {
+    if (!onTestAudio) return;
+    setAudioTest({ running: true });
+    const result = await onTestAudio();
+    setAudioTest({ running: false, ok: result.ok, message: result.message });
+  };
   const [events, setEvents] = useState<EventStatus | null>(null);
   const [tts, setTts] = useState<TtsStatus | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(false);
@@ -157,11 +169,11 @@ export function ReadinessCheck({
       {
         kind: connected ? "pass" : "warning",
         title: "Dashboard server",
-        detail: connected ? "Realtime connection is online." : "Disconnected—changes will not reach OBS.",
+        detail: connected ? "Realtime connection is online." : "Disconnected—changes will not reach the overlay.",
       },
       {
         kind: overlayConnected ? "pass" : "warning",
-        title: "OBS overlay",
+        title: "Overlay",
         detail: overlayConnected
           ? `${overlayCount} overlay browser source${overlayCount === 1 ? " is" : "s are"} connected.`
           : "No overlay browser source is connected.",
@@ -250,15 +262,16 @@ export function ReadinessCheck({
         className="ui-button readiness-button"
         data-onboarding-action="readiness"
         onClick={() => setOpen(true)}
-        title="Check the server, OBS, Twitch connections, command targets, and stream placement"
+        title="Check the server, overlay, Twitch connections, command targets, and stream placement"
       >
         <ClipboardCheck size={14} /> Go-live check
         {warningCount > 0 && <span>{warningCount}</span>}
       </button>
-      {open && (
-        <div className="readiness-backdrop" onMouseDown={() => setOpen(false)}>
+      {presence.mounted && (
+        <div className="readiness-backdrop motion-backdrop" data-state={presence.state} onMouseDown={() => setOpen(false)}>
           <section
-            className="readiness-dialog"
+            className="readiness-dialog motion-dialog"
+            data-state={presence.state}
             role="dialog"
             aria-modal="true"
             aria-labelledby="readiness-title"
@@ -283,7 +296,15 @@ export function ReadinessCheck({
               })}
             </div>
             <footer>
-              <button className="ui-button" onClick={refreshChecks} disabled={loadingEvents} title="Check connections, command targets, and uploaded media again">
+              {audioTest.message && (
+                <span className={`readiness-audio ${audioTest.ok ? "readiness-audio--ok" : "readiness-audio--bad"}`}>{audioTest.message}</span>
+              )}
+              {onTestAudio && (
+                <button className="ui-button" onClick={() => void runAudioTest()} disabled={audioTest.running}>
+                  <Volume2 size={13} /> {audioTest.running ? "Listening…" : "Test overlay audio"}
+                </button>
+              )}
+              <button className="ui-button" onClick={refreshChecks} disabled={loadingEvents}>
                 <RefreshCw size={13} className={loadingEvents ? "spin" : undefined} /> Recheck
               </button>
               <button className="ui-button studio-primary" onClick={() => setOpen(false)}>Done</button>

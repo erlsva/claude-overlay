@@ -17,17 +17,20 @@ import type {
   ServerToClientEvents,
   ClientToServerEvents,
 } from "./types.js";
-import { configureTwitchEvents, emitTwitchEvent } from "./twitch/eventsub.js";
+import { configureTwitchEvents, emitTwitchEvent, getTwitchChatChannel } from "./twitch/eventsub.js";
+import { requireAuth } from "./middleware/auth.js";
 import { getValidEventAuth, initializeEventAuthStore } from "./twitch/eventAuthStore.js";
 import { twitchClientId } from "./auth/twitch.js";
 import { CHATBOT_AUTH_KEY, createEventRoutes } from "./twitch/eventRoutes.js";
 import { createEventWebhook } from "./twitch/eventWebhook.js";
 import { resolveSevenTvEmotes, stackEmotes } from "./seventv/emotes.js";
-import { initializeChatEmoteSettingsStore, initializeWhitelistStore } from "./db/index.js";
+import { getFeatureFlags, initializeChatEmoteSettingsStore, initializeFeatureFlagsStore, initializeWhitelistStore } from "./db/index.js";
 import { myinstantsRouter } from "./uploads/myinstants.js";
+import { createFeatureRouter } from "./features/routes.js";
+import { libraryRouter } from "./library/routes.js";
 
 import { ttsRouter } from "./tts/routes.js";
-import { getTtsPlaybackState, setTtsPlaybackController, setTtsPlayer, submit as submitTts } from "./tts/service.js";
+import { getTtsPlaybackState, setTtsOverlayCheck, setTtsPlaybackController, setTtsPlayer, submit as submitTts } from "./tts/service.js";
 const app = express();
 const httpServer = createServer(app);
 
@@ -43,6 +46,10 @@ await initializeEventAuthStore().catch((error) =>
 );
 await initializeWhitelistStore().catch((error) => {
   console.error("Whitelist database initialization failed", error);
+  if (process.env.NODE_ENV === "production") throw error;
+});
+await initializeFeatureFlagsStore().catch((error) => {
+  console.error("Could not initialize feature flags", error);
   if (process.env.NODE_ENV === "production") throw error;
 });
 const storedChatEmoteSettings = await initializeChatEmoteSettingsStore().catch((error) => {
@@ -100,9 +107,10 @@ let activeTtsPlayback: {
 } | undefined;
 const emitTtsStatus = () => io.emit("tts:status", getTtsPlaybackState());
 app.use("/tts", ttsRouter);
+setTtsOverlayCheck(() => activeOverlays.size > 0);
 setTtsPlayer(async (clip, volume) => {
   if (!ttsPlaybackEnabled) throw new Error("TTS playback is turned off.");
-  if (!activeOverlays.size) throw new Error("OBS overlay is offline. Replay the saved clip when OBS connects.");
+  if (!activeOverlays.size) throw new Error("The overlay is offline. Replay the saved clip once the overlay is open.");
   if (activeTtsPlayback) {
     io.to("overlay").emit("sound:stop", { id: activeTtsPlayback.clipId });
     soundCompletionWaiters.get(activeTtsPlayback.playbackId)?.();
@@ -160,6 +168,7 @@ setTtsPlayer(async (clip, volume) => {
     emitTtsStatus();
   });
 });
+app.use("/features", createFeatureRouter((flags) => io.emit("features:updated", flags)));
 setTtsPlaybackController({
   state: () => ({
     enabled: ttsPlaybackEnabled,
@@ -347,6 +356,7 @@ async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayloa
 
 function executeTriggerStep(step: TriggerStep, event: TriggerEventPayload): Promise<void> {
   if (step.action === "tts") {
+    if (!getFeatureFlags().tts) return Promise.reject(new Error("TTS is currently disabled by the overlay owner"));
     const sender = String(event.chatter_user_name || event.user_name || event.user_login || "Twitch");
     const prompt = renderEventMessage(step.chatMessage || "{message}", event, 6000);
     try {
@@ -494,11 +504,49 @@ function flyElement(
 // Routes
 // ---------------------------------------------------------------------------
 app.get("/ping", (_, res) => res.sendStatus(200));
+
+// Runs a saved command or event action immediately with a simulated event.
+// It ignores the cooldown and permission rules so it can be tested at any time.
+app.post("/triggers/:id/test", requireAuth, (req, res) => {
+  const trigger = canvasStore.triggers.find((item) => item.id === req.params.id);
+  if (!trigger) {
+    res.status(404).json({ error: "That command no longer exists." });
+    return;
+  }
+  const tester = req.authUser?.displayName || req.authUser?.login || "Tester";
+  const channel = trigger.channel || getTwitchChatChannel();
+  const amount = trigger.minimum;
+  const event: TriggerEventPayload = {
+    channel,
+    broadcaster_user_login: channel,
+    user_name: tester,
+    chatter_user_name: tester,
+    chatter_user_login: tester.toLowerCase(),
+    message: { text: `${trigger.match ?? ""} test message`.trim() },
+    reward: { title: trigger.match || "Test reward" },
+    bits: amount ?? 100,
+    viewers: amount ?? 10,
+    total: amount ?? 5,
+    cumulative_months: amount ?? 3,
+  };
+  const record = (action: string) => {
+    canvasStore.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user: tester, action });
+    canvasStore.activity = canvasStore.activity.slice(0, 50);
+    io.to("dashboard").emit("studio:sync", { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
+  };
+  record(`tested “${trigger.name}”`);
+  void executeTriggerSteps(trigger.steps?.length ? trigger.steps : [trigger], event, (error) => {
+    const message = (error instanceof Error ? error.message : "Unknown error").replace(/s+/g, " ").slice(0, 180);
+    record(`test of “${trigger.name}” failed: ${message}`);
+  });
+  res.status(202).json({ started: true });
+});
 app.use("/auth", authRouter);
 
 app.use("/whitelist", createWhitelistRouter(io, activeUsers));
 
 app.use("/upload", uploadRouter);
+app.use("/library", libraryRouter);
 app.use("/myinstants", myinstantsRouter);
 app.use("/files", setUploadedMediaHeaders, express.static(UPLOAD_DIR));
 
@@ -506,7 +554,8 @@ app.use("/files", setUploadedMediaHeaders, express.static(UPLOAD_DIR));
 // Socket.io auth middleware
 // ---------------------------------------------------------------------------
 io.use((socket, next) => {
-  if (socket.handshake.query.mode === "overlay") return next();
+  const mode = socket.handshake.query.mode;
+  if (mode === "overlay" || mode === "mirror") return next();
   // Accept JWT from socket auth
   const token = socket.handshake.auth?.token as string | undefined;
   if (token) {

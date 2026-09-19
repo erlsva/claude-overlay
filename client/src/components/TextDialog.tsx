@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlignCenter, AlignLeft, AlignRight, Type, X } from "lucide-react";
 import {
   DEFAULT_TEXT_CONFIG,
@@ -6,6 +6,7 @@ import {
   type TextAlignment,
   type TextConfig,
 } from "../canvas/config";
+import { EXIT_MS } from "../hooks/usePresence";
 
 export type { TextConfig } from "../canvas/config";
 export { encodeTextSrc } from "../canvas/config";
@@ -44,7 +45,18 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
   );
 }
 
-export function TextDialog({ initial, onConfirm, onClose }: TextDialogProps) {
+export function TextDialog({ initial, onConfirm: confirmNow, onClose: closeNow }: TextDialogProps) {
+  const [closing, setClosing] = useState(false);
+  const leaving = useRef(false);
+  // Play the exit animation, then hand control back to the parent once.
+  const leave = (action: () => void) => {
+    if (leaving.current) return;
+    leaving.current = true;
+    setClosing(true);
+    window.setTimeout(action, EXIT_MS);
+  };
+  const onClose = () => leave(closeNow);
+  const onConfirm = (value: TextConfig) => leave(() => confirmNow(value));
   const [config, setConfig] = useState<TextConfig>(() => ({ ...DEFAULT_TEXT_CONFIG, ...initial }));
   const update = <K extends keyof TextConfig>(key: K, value: TextConfig[K]) => setConfig((current) => ({ ...current, [key]: value }));
   const valid = config.text.trim().length > 0;
@@ -60,11 +72,11 @@ export function TextDialog({ initial, onConfirm, onClose }: TextDialogProps) {
   }, [config, onClose, onConfirm, valid]);
 
   return (
-    <div className="text-editor-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="text-editor-dialog" role="dialog" aria-modal="true" aria-labelledby="text-editor-title">
+    <div className="text-editor-backdrop motion-backdrop" data-state={closing ? "closed" : "open"} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="text-editor-dialog motion-dialog" data-state={closing ? "closed" : "open"} role="dialog" aria-modal="true" aria-labelledby="text-editor-title">
         <header className="text-editor-header">
           <span className="text-editor-heading-icon"><Type size={17} /></span>
-          <span><strong id="text-editor-title">{initial ? "Edit text" : "Add text"}</strong><small>Style a text layer for the dashboard and OBS overlay</small></span>
+          <span><strong id="text-editor-title">{initial ? "Edit text" : "Add text"}</strong><small>Style a text layer for the dashboard and overlay</small></span>
           <button className="ui-icon-button" type="button" onClick={onClose} aria-label="Close text editor" title="Close text editor"><X size={16} /></button>
         </header>
 

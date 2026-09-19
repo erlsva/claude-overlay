@@ -3,6 +3,7 @@ import type { Server } from 'socket.io';
 import { getWhitelist, addToWhitelist, removeFromWhitelist, setAdmin } from '../db/index.js';
 import { lookupTwitchUser } from '../auth/twitch.js';
 import { requireAdmin, requireOwner } from '../middleware/auth.js';
+import { rolesFor } from './routes.js';
 import type { ServerToClientEvents, ClientToServerEvents, UserPresencePayload } from '../types.js';
 
 type WhitelistServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -17,7 +18,13 @@ export function createWhitelistRouter(
 
   // List, add, and remove are admin-level operations. Only the owner can grant
   // or revoke admin privileges.
-  router.get('/', requireAdmin, (_req, res) => res.json(getWhitelist()));
+  // Each entry carries the labels it will have on login, so the list can show streamers too.
+  router.get('/', requireAdmin, (_req, res) =>
+    res.json(getWhitelist().map((entry) => {
+      const roles = rolesFor(entry.username.toLowerCase(), false, entry.isAdmin);
+      return { ...entry, role: roles[0], roles };
+    })),
+  );
 
   router.post('/', requireAdmin, async (req, res) => {
     const { username } = req.body as { username?: unknown };

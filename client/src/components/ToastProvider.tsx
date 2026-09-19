@@ -11,6 +11,7 @@ import {
 import { CheckCircle2, CircleAlert, Info, X } from "lucide-react";
 import { TooltipProvider } from "./TooltipProvider";
 import { ConfirmProvider } from "./ConfirmProvider";
+import { EXIT_MS } from "../hooks/usePresence";
 
 export type ToastKind = "success" | "error" | "info";
 export interface NotificationRecord {
@@ -23,6 +24,7 @@ interface ToastItem {
   id: number;
   kind: ToastKind;
   message: string;
+  leaving?: boolean;
 }
 
 interface ToastApi {
@@ -73,7 +75,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
 
   const dismiss = useCallback((id: number) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+    setToasts((current) => current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)));
+    window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), EXIT_MS);
   }, []);
 
   const show = useCallback(
@@ -127,7 +130,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             return (
               <div
                 key={toast.id}
-                className={`app-toast app-toast--${toast.kind}`}
+                className={`app-toast app-toast--${toast.kind}${toast.leaving ? " app-toast--leaving" : ""}`}
                 role={toast.kind === "error" ? "alert" : "status"}
               >
                 <Icon size={19} aria-hidden="true" />

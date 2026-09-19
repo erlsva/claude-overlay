@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { GraduationCap, HelpCircle, X } from "lucide-react";
+import { GraduationCap, HelpCircle, Rocket, X } from "lucide-react";
+import { usePresence } from "../hooks/usePresence";
 
 const sections = [
   {
@@ -114,7 +115,7 @@ const sections = [
   {
     title: "Layers, video & stream",
     items: [
-      ["Eye / eye-off", "Show or hide a layer on the OBS overlay."],
+      ["Eye / eye-off", "Show or hide a layer on the overlay."],
       ["Lock", "Prevent accidental movement, resizing, and deletion."],
       ["Group", "Keep multiple selected layers moving together."],
       [
@@ -127,13 +128,17 @@ const sections = [
       ],
       ["Preview eye", "Show or hide the Twitch preview only on the dashboard."],
       [
+        "Player button (pointer)",
+        "Hands the mouse to the Twitch player so you can play, pause or mute it. Canvas editing is paused until you turn it off again.",
+      ],
+      [
         "Switch preview",
         "When multiple production channels are configured, switch both the preview and chat command listener. Local development is locked to EPLE7.",
       ],
       ["Refresh overlay", "Ask connected overlay browser sources to reload."],
       [
         "Go-live check",
-        "Verify the dashboard server, OBS connection, Twitch listeners, broadcaster Events, command targets, and visible media placement before a stream.",
+        "Verify the dashboard server, overlay connection, Twitch listeners, broadcaster Events, command targets, and visible media placement before a stream.",
       ],
       [
         "Lifebuoy support button",
@@ -144,8 +149,8 @@ const sections = [
         "Open Sounds, commands, Twitch events, TTS scenes, and chat emotes.",
       ],
       [
-        "Dashboard / OBS badges",
-        "Dashboard only is a private local preview; Plays on OBS reaches the stream; Dashboard + OBS runs in both places.",
+        "Dashboard / overlay badges",
+        "Dashboard only is a private local preview; Plays on overlay reaches the stream; Dashboard + overlay runs in both places.",
       ],
       [
         "Selection hints",
@@ -162,7 +167,7 @@ const sections = [
     items: [
       [
         "Soundboard vs media",
-        "Soundboard clips play through OBS without a canvas layer. Use Stop on Overlay to immediately silence every playing instance of that clip. Play video/audio layer targets uploaded media in Layers.",
+        "Soundboard clips play on the overlay without a canvas layer. Use Stop on Overlay to immediately silence every playing instance of that clip. Play video/audio layer targets uploaded media in Layers.",
       ],
       [
         "Myinstants links",
@@ -186,7 +191,7 @@ const sections = [
       ],
       [
         "Studio · TTS",
-        "Write a scene, review the interpreted plan, then generate and save it or play it on OBS. Plain text is spoken. Inside ((…)), quoted words are speech and unquoted descriptions are sound effects; every part plays in sequence.",
+        "Write a scene, review the interpreted plan, then generate and save it or play it on the overlay. Plain text is spoken. Inside ((…)), quoted words are speech and unquoted descriptions are sound effects; every part plays in sequence.",
       ],
       [
         "Saved TTS tokens",
@@ -198,11 +203,11 @@ const sections = [
       ],
       [
         "TTS playback safety",
-        "Use the speaker control to turn new TTS playback on or off. Pause, Resume, and Stop control the active OBS clip. Audio is loudness-normalized and peak-limited, and the overlay shows a small status notice while TTS is playing.",
+        "Use the speaker control to turn new TTS playback on or off. Pause, Resume, and Stop control the active overlay clip. Audio is loudness-normalized and peak-limited, and the overlay shows a small status notice while TTS is playing.",
       ],
       [
         "TTS failures",
-        "If AI planning is temporarily unavailable, TTS uses a safe local interpretation instead of paying for a retry. A TTS command/event action can optionally send a chatbot message when generation or OBS playback fails.",
+        "If AI planning is temporarily unavailable, TTS uses a safe local interpretation instead of paying for a retry. A TTS command/event action can optionally send a chatbot message when generation or overlay playback fails.",
       ],
       [
         "Command action timing",
@@ -214,7 +219,7 @@ const sections = [
       ],
       [
         "Preview flight",
-        "Test a fly-across animation on your dashboard without affecting OBS or other users.",
+        "Test a fly-across animation on your dashboard without affecting the overlay or other users.",
       ],
       [
         "DVD speed panel",
@@ -222,7 +227,7 @@ const sections = [
       ],
       [
         "Selected media animation",
-        "Select an image, GIF, or video in Layers, choose a reaction or travel animation, set its duration with the slider or presets, and press Play. It runs on the dashboard and OBS; travel animations restore the previous position afterward.",
+        "Select an image, GIF, or video in Layers, choose a reaction or travel animation, set its duration with the slider or presets, and press Play. It runs on the dashboard and overlay; travel animations restore the previous position afterward.",
       ],
       [
         "Studio · Emotes",
@@ -230,14 +235,15 @@ const sections = [
       ],
       [
         "Show my cursor on overlay",
-        "The green Visible or red Hidden state controls only your cursor on OBS; dashboard cursors remain visible.",
+        "The green Visible or red Hidden state controls only your cursor on the overlay; dashboard cursors remain visible.",
       ],
     ],
   },
 ];
 
-export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
+export function HelpGuide({ onOpenTour, onOpenSetup }: { onOpenTour?: () => void; onOpenSetup?: () => void }) {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
 
   useEffect(() => {
     if (!open) return;
@@ -270,88 +276,60 @@ export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
         <HelpCircle size={18} />
       </button>
 
-      {open && (
+      {presence.mounted && (
         <div
           role="presentation"
+          className="guide-backdrop motion-backdrop"
+          data-state={presence.state}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setOpen(false);
-          }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 5000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-            background: "rgba(0,0,0,0.68)",
-            backdropFilter: "blur(3px)",
           }}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="controls-guide-title"
-            style={{
-              width: "min(820px, calc(100vw - 40px))",
-              maxHeight: "min(760px, calc(100vh - 40px))",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              background: "#151517",
-              border: "1px solid #3a3a40",
-              borderRadius: 10,
-              boxShadow: "0 24px 70px rgba(0,0,0,0.65)",
-            }}
+            className="guide-dialog motion-dialog"
+            data-state={presence.state}
           >
-            <div
-              style={{
-                minHeight: 52,
-                padding: "0 14px 0 18px",
-                display: "flex",
-                alignItems: "center",
-                borderBottom: "1px solid #2c2c31",
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div
-                  id="controls-guide-title"
-                  style={{ color: "#f3f4f6", fontSize: 16, fontWeight: 700 }}
-                >
-                  Controls & shortcuts
-                </div>
-                <div style={{ marginTop: 2, color: "#9299a5", fontSize: 11 }}>
-                  A quick guide to editing the Vicksy overlay
-                </div>
+            <header className="guide-header">
+              <div>
+                <h2 id="controls-guide-title">Controls & shortcuts</h2>
+                <p>A quick guide to editing the overlay</p>
               </div>
-              {onOpenTour && (
+              <div className="guide-header__actions">
+                {onOpenSetup && (
+                  <button
+                    className="ui-button"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenSetup();
+                    }}
+                  >
+                    <Rocket size={14} /> Setup guide
+                  </button>
+                )}
+                {onOpenTour && (
+                  <button
+                    className="ui-button"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenTour();
+                    }}
+                  >
+                    <GraduationCap size={14} /> Quick tour
+                  </button>
+                )}
                 <button
-                  className="ui-button ui-button--compact"
-                  onClick={() => {
-                    setOpen(false);
-                    onOpenTour();
-                  }}
-                  title="Replay the introductory dashboard tour"
-                  style={{ marginRight: 7 }}
+                  className="ui-icon-button"
+                  onClick={() => setOpen(false)}
+                  title="Close guide (Escape)"
+                  aria-label="Close controls guide"
                 >
-                  <GraduationCap size={14} /> Quick tour
+                  <X size={16} />
                 </button>
-              )}
-              <button
-                className="ui-icon-button"
-                onClick={() => setOpen(false)}
-                title="Close guide (Escape)"
-                aria-label="Close controls guide"
-                style={{
-                  background: "#202024",
-                  border: "1px solid #3b3b42",
-                  color: "#d5d8df",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={16} />
-              </button>
-            </div>
+              </div>
+            </header>
             <div
               style={{
                 overflowY: "auto",
@@ -366,8 +344,8 @@ export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
                   key={section.title}
                   style={{
                     padding: 13,
-                    background: "#1b1b1e",
-                    border: "1px solid #303036",
+                    background: "var(--bg-raised)",
+                    border: "1px solid var(--line)",
                     borderRadius: 8,
                   }}
                 >
@@ -403,13 +381,13 @@ export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
                             width: "fit-content",
                             maxWidth: "100%",
                             padding: "3px 7px",
-                            color: "#e7e9ed",
-                            background: "#25252a",
-                            border: "1px solid #44444c",
+                            color: "var(--text-primary)",
+                            background: "var(--bg-control)",
+                            border: "1px solid var(--line-strong)",
                             borderBottomWidth: 2,
                             borderRadius: 5,
                             fontFamily: "Inter, sans-serif",
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: 700,
                             lineHeight: 1.35,
                           }}
@@ -418,7 +396,7 @@ export function HelpGuide({ onOpenTour }: { onOpenTour?: () => void }) {
                         </kbd>
                         <span
                           style={{
-                            color: "#b4bac4",
+                            color: "var(--text-secondary)",
                             fontSize: 11,
                             lineHeight: 1.45,
                           }}
