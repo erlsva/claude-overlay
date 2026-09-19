@@ -151,7 +151,6 @@ ttsRouter.post("/generate", expensive, async (req, res) => {
         prompt: z.string().trim().min(1).max(6000),
         planId: z.string().uuid().optional(),
         play: z.boolean().default(true),
-        volume: z.number().min(0).max(1).default(0.25),
       })
       .parse(req.body);
     const { job } = submit({

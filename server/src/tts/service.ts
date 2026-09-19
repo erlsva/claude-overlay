@@ -68,8 +68,13 @@ export function pauseTtsPlayback() {
 export function resumeTtsPlayback() {
   return playbackController?.resume() ?? false;
 }
+/** One overlay volume for every clip, so chat-triggered and dashboard clips agree and it survives between clips. */
+let overlayVolume = 0.25;
 export function setTtsPlaybackVolume(volume: number) {
-  return playbackController?.setVolume(volume) ?? false;
+  const changed = overlayVolume !== volume;
+  overlayVolume = volume;
+  const live = playbackController?.setVolume(volume) ?? false;
+  return changed || live;
 }
 export function setTtsPlaybackEnabled(enabled: boolean) {
   return (
@@ -80,14 +85,15 @@ export function setTtsPlaybackEnabled(enabled: boolean) {
     }
   );
 }
-export function getTtsPlaybackState() {
-  return (
-    playbackController?.state() ?? {
+export function getTtsPlaybackState(): TtsPlaybackState {
+  return {
+    ...(playbackController?.state() ?? {
       enabled: true,
       active: false,
       paused: false,
-    }
-  );
+    }),
+    volume: overlayVolume,
+  };
 }
 export function replayId(text: string) {
   return text
@@ -135,14 +141,8 @@ export function submit(input: {
   owner: string;
   planId?: string;
   play: boolean;
-  volume?: number;
 }) {
   z.string().trim().min(1).max(6000).parse(input.prompt);
-  const volume = z
-    .number()
-    .min(0)
-    .max(1)
-    .parse(input.volume ?? 0.25);
   if (input.play && !getTtsPlaybackState().enabled)
     throw new Error(
       "TTS playback is turned off. Turn it on before playing on the overlay.",
@@ -276,7 +276,7 @@ export function submit(input: {
         job.message = "Playing on overlay";
         try {
           if (!play) throw new Error("Overlay playback is unavailable.");
-          await play(clip, volume);
+          await play(clip, overlayVolume);
         } catch (error) {
           playbackFailed = true;
           addWarning(

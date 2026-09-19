@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attributeReplay, setTtsOverlayCheck, setTtsPlaybackController, submit } from "./service.js";
+import { attributeReplay, getTtsPlaybackState, setTtsOverlayCheck, setTtsPlaybackController, setTtsPlaybackVolume, submit } from "./service.js";
+
+test("the overlay volume is remembered while nothing is playing", () => {
+  setTtsPlaybackController({
+    state: () => ({ enabled: true, active: false, paused: false }),
+    stop: () => false,
+    pause: () => false,
+    resume: () => false,
+    setVolume: () => false,
+    setEnabled: (enabled) => ({ enabled, active: false, paused: false }),
+  });
+  assert.equal(setTtsPlaybackVolume(0.8), true);
+  assert.equal(getTtsPlaybackState().volume, 0.8);
+  assert.equal(setTtsPlaybackVolume(0.8), false);
+});
 
 test("saved clip replays are attributed to the current sender", () => {
   const original = {

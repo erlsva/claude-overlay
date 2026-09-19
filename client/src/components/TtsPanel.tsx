@@ -124,13 +124,18 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
   const refreshErrorShown = useRef(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const volumeSyncTimer = useRef(0);
+  // While the slider is being dragged, ignore volumes echoed back from the server.
+  const volumeTouchedAt = useRef(0);
+  const followServerVolume = (next: { volume?: number }) => {
+    if (typeof next.volume !== "number") return;
+    if (Date.now() - volumeTouchedAt.current < 1500) return;
+    setVolume(next.volume);
+  };
   const volumeSyncErrorShown = useRef(false);
 
   useEffect(() => {
     setPlayback(livePlayback);
-    if (livePlayback.active && typeof livePlayback.volume === "number") {
-      setVolume(livePlayback.volume);
-    }
+    followServerVolume(livePlayback);
   }, [livePlayback]);
   useEffect(() => {
     if (previewAudioRef.current) {
@@ -165,7 +170,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
 
   const changeVolume = (nextVolume: number) => {
     setVolume(nextVolume);
-    if (!playback.active) return;
+    volumeTouchedAt.current = Date.now();
     window.clearTimeout(volumeSyncTimer.current);
     volumeSyncTimer.current = window.setTimeout(() => {
       void api<{ changed: boolean; state: PlaybackState }>("/playback", {
@@ -173,6 +178,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
         body: JSON.stringify({ action: "volume", volume: nextVolume }),
       })
         .then((result) => {
+          volumeTouchedAt.current = Date.now();
           setPlayback(result.state);
           volumeSyncErrorShown.current = false;
         })
@@ -188,6 +194,7 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
     (next: TtsState, notify = true) => {
       setStatus(next.status);
       setPlayback(next.playback);
+      followServerVolume(next.playback);
       setClips(next.clips);
       setJobs(next.jobs);
       setError("");
@@ -281,7 +288,6 @@ export function TtsPanel({ overlayConnected, livePlayback }: { overlayConnected:
           prompt: text,
           planId: text === prompt && !isToken ? plan?.planId : undefined,
           play,
-          volume,
         }),
       });
       submittedJobs.current.add(job.id);

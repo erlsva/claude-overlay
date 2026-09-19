@@ -174,7 +174,7 @@ setTtsPlaybackController({
     enabled: ttsPlaybackEnabled,
     active: !!activeTtsPlayback,
     paused: activeTtsPlayback?.paused ?? false,
-    ...(activeTtsPlayback ? { volume: activeTtsPlayback.volume, clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
+    ...(activeTtsPlayback ? { clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
   }),
   stop: () => {
     if (!activeTtsPlayback) return false;
@@ -360,7 +360,7 @@ function executeTriggerStep(step: TriggerStep, event: TriggerEventPayload): Prom
     const sender = String(event.chatter_user_name || event.user_name || event.user_login || "Twitch");
     const prompt = renderEventMessage(step.chatMessage || "{message}", event, 6000);
     try {
-      const request = submitTts({ prompt, sender, owner: "trigger", play: true, volume: 0.25 });
+      const request = submitTts({ prompt, sender, owner: "trigger", play: true });
       return request.completion.then(async () => {
         if (request.job.status === "failed" || request.job.warning) {
           const failure = new Error(request.job.error || request.job.warning || "TTS generation failed");
