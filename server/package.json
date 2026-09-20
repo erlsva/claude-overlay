@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "tsx watch --env-file=.env src/index.ts",
     "build": "tsc",
-    "test": "tsc && node --test dist/auth/jwt.test.js dist/auth/routes.test.js dist/socket/validation.test.js dist/seventv/emotes.test.js dist/tts/scene.test.js dist/tts/interpreter.test.js dist/tts/casting.test.js dist/tts/dsp.test.js dist/tts/discord.test.js dist/tts/service.test.js dist/twitch/eventWebhook.test.js dist/tts/audio.test.js dist/tts/sound.test.js dist/library/limits.test.js",
+    "test": "node ../scripts/sync-shared.mjs --check && tsc && node --test dist/auth/jwt.test.js dist/auth/routes.test.js dist/socket/validation.test.js dist/seventv/emotes.test.js dist/tts/scene.test.js dist/tts/interpreter.test.js dist/tts/casting.test.js dist/tts/dsp.test.js dist/tts/discord.test.js dist/tts/service.test.js dist/twitch/eventWebhook.test.js dist/tts/audio.test.js dist/tts/sound.test.js dist/library/limits.test.js",
     "start": "node dist/index.js",
     "format": "prettier --write src",
     "format:check": "prettier --check src"

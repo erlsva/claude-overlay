@@ -1,5 +1,3 @@
-// Generated from shared/types.ts. Edit that file, then run: node scripts/sync-shared.mjs
-
 export type MediaType = "image" | "gif" | "video" | "audio" | "text";
 
 export interface CanvasElement {

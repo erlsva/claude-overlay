@@ -1,3 +1,4 @@
+import { STREAM_H, STREAM_OFFSET_X, STREAM_OFFSET_Y, STREAM_W } from "./config/canvas.js";
 import express from "express";
 import { randomUUID } from "crypto";
 import { createServer } from "http";
@@ -101,10 +102,6 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 // Active dashboard users: socketId → presence info
 const activeUsers = new Map<string, ActiveUser>();
 const activeOverlays = new Set<string>();
-const STREAM_W = 1920;
-const STREAM_H = 1080;
-const STREAM_OFFSET_X = 1040;
-const STREAM_OFFSET_Y = 960;
 
 interface PresentationRestore {
   changes: Partial<CanvasElement>;
