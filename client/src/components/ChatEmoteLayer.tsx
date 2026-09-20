@@ -159,8 +159,8 @@ export function ChatEmoteLayer({
         x = Math.random() * Math.max(1, width - particleWidth);
         y = Math.random() * Math.max(1, height - size - labelHeight);
         if (activeSettings.motion === "pop-floor") {
-          // Drops straight down from where it appeared.
-          vx = 0;
+          // Falls from where it appeared, drifting gently to one side. No upward kick.
+          vx = (Math.random() < 0.5 ? -1 : 1) * speed * (0.15 + Math.random() * 0.3);
           vy = 0;
         } else {
           const angle = Math.random() * Math.PI * 2;
