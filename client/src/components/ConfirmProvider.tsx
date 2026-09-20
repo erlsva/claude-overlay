@@ -15,6 +15,7 @@ interface ConfirmOptions {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   danger?: boolean;
 }
 
@@ -98,7 +99,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   className="ui-button confirm-dialog__cancel"
                   onClick={() => close(false)}
                 >
-                  Cancel
+                  {options.cancelLabel ?? "Cancel"}
                 </button>
                 <button
                   className={`ui-button ${options.danger ? "ui-danger" : "studio-primary"}`}

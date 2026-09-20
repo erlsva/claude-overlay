@@ -44,38 +44,41 @@ export function useMediaUpload(
             ? "gif"
             : "image";
       const mediaUrl = `${SERVER_URL}${url}`;
-      onAdd({
-        id: randomUUID(),
-        type,
-        src: mediaUrl,
-        displayName: file.name,
-        x: 200,
-        y: 200,
-        width: type === "audio" ? 360 : (visualSize?.width ?? 400),
-        height: type === "audio" ? 86 : (visualSize?.height ?? 225),
-        rotation: 0,
-        scaleX: 1,
-        scaleY: 1,
-        visible: true,
-        zIndex: Date.now(),
-      });
-      toast.success(`${file.name} added to the canvas`);
-      if (
+      // A sound effect can go to the soundboard instead of the canvas; it is not put in both.
+      const toSoundboard =
         type === "audio" &&
         (await confirm({
-          title: "Add to Soundboard?",
+          title: "Add to the Soundboard instead?",
           message:
-            "Soundboard clips can play on the overlay without creating or showing a canvas layer.",
-          confirmLabel: "Add sound",
-        }))
-      ) {
+            "Soundboard clips play on the overlay without a canvas layer. Choose Add to canvas to place it as a layer instead.",
+          confirmLabel: "Add to soundboard",
+          cancelLabel: "Add to canvas",
+        }));
+      if (toSoundboard) {
         onSaveSound({
           id: randomUUID(),
           name: file.name.replace(/\.[^.]+$/, ""),
           url: mediaUrl,
           volume: 0.25,
         });
-        toast.success(`${file.name} also added to the Soundboard`);
+        toast.success(`${file.name} added to the Soundboard`);
+      } else {
+        onAdd({
+          id: randomUUID(),
+          type,
+          src: mediaUrl,
+          displayName: file.name,
+          x: 200,
+          y: 200,
+          width: type === "audio" ? 360 : (visualSize?.width ?? 400),
+          height: type === "audio" ? 86 : (visualSize?.height ?? 225),
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          visible: true,
+          zIndex: Date.now(),
+        });
+        toast.success(`${file.name} added to the canvas`);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Media upload failed");
