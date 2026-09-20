@@ -127,7 +127,6 @@ function createGroupBox(gid: string, ctx: SyncContext) {
   rotationHandle.style.background = "var(--accent-solid)";
   rotationHandle.style.color = "var(--accent-contrast)";
   rotationHandle.style.zIndex = "100000";
-  rotationHandle.title = "Drag to rotate the group · Hold Shift to snap to 15° increments";
   rotationHandle.setAttribute("aria-label", "Rotate group");
   workspace.insertBefore(box, workspace.firstChild);
   return box;

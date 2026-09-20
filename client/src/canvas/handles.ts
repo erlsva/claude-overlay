@@ -221,7 +221,6 @@ export function addRotationHandle(
 ) {
   const handle = document.createElement("div");
   handle.className = "rh rotation-handle";
-  handle.title = "Drag to rotate · Hold Shift to snap to 15° increments";
   handle.setAttribute("role", "button");
   handle.setAttribute("aria-label", "Rotate element");
   handle.style.cssText =
