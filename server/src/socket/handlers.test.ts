@@ -15,13 +15,25 @@ const { saveFeatureFlags } = await import("../db/index.js");
 type Args = unknown[];
 type Handler = (...args: any[]) => unknown;
 
-const user = { id: "u1", login: "tester", displayName: "Tester", avatar: "", color: "#fff", role: "moderator" };
+const user = {
+  id: "u1",
+  login: "tester",
+  displayName: "Tester",
+  avatar: "",
+  color: "#fff",
+  role: "moderator",
+};
 let socketCounter = 0;
 
 /** A socket and server that record everything sent, so a handler can be driven directly. */
 function connect(options: { mode?: string; user?: unknown } = {}) {
   const handlers = new Map<string, Handler>();
-  const sent = { socket: [] as Args[], io: [] as Args[], rooms: [] as Array<[string, ...Args]>, broadcast: [] as Args[] };
+  const sent = {
+    socket: [] as Args[],
+    io: [] as Args[],
+    rooms: [] as Array<[string, ...Args]>,
+    broadcast: [] as Args[],
+  };
   const io = {
     emit: (...args: Args) => sent.io.push(args),
     to: (room: string) => ({ emit: (...args: Args) => sent.rooms.push([room, ...args]) }),
@@ -35,7 +47,9 @@ function connect(options: { mode?: string; user?: unknown } = {}) {
     emit: (...args: Args) => sent.socket.push(args),
     on: (event: string, handler: Handler) => handlers.set(event, handler),
     broadcast: { emit: (...args: Args) => sent.broadcast.push(args) },
-    volatile: { broadcast: { emit: (...args: Args) => sent.broadcast.push(["volatile", ...args]) } },
+    volatile: {
+      broadcast: { emit: (...args: Args) => sent.broadcast.push(["volatile", ...args]) },
+    },
     to: () => ({ volatile: { emit: (...args: Args) => sent.broadcast.push(["cursor", ...args]) } }),
   };
   const activeUsers = new Map();
@@ -51,7 +65,8 @@ function connect(options: { mode?: string; user?: unknown } = {}) {
     (playbackId, error) => ended.sound.push([playbackId, error]),
   );
   const fire = async (event: string, payload?: unknown) => handlers.get(event)?.(payload);
-  const emitted = (name: string) => [...sent.io, ...sent.rooms.map(([, ...rest]) => rest)].filter((a) => a[0] === name);
+  const emitted = (name: string) =>
+    [...sent.io, ...sent.rooms.map(([, ...rest]) => rest)].filter((a) => a[0] === name);
   return { handlers, sent, joined, socket, fire, emitted, activeUsers, activeOverlays, ended };
 }
 
@@ -70,7 +85,16 @@ const element = (overrides: Partial<CanvasElement> = {}): CanvasElement => ({
   zIndex: 1,
   ...overrides,
 });
-const stroke = (id = "s1"): DrawStroke => ({ id, points: [[0, 0], [5, 5]], color: "#ffffff", size: 4, eraser: false });
+const stroke = (id = "s1"): DrawStroke => ({
+  id,
+  points: [
+    [0, 0],
+    [5, 5],
+  ],
+  color: "#ffffff",
+  size: 4,
+  eraser: false,
+});
 
 function reset() {
   Object.assign(canvasStore, {
@@ -93,7 +117,11 @@ test("an overlay is counted, receives state, and gets no editing listeners", () 
   assert.deepEqual(c.joined, ["overlay"]);
   assert.equal(c.activeOverlays.size, 1);
   assert.ok(c.sent.socket.some(([name]) => name === "state:sync"));
-  assert.ok(c.emitted("overlay:status").some(([, payload]: any) => payload.connected && payload.count === 1));
+  assert.ok(
+    c
+      .emitted("overlay:status")
+      .some(([, payload]: any) => payload.connected && payload.count === 1),
+  );
   assert.ok(c.handlers.has("media:ended"));
   assert.ok(!c.handlers.has("element:add"), "public renderers never get mutation listeners");
   assert.ok(!c.handlers.has("draw:stroke"));
@@ -119,7 +147,14 @@ test("a dashboard user joins the dashboard room, gets studio state, and is liste
   const c = connect();
   assert.deepEqual(c.joined, ["dashboard"]);
   const names = c.sent.socket.map(([name]) => name);
-  for (const expected of ["state:sync", "draw:sync", "studio:sync", "history:status", "users:list", "chat:channel"])
+  for (const expected of [
+    "state:sync",
+    "draw:sync",
+    "studio:sync",
+    "history:status",
+    "users:list",
+    "chat:channel",
+  ])
     assert.ok(names.includes(expected), `missing ${expected}`);
   assert.equal(c.activeUsers.size, 1);
   assert.ok(c.sent.broadcast.some(([name]) => name === "user:joined"));
@@ -160,7 +195,11 @@ test("element updates apply, and a locked element refuses movement", async () =>
   await c.fire("element:update", { id: "el-1", changes: { x: 999 } });
   assert.equal(canvasStore.canvasState.elements[0].x, 300, "locked elements cannot move");
   await c.fire("element:update", { id: "el-1", changes: { opacity: 0.5 } });
-  assert.equal(canvasStore.canvasState.elements[0].opacity, 0.5, "non-movement changes still apply");
+  assert.equal(
+    canvasStore.canvasState.elements[0].opacity,
+    0.5,
+    "non-movement changes still apply",
+  );
   await c.fire("element:update", { id: "el-1", changes: { nonsense: 1 } });
   await c.fire("element:update", { id: "missing", changes: { x: 1 } });
 });
@@ -169,7 +208,10 @@ test("effect and fly start times are stamped by the server", async () => {
   const c = connect();
   await c.fire("element:add", { element: element() });
   const before = Date.now();
-  await c.fire("element:update", { id: "el-1", changes: { effectAnimation: "pop", effectStartedAt: 1 } });
+  await c.fire("element:update", {
+    id: "el-1",
+    changes: { effectAnimation: "pop", effectStartedAt: 1 },
+  });
   assert.ok((canvasStore.canvasState.elements[0].effectStartedAt ?? 0) >= before);
 });
 
@@ -183,7 +225,11 @@ test("removing an element skips locked ones and dissolves a group left with one 
   await c.fire("element:remove", { id: "a" });
   const left = canvasStore.canvasState.elements.find((item) => item.id === "b")!;
   assert.equal(left.groupId, undefined);
-  assert.ok(c.emitted("element:updated").some(([, payload]: any) => payload.id === "b" && payload.changes.groupId === null));
+  assert.ok(
+    c
+      .emitted("element:updated")
+      .some(([, payload]: any) => payload.id === "b" && payload.changes.groupId === null),
+  );
 });
 
 test("undo and redo restore the canvas and tell everyone", async () => {
@@ -230,16 +276,28 @@ test("media control is relayed to others only when valid", async () => {
 test("the audio test needs a connected overlay", async () => {
   const c = connect();
   await c.fire("overlay:test-audio", { testId: "t1" });
-  assert.deepEqual(c.sent.socket.at(-1), ["overlay:test-result", { testId: "t1", ok: false, error: "No overlay is connected." }]);
+  assert.deepEqual(c.sent.socket.at(-1), [
+    "overlay:test-result",
+    { testId: "t1", ok: false, error: "No overlay is connected." },
+  ]);
   c.activeOverlays.add("some-overlay");
   await c.fire("overlay:test-audio", { testId: "t2" });
-  assert.ok(c.sent.rooms.some(([room, name, payload]) => room === "overlay" && name === "overlay:test-audio" && (payload as any).testId === "t2"));
+  assert.ok(
+    c.sent.rooms.some(
+      ([room, name, payload]) =>
+        room === "overlay" && name === "overlay:test-audio" && (payload as any).testId === "t2",
+    ),
+  );
 });
 
 test("an overlay reports media, sound and test results back", async () => {
   const c = connect({ mode: "overlay", user: undefined });
-  canvasStore.canvasState.elements.push(element({ id: "vid", type: "video", autoVisibility: true }));
-  canvasStore.canvasState.elements.push(element({ id: "manual", type: "video", autoVisibility: false }));
+  canvasStore.canvasState.elements.push(
+    element({ id: "vid", type: "video", autoVisibility: true }),
+  );
+  canvasStore.canvasState.elements.push(
+    element({ id: "manual", type: "video", autoVisibility: false }),
+  );
   await c.fire("media:ended", { id: "vid" });
   await c.fire("media:ended", { id: "manual" });
   await c.fire("media:ended", { id: "nope" });
@@ -247,9 +305,14 @@ test("an overlay reports media, sound and test results back", async () => {
   await c.fire("sound:ended", { playbackId: "p1" });
   await c.fire("sound:ended", { playbackId: "p2", error: "boom" });
   await c.fire("sound:ended", { playbackId: "p3", error: "x".repeat(400) });
-  assert.deepEqual(c.ended.sound, [["p1", undefined], ["p2", "boom"]]);
+  assert.deepEqual(c.ended.sound, [
+    ["p1", undefined],
+    ["p2", "boom"],
+  ]);
   await c.fire("overlay:test-result", { testId: "t", ok: true });
-  assert.ok(c.sent.rooms.some(([room, name]) => room === "dashboard" && name === "overlay:test-result"));
+  assert.ok(
+    c.sent.rooms.some(([room, name]) => room === "dashboard" && name === "overlay:test-result"),
+  );
 });
 
 test("DVD settings are validated before they are stored and shared", async () => {
@@ -312,7 +375,9 @@ test("presets save the chosen elements and insert offset copies with fresh ids",
   await c.fire("preset:load", { id: "p1" });
   const copies = canvasStore.canvasState.elements.slice(2);
   assert.equal(copies.length, 2);
-  assert.ok(copies.every((copy) => copy.id !== "a" && copy.id !== "b" && copy.x === 42 && copy.y === 52));
+  assert.ok(
+    copies.every((copy) => copy.id !== "a" && copy.id !== "b" && copy.x === 42 && copy.y === 52),
+  );
   assert.equal(copies[0].groupId, copies[1].groupId, "grouped copies stay grouped");
   assert.notEqual(copies[0].groupId, "g");
   await c.fire("preset:delete", { id: "p1" });
@@ -321,7 +386,13 @@ test("presets save the chosen elements and insert offset copies with fresh ids",
 
 test("sounds accept only this server's uploads and MyInstants clips", async () => {
   const c = connect();
-  const sound = (url: string, overrides = {}) => ({ id: `s-${url.length}`, name: "Clip", url, volume: 0.5, ...overrides });
+  const sound = (url: string, overrides = {}) => ({
+    id: `s-${url.length}`,
+    name: "Clip",
+    url,
+    volume: 0.5,
+    ...overrides,
+  });
   await c.fire("sound:save", sound("http://localhost:3001/files/clip.mp3"));
   await c.fire("sound:save", sound("https://www.myinstants.com/media/sounds/airhorn.mp3"));
   await c.fire("sound:save", sound("https://evil.example/files/clip.mp3"));
@@ -356,7 +427,10 @@ test("triggers are validated: events, steps and limits", async () => {
   await c.fire("trigger:save", trigger({ id: "bad2", cooldownSeconds: -1 }));
   await c.fire("trigger:save", trigger({ id: "bad3", extra: true }));
   await c.fire("trigger:save", trigger({ id: "bad4", action: "tts", targetId: undefined }));
-  await c.fire("trigger:save", trigger({ id: "bad5", steps: [{ action: "hide-element", targetId: "x" }] }));
+  await c.fire(
+    "trigger:save",
+    trigger({ id: "bad5", steps: [{ action: "hide-element", targetId: "x" }] }),
+  );
   assert.equal(canvasStore.triggers.length, 2);
   const steps = [
     { action: "show-element", targetId: "el-1" },
