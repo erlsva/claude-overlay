@@ -21,8 +21,16 @@ const settings: ChatEmoteSettings = {
   additionalEmotes: [],
 };
 
-test("accepts every movement mode, including both pop-in modes", () => {
-  for (const motion of ["walls", "floor", "parade", "corners", "pop-walls", "pop-floor"] as const) {
+test("accepts every movement mode, including the pop-in and fireworks modes", () => {
+  for (const motion of [
+    "walls",
+    "floor",
+    "parade",
+    "corners",
+    "pop-walls",
+    "pop-floor",
+    "fireworks",
+  ] as const) {
     assert.equal(validChatEmoteSettings({ ...settings, motion }), true, motion);
   }
 });

@@ -3,7 +3,7 @@ import { Pause, Volume2 } from "lucide-react";
 import { OverlayStage, type OverlayStageHandle } from "../components/overlay-stage/OverlayStage";
 import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
-import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
+import { ChatEmoteLayer } from "../components/chat-emotes/ChatEmoteLayer";
 import TileController from "../components/TileController";
 import { isMirrorMode, silencePage } from "../audio/silence";
 import { SERVER_URL } from "../config/server";

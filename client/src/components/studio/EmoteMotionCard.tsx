@@ -19,7 +19,8 @@ export function EmoteMotionCard({ props }: { props: StudioPanelProps }) {
           ([, key]) =>
             key !== "gravity" ||
             props.chatEmoteSettings.motion === "floor" ||
-            props.chatEmoteSettings.motion === "pop-floor",
+            props.chatEmoteSettings.motion === "pop-floor" ||
+            props.chatEmoteSettings.motion === "fireworks",
         )
         .map(([label, key, min, max, step, suffix]) => (
           <SliderField

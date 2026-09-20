@@ -93,7 +93,9 @@ export function EmoteBehaviorCard({
                       ? "Emotes will fade in, then bounce wall to wall"
                       : motion === "pop-floor"
                         ? "Emotes will fade in, then drop and bounce on the floor"
-                        : "Using wall-to-wall bounce",
+                        : motion === "fireworks"
+                          ? "Emotes will launch and burst like fireworks"
+                          : "Using wall-to-wall bounce",
             );
           }}
         >
@@ -103,6 +105,7 @@ export function EmoteBehaviorCard({
           <option value="walls">Wall bounce</option>
           <option value="pop-walls">Pop in &amp; wall bounce</option>
           <option value="pop-floor">Pop in &amp; floor bounce</option>
+          <option value="fireworks">Fireworks</option>
         </select>
       </label>
       {(props.chatEmoteSettings.motion === "parade" ||

@@ -1,5 +1,5 @@
 import { Section } from "./shared";
-import { ChatEmoteLayer } from "../ChatEmoteLayer";
+import { ChatEmoteLayer } from "../chat-emotes/ChatEmoteLayer";
 import { randomUUID } from "../../utils";
 import previewEmote from "../../assets/vicksyW.png";
 import { Square, Play } from "lucide-react";
