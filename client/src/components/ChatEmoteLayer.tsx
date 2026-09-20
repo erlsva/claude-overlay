@@ -15,9 +15,15 @@ interface Particle extends ChatEmoteSpawn {
   cornerDirection?: "left" | "right";
 }
 
-/** "Pop in & bounce": how long an emote fades in where it appeared before it starts moving, and how long it fades out at the end. */
+/** "Pop in" modes: how long an emote fades in where it appeared before it starts moving, and how long it fades out at the end. */
 const POP_FADE_IN_MS = 1000;
 const POP_FADE_OUT_MS = 600;
+
+const isPop = (motion: ChatEmoteSettings["motion"]) =>
+  motion === "pop-walls" || motion === "pop-floor";
+/** Modes with gravity and a floor to land on. */
+const usesFloor = (motion: ChatEmoteSettings["motion"]) =>
+  motion === "floor" || motion === "pop-floor";
 
 interface ChatEmoteLayerProps {
   spawn: ChatEmoteSpawn | null;
@@ -148,13 +154,18 @@ export function ChatEmoteLayer({
         y = height - size - labelHeight;
         vx = 0;
         vy = 0;
-      } else if (activeSettings.motion === "pop") {
+      } else if (isPop(activeSettings.motion)) {
         // Appears anywhere; the velocity is used once the fade-in is over.
         x = Math.random() * Math.max(1, width - particleWidth);
         y = Math.random() * Math.max(1, height - size - labelHeight);
-        const angle = Math.random() * Math.PI * 2;
-        vx = Math.cos(angle) * speed;
-        vy = Math.sin(angle) * speed;
+        if (activeSettings.motion === "pop-floor") {
+          vx = (Math.random() < 0.5 ? -1 : 1) * speed * (0.45 + Math.random() * 0.55);
+          vy = -speed * (0.25 + Math.random() * 0.55);
+        } else {
+          const angle = Math.random() * Math.PI * 2;
+          vx = Math.cos(angle) * speed;
+          vy = Math.sin(angle) * speed;
+        }
       } else if (activeSettings.motion === "floor") {
         x = Math.random() * Math.max(1, width - particleWidth);
         y = height * (0.08 + Math.random() * 0.25);
@@ -238,7 +249,7 @@ export function ChatEmoteLayer({
         const particleWidth = size * particle.aspectRatio;
         const floorY = height - size - labelHeight;
         const popNode = nodesRef.current.get(particle.id);
-        if (settings.motion === "pop") {
+        if (isPop(settings.motion)) {
           const age = now - particle.bornAt;
           const remaining = settings.lifetimeSeconds * 1000 - age;
           if (popNode)
@@ -310,27 +321,27 @@ export function ChatEmoteLayer({
           continue;
         }
         const restingOnFloor =
-          settings.motion === "floor" && particle.y >= floorY - 0.5 && particle.vy === 0;
-        if (settings.motion === "floor" && !restingOnFloor)
+          usesFloor(settings.motion) && particle.y >= floorY - 0.5 && particle.vy === 0;
+        if (usesFloor(settings.motion) && !restingOnFloor)
           particle.vy += settings.gravity * scale * dt;
         if (restingOnFloor) particle.vx *= Math.pow(0.35, dt);
         particle.x += particle.vx * dt;
         particle.y += particle.vy * dt;
         if (particle.x <= 0 || particle.x + particleWidth >= width) {
           particle.x = Math.max(0, Math.min(width - particleWidth, particle.x));
-          particle.vx *= settings.motion === "floor" ? -0.84 : -1;
+          particle.vx *= usesFloor(settings.motion) ? -0.84 : -1;
         }
         if (particle.y <= 0) {
           particle.y = 0;
-          particle.vy = Math.abs(particle.vy) * (settings.motion === "floor" ? 0.7 : 1);
+          particle.vy = Math.abs(particle.vy) * (usesFloor(settings.motion) ? 0.7 : 1);
         }
         if (particle.y + size + labelHeight >= height) {
           particle.y = floorY;
           particle.vy =
-            settings.motion === "floor" && Math.abs(particle.vy) < 80 * scale
+            usesFloor(settings.motion) && Math.abs(particle.vy) < 80 * scale
               ? 0
-              : -Math.abs(particle.vy) * (settings.motion === "floor" ? 0.68 : 1);
-          if (settings.motion === "floor") particle.vx *= 0.92;
+              : -Math.abs(particle.vy) * (usesFloor(settings.motion) ? 0.68 : 1);
+          if (usesFloor(settings.motion)) particle.vx *= 0.92;
         }
         const node = nodesRef.current.get(particle.id);
         if (node) node.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0)`;
@@ -373,7 +384,7 @@ export function ChatEmoteLayer({
           style={{
             width: settings.size * scale * particle.aspectRatio,
             // Start invisible so a new emote never flashes before its first fade-in frame.
-            opacity: settings.motion === "pop" ? 0 : undefined,
+            opacity: isPop(settings.motion) ? 0 : undefined,
           }}
         >
           {settings.showNames && (

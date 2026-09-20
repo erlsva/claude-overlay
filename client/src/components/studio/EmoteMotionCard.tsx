@@ -15,7 +15,12 @@ export function EmoteMotionCard({ props }: { props: StudioPanelProps }) {
           ["Maximum visible", "maxVisible", 1, 100, 1, ""],
         ] as const
       )
-        .filter(([, key]) => key !== "gravity" || props.chatEmoteSettings.motion === "floor")
+        .filter(
+          ([, key]) =>
+            key !== "gravity" ||
+            props.chatEmoteSettings.motion === "floor" ||
+            props.chatEmoteSettings.motion === "pop-floor",
+        )
         .map(([label, key, min, max, step, suffix]) => (
           <SliderField
             key={key}
