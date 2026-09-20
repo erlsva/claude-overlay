@@ -8,7 +8,7 @@ import { useToast } from "../ToastProvider";
 import { useConfirm } from "../ConfirmProvider";
 import { useState } from "react";
 import { randomUUID } from "../../utils";
-import { TtsPanel } from "../TtsPanel";
+import { TtsPanel } from "../tts/TtsPanel";
 import { type StudioPanelProps, type Tab } from "./types";
 import { useTriggerBuilder } from "./useTriggerBuilder";
 import { useSoundForm } from "./useSoundForm";
