@@ -16,9 +16,9 @@ import {
   getStreamerLogins,
 } from "../twitch/channels.js";
 import type { UserRole } from "../types.js";
+import { CLIENT_URL } from "../config/env.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();
-const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:5173";
 const IS_PROD = process.env.NODE_ENV === "production";
 if (IS_PROD && !process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is required in production");

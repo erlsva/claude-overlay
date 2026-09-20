@@ -112,11 +112,9 @@ libraryRouter.get("/", async (_req, res) => {
     });
   } catch (error) {
     console.error("Library list failed", error);
-    res
-      .status(503)
-      .json({
-        error: "The shared library is unavailable. Check DATABASE_URL and the server logs.",
-      });
+    res.status(503).json({
+      error: "The shared library is unavailable. Check DATABASE_URL and the server logs.",
+    });
   }
 });
 
@@ -124,11 +122,9 @@ function parseUpload(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (error) => {
     if (!error) return next();
     if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-      res
-        .status(413)
-        .json({
-          error: `Files in the library can be at most ${MAX_FILE_BYTES / (1024 * 1024)} MB.`,
-        });
+      res.status(413).json({
+        error: `Files in the library can be at most ${MAX_FILE_BYTES / (1024 * 1024)} MB.`,
+      });
       return;
     }
     res

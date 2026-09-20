@@ -1,3 +1,4 @@
+import { CLIENT_URL } from "../config/env.js";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { Router } from "express";
 import { getUserFromRequest } from "../auth/routes.js";
@@ -32,7 +33,6 @@ function canManageEventChannel(
   return !!user && (user.isOwner || user.login.toLowerCase() === channel);
 }
 const sessionSecret = process.env.SESSION_SECRET ?? "development-only-secret";
-const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
 const redirectUri = twitchEventsRedirectUri;
 // Broadcasters only authorize the read permissions needed by EventSub. Outgoing
 // chat uses the independently-authorized chatbot account below.
@@ -85,11 +85,9 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
     const channel = req.params.channel.toLowerCase() as EventChannel;
     if (!isEventChannel(channel)) return res.status(400).json({ error: "Unknown Events channel" });
     if (!canManageEventChannel(req, channel))
-      return res
-        .status(403)
-        .json({
-          error: `Sign into the dashboard as ${channel} or the overlay owner to connect this channel`,
-        });
+      return res.status(403).json({
+        error: `Sign into the dashboard as ${channel} or the overlay owner to connect this channel`,
+      });
     if (!eventDatabaseConfigured())
       return res.status(503).json({ error: "Event storage is not configured" });
     res.json({ url: getTwitchEventsAuthUrl(createState(channel), EVENT_SCOPES) });
@@ -111,7 +109,7 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
           req.query.error,
           req.query.error_description,
         );
-        return res.redirect(`${clientUrl}/?events_error=twitch_denied`);
+        return res.redirect(`${CLIENT_URL}/?events_error=twitch_denied`);
       }
       const channel = parseState(String(req.query.state ?? ""));
       if (!channel || !req.query.code) throw new Error("Invalid authorization state");
@@ -126,7 +124,7 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
       const twitchUser = await getTwitchUserFromToken(token.accessToken);
       if (twitchUser.login.toLowerCase() !== expectedLogin)
         return res.redirect(
-          `${clientUrl}/?events_error=expected_${expectedLogin}&events_actual=${encodeURIComponent(twitchUser.login.toLowerCase())}`,
+          `${CLIENT_URL}/?events_error=expected_${expectedLogin}&events_actual=${encodeURIComponent(twitchUser.login.toLowerCase())}`,
         );
       stage = "database_save";
       await saveEventAuth({
@@ -151,11 +149,11 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
         });
       }
       res.redirect(
-        `${clientUrl}/?${channel === CHATBOT_AUTH_KEY ? "chatbot_connected" : "events_connected"}=${encodeURIComponent(expectedLogin)}`,
+        `${CLIENT_URL}/?${channel === CHATBOT_AUTH_KEY ? "chatbot_connected" : "events_connected"}=${encodeURIComponent(expectedLogin)}`,
       );
     } catch (error) {
       console.error(`Event authorization failed during ${stage}`, error);
-      res.redirect(`${clientUrl}/?events_error=${stage}`);
+      res.redirect(`${CLIENT_URL}/?events_error=${stage}`);
     }
   });
   router.get("/events/status", async (req, res) => {

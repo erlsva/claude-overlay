@@ -60,10 +60,8 @@ myinstantsRouter.post("/resolve", requireAuth, externalLookupRateLimit, async (r
     return res.json({ url: `https://www.myinstants.com${path}`, title });
   } catch (error) {
     console.error("Myinstants link resolution failed", error);
-    return res
-      .status(400)
-      .json({
-        error: error instanceof Error ? error.message : "Could not resolve Myinstants link",
-      });
+    return res.status(400).json({
+      error: error instanceof Error ? error.message : "Could not resolve Myinstants link",
+    });
   }
 });
