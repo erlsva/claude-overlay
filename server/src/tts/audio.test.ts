@@ -12,7 +12,7 @@ import {
   MAX_AUTO_SPEECH_TEMPO,
   run,
   speechTempo,
-} from "./audio.js";
+} from "./audio/index.js";
 import { parsePrompt } from "./shared/scene.js";
 import { readWav } from "./dsp/index.js";
 

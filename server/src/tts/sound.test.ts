@@ -9,7 +9,7 @@ import {
   run,
   SOUND_ONLY_TARGET_LUFS,
   SPEECH_TARGET_LUFS,
-} from "./audio.js";
+} from "./audio/index.js";
 import {
   channelFilter,
   characterPitch,
@@ -390,7 +390,7 @@ test("the strain filter roughens a clean voice: new harmonics appear, level stay
 });
 
 test("strain drive follows intensity and the TTS_SCREAM_STRAIN dial", async () => {
-  const { strainDbFor, SCREAM_STRAIN_DB, SHOUT_STRAIN_DB } = await import("./audio.js");
+  const { strainDbFor, SCREAM_STRAIN_DB, SHOUT_STRAIN_DB } = await import("./audio/index.js");
   try {
     delete process.env.TTS_SCREAM_STRAIN;
     // Off unless asked for: the saturation is crunchy.
@@ -454,7 +454,8 @@ test("the comfort limiter does nothing to steady audio, silence or tiny clips", 
 });
 
 test("TTS_SCREAM_LAYER is a dial and is off unless you turn it on", async () => {
-  const { screamLayerScale, SCREAM_LAYER_GAIN, SHOUT_LAYER_GAIN } = await import("./audio.js");
+  const { screamLayerScale, SCREAM_LAYER_GAIN, SHOUT_LAYER_GAIN } =
+    await import("./audio/index.js");
   const set = (value: string | undefined) => {
     if (value === undefined) delete process.env.TTS_SCREAM_LAYER;
     else process.env.TTS_SCREAM_LAYER = value;
@@ -512,7 +513,7 @@ test("the scream tone follows the shape measured on a real scream, with no disto
 });
 
 test("scream tone is on by default, scales with intensity, and is a dial", async () => {
-  const { toneAmountFor, screamToneScale } = await import("./audio.js");
+  const { toneAmountFor, screamToneScale } = await import("./audio/index.js");
   try {
     delete process.env.TTS_SCREAM_TONE;
     assert.equal(screamToneScale(), 1);
@@ -846,7 +847,7 @@ test("a voice behind a door is quieter than the same voice in the room, and stil
 });
 
 test("TTS_MUFFLE is a dial", async () => {
-  const { muffleScale } = await import("./audio.js");
+  const { muffleScale } = await import("./audio/index.js");
   try {
     delete process.env.TTS_MUFFLE;
     assert.equal(muffleScale(), 1);

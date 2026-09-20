@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
 import { getFeatureFlags } from "../db/index.js";
 import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
-import { ffmpegAvailable } from "./audio.js";
+import { ffmpegAvailable } from "./audio/index.js";
 import {
   getTtsPlaybackState,
   jobs,

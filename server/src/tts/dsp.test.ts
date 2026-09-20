@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { renderAudio } from "./audio.js";
+import { renderAudio } from "./audio/index.js";
 import { channelFilter, characterPitch, effectTail, finalWordTiming, RATE } from "./dsp/index.js";
 import { parsePrompt } from "./shared/scene.js";
 

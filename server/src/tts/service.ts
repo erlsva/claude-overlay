@@ -4,7 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { interpretPrompt } from "./interpreter.js";
-import { eleven, FINAL_SOUND_EFFECT_FILTER, FINAL_TTS_FILTER, renderAudio, run } from "./audio.js";
+import {
+  eleven,
+  FINAL_SOUND_EFFECT_FILTER,
+  FINAL_TTS_FILTER,
+  renderAudio,
+  run,
+} from "./audio/index.js";
 import { castScenes, type AccountVoice } from "./casting.js";
 import { scenesSchema, type Scene } from "./shared/scene.js";
 import { getClip, saveClip, type TtsClip } from "./store.js";
