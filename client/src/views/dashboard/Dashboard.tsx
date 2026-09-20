@@ -8,7 +8,7 @@ import { customAccentVariables } from "../../theme";
 import { TextDialog } from "../../components/TextDialog";
 import TileController from "../../components/TileController";
 import { MessageCircle, Volume2, Activity } from "lucide-react";
-import { Toolbar } from "../../components/Toolbar";
+import { Toolbar } from "../../components/toolbar/Toolbar";
 import { ElementPanel } from "../../components/ElementPanel";
 import { RoleTag } from "../../components/RoleTag";
 import { WhitelistPanel } from "../../components/WhitelistPanel";
