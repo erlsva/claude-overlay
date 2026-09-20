@@ -47,8 +47,8 @@ export function LayersList({
         return (
           <div
             key={slot.groupId}
+            className="layer-group"
             style={{
-              margin: "4px 0",
               border: "1px solid rgba(var(--accent-rgb),0.45)",
               borderRadius: 5,
               background: "rgba(var(--accent-rgb),0.04)",

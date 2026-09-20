@@ -69,6 +69,16 @@
 .layer-row.is-grouped {
   margin-left: var(--space-3);
 }
+/* A group: its header and member rows get room to breathe inside the outline. */
+.layer-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+.layer-group > .layer-row {
+  margin-right: var(--space-2);
+}
 .layer-row__icon {
   display: grid;
   place-items: center;
