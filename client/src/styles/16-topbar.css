@@ -1,0 +1,156 @@
+/* ---------------------------------------------------------------------------
+   Top bar
+   Left: identity + live status. Right: preview | OBS | admin + Studio, with the
+   panel toggle last because it controls the panel on that edge.
+   ------------------------------------------------------------------------- */
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 52px;
+  padding: 0 var(--space-4);
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-left {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* Clip rather than collide with the right-hand controls on narrow windows. */
+  overflow: hidden;
+}
+.topbar-left > * {
+  flex: 0 0 auto;
+}
+.topbar-title {
+  color: var(--accent-text);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.topbar-title i {
+  margin: 0 2px;
+  color: var(--text-muted);
+  font-style: normal;
+  font-weight: var(--fw-regular);
+}
+.topbar-right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+.topbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--space-1);
+  background: var(--line-strong);
+}
+.topbar-icon {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.topbar-icon:hover:not(:disabled) {
+  background: var(--bg-control);
+  color: var(--text-primary);
+}
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-height);
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.topbar-group__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 var(--space-3) 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.topbar-group__label strong {
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+}
+.topbar-group__button {
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 26px !important;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.topbar-group__button:hover {
+  background: var(--bg-control);
+  color: var(--text-primary);
+}
+.topbar-group__button.is-active {
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+.topbar-studio.is-active {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+.topbar-studio:not(.is-active) {
+  color: var(--text-secondary);
+}
+
+/* Layer list: padded so rows line up with the control cards above it. */
+.layers-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) var(--space-4);
+}
+.toolbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Role tags, setup guide, audio test
+   ------------------------------------------------------------------------- */
+.role-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.role-tag--owner {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+/* Twitch purple (#9146ff), with its lighter tint for the text. */
+.role-tag--streamer {
+  border-color: #9146ff;
+  background: rgba(145, 70, 255, 0.18);
+  color: #bf94ff;
+}
+.role-tag--super-moderator {
+  border-color: #2f6ea8;
+  background: rgba(59, 130, 246, 0.13);
+  color: #93c5fd;
+}

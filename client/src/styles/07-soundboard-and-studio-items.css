@@ -1,0 +1,183 @@
+.dvd-sound-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dvd-sound-status > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.dvd-sound-status span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.dvd-sound-status strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-primary:disabled {
+  /* A dimmed accent turns muddy brown; disabled primaries read as neutral. */
+  border-color: var(--line) !important;
+  background: var(--bg-control) !important;
+  color: var(--text-muted) !important;
+  opacity: 0.7;
+  cursor: not-allowed !important;
+}
+
+/* Soundboard clip cards */
+.soundboard-item {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.soundboard-item__head {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.soundboard-item__icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+.soundboard-item__head strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.soundboard-item__volume {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+}
+.soundboard-item__volume output {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.soundboard-item__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.soundboard-item__actions .ui-button {
+  min-width: 0 !important;
+  padding: 0 6px !important;
+}
+.soundboard-action--obs {
+  border-color: var(--accent-border) !important;
+  background: var(--accent-surface) !important;
+  color: var(--accent-text) !important;
+}
+.soundboard-action--obs:hover:not(:disabled) {
+  background: var(--accent-surface-strong) !important;
+}
+
+/* Ghost icon buttons: quiet until hovered. Danger variants tint red. */
+.ui-icon-button--ghost {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
+.ui-icon-button--ghost:hover:not(:disabled) {
+  background: var(--bg-control) !important;
+  color: var(--text-primary) !important;
+}
+.ui-icon-button--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #fca5a5 !important;
+}
+
+/* Generic Studio list row (commands, events, scenes, presets) */
+.studio-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.studio-item__body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.studio-item__body strong {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.studio-item__body small {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.studio-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.studio-item__actions .ui-switch {
+  margin: 0 var(--space-1);
+}
+.studio-item--off .studio-item__body strong {
+  color: var(--text-secondary);
+}
+.studio-item--off .studio-item__body small {
+  opacity: 0.75;
+}
+
+/* Scope pills that show where an action takes effect (OBS / dashboard / both). */
+.action-scope-badge {
+  display: inline-flex;
+  flex-direction: row;
+  min-height: 20px;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid #46515f;
+  border-radius: 999px;
+  background: #18202a;
+  color: #b9d7f5;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.action-scope-badge--obs {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+.action-scope-badge--both {
+  border-color: #287a58;
+  background: #0c2b20;
+  color: #b9d7f5;
+}

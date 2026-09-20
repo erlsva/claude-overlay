@@ -1,0 +1,282 @@
+.setup-dialog {
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+}
+.setup-tabs {
+  padding: var(--space-3) var(--space-4) 0;
+}
+.setup-tabs .segmented {
+  max-width: 360px;
+}
+.setup-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  /* Same height for both audiences, so switching tabs does not resize the dialog. */
+  height: min(520px, calc(100vh - 260px));
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+.setup-step,
+.setup-block {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.setup-step > header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.setup-step > header b {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+}
+.setup-step > header strong {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.setup-step > div,
+.setup-block {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.setup-step > header {
+  padding: var(--space-3) var(--space-4);
+}
+.setup-block h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.setup-step p,
+.setup-step li,
+.setup-block li,
+.setup-roles span {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  line-height: 1.55;
+}
+.setup-step ul,
+.setup-block ul {
+  list-style: disc;
+}
+.setup-step li::marker,
+.setup-block li::marker {
+  color: var(--text-muted);
+}
+.setup-step strong,
+.setup-block strong {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+.setup-step ul,
+.setup-block ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+}
+.setup-note {
+  color: var(--text-muted) !important;
+}
+.setup-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.setup-copy {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+.setup-copy span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.setup-copy code {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--accent-text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.setup-result {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.setup-result--ok {
+  color: #8be0b4;
+}
+.setup-result--bad {
+  color: #f4a7aa;
+}
+ul.setup-roles {
+  padding-left: 0;
+  list-style: none;
+}
+.setup-roles li {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+.setup-roles .role-tag {
+  justify-self: start;
+}
+.setup-dialog > footer {
+  justify-content: space-between;
+}
+.setup-you {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.readiness-dialog > footer {
+  flex-wrap: wrap;
+}
+.readiness-dialog > footer .ui-button {
+  flex: none;
+}
+.readiness-dialog > footer .studio-primary {
+  width: auto;
+}
+.readiness-audio {
+  flex: 1 0 100%;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.readiness-audio--ok {
+  color: #8be0b4;
+}
+.readiness-audio--bad {
+  color: #f4a7aa;
+}
+
+.account-menu__link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+  cursor: pointer;
+}
+.account-menu__link:hover {
+  background: var(--bg-control);
+  color: var(--text-primary);
+}
+.account-menu__link small {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+}
+
+/* ---------------------------------------------------------------------------
+   Automations tab
+   ------------------------------------------------------------------------- */
+.connection-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.connection-strip__pills {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.studio-section > p.connection-strip__hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #f6c85f;
+}
+.connection-strip .ui-button {
+  flex: none;
+}
+.connection-strip .ui-button svg {
+  flex: none;
+}
+/* The cards are the containers; the panel only groups and spaces them. */
+.connection-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+.connection-panel__intro {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.segmented__count {
+  margin-left: 2px;
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.studio-item--icon {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+}
+.studio-item__icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-secondary);
+}
+.studio-item--off .studio-item__icon {
+  opacity: 0.6;
+}

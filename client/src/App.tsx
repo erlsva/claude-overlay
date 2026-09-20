@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import "./App.css";
+import "./styles/index.css";
 import { useAuth } from "./hooks/useAuth";
 import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";

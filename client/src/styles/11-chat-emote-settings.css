@@ -1,0 +1,182 @@
+.chat-emote-motion-toggle button {
+  min-width: 57px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.chat-emote-motion-toggle button:hover {
+  color: var(--text-primary);
+  background: var(--bg-control);
+}
+.chat-emote-motion-toggle button.active {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+}
+.chat-emote-range {
+  display: grid;
+  min-height: 36px;
+  grid-template-columns: 92px 1fr 58px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.chat-emote-range input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  cursor: ew-resize;
+}
+.chat-emote-range strong {
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  text-align: right;
+}
+.chat-emote-note {
+  margin: 2px 0 0;
+  color: #7f8998;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.chat-emote-blacklist__add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.chat-emote-blacklist__add .ui-button {
+  align-self: stretch;
+  height: var(--control-height) !important;
+}
+.chat-emote-blacklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.chat-emote-blacklist > span {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+.chat-emote-blacklist button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.chat-emote-blacklist button:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+.chat-emote-blacklist__empty {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-style: normal;
+}
+.chat-emote-active-indicator {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid #15803d;
+  border-radius: 5px;
+  background: #052e16;
+  color: #bbf7d0;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.chat-emote-active-indicator__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 7px rgba(34, 197, 94, 0.75);
+}
+
+/* ---------------------------------------------------------------------------
+   Account menu, segmented control
+   ------------------------------------------------------------------------- */
+.segmented {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+.segmented button {
+  position: relative;
+  z-index: 1;
+  height: 28px;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+.segmented button:hover {
+  color: var(--text-primary);
+}
+.segmented button.active {
+  color: var(--accent-text);
+}
+.segmented__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px - (var(--segments, 2) - 1) * 2px) / var(--segments, 2));
+  border-radius: var(--radius-sm);
+  background: var(--bg-control-hover);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+  transform: translateX(calc(var(--segment, 0) * (100% + 2px)));
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .segmented__thumb {
+    transition: none;
+  }
+}

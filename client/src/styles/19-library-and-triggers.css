@@ -1,0 +1,273 @@
+/* ---------------------------------------------------------------------------
+   Shared media library
+   ------------------------------------------------------------------------- */
+.library-dialog {
+  width: min(760px, 100%);
+  display: flex;
+  flex-direction: column;
+}
+.library-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.library-usage {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+.library-usage small {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.library-usage__bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-control);
+}
+.library-usage__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-solid);
+}
+.library-body {
+  max-height: min(520px, calc(100vh - 260px));
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+.library-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.library-note--bad {
+  color: #f4a7aa;
+}
+.library-note code {
+  color: var(--accent-text);
+}
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-3);
+}
+.library-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.library-card__preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background-color: #0b0b0d;
+  background-image:
+    linear-gradient(45deg, #151518 25%, transparent 25%),
+    linear-gradient(-45deg, #151518 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #151518 75%),
+    linear-gradient(-45deg, transparent 75%, #151518 75%);
+  background-size: 14px 14px;
+  background-position:
+    0 0,
+    0 7px,
+    7px -7px,
+    -7px 0;
+  color: var(--text-muted);
+}
+.library-card__preview img,
+.library-card__preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.library-card__kind {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(10, 10, 12, 0.8);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+}
+.library-card__body {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-3) var(--space-3) 0;
+}
+.library-card__body strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-card__body small {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.library-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.library-card__actions .ui-button {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.library-card__actions .ui-icon-button {
+  margin-left: auto !important;
+}
+
+/* Shared replacement for inconsistent browser-native title popups. */
+.app-tooltip {
+  position: fixed;
+  z-index: 10000;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 20px));
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent-border) 48%, #444);
+  border-radius: 6px;
+  background: rgba(18, 18, 21, 0.97);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+  color: #edf0f5;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+  white-space: normal;
+  overflow-wrap: break-word;
+  animation: app-tooltip-in 120ms ease-out both;
+}
+.app-tooltip--above {
+  transform: translate(-50%, -100%);
+  transform-origin: bottom center;
+}
+.app-tooltip--below {
+  transform: translate(-50%, 0);
+  transform-origin: top center;
+}
+@keyframes app-tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-tooltip {
+    animation: none;
+  }
+}
+.studio-search {
+  display: flex;
+  height: var(--control-height);
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+}
+.studio-search:hover {
+  border-color: var(--line-hover);
+}
+.studio-search:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
+}
+/* The wrapper draws the field; the inner input stays chrome-free. */
+.studio-search input,
+.studio-panel .studio-search input:not([type="range"]) {
+  min-width: 0;
+  min-height: 0 !important;
+  flex: 1;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+.studio-empty-state {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.studio-empty-state strong {
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.trigger-target-summary {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-raised);
+}
+.trigger-target-summary img,
+.trigger-target-summary__icon {
+  width: 38px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: var(--bg-sunken);
+}
+.trigger-target-summary__icon {
+  display: grid;
+  place-items: center;
+  color: var(--accent-text);
+}
+.trigger-target-summary > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.trigger-target-summary strong,
+.trigger-target-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trigger-target-summary strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+.trigger-target-summary span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}

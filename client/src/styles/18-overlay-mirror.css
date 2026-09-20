@@ -1,0 +1,96 @@
+/* ---------------------------------------------------------------------------
+   Live overlay preview (silent iframe of /overlay?mirror=1)
+   ------------------------------------------------------------------------- */
+.overlay-mirror {
+  position: absolute;
+  z-index: 2400;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.overlay-mirror > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.overlay-mirror > header:active {
+  cursor: grabbing;
+}
+.overlay-mirror__grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(
+    135deg,
+    transparent 0 50%,
+    rgba(255, 255, 255, 0.55) 50% 58%,
+    transparent 58% 70%,
+    rgba(255, 255, 255, 0.55) 70% 78%,
+    transparent 78%
+  );
+  opacity: 0.55;
+}
+.overlay-mirror__grip:hover {
+  opacity: 1;
+}
+.overlay-mirror > header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.overlay-mirror > header i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+.overlay-mirror > header small {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
+}
+.overlay-mirror__frame {
+  position: relative;
+  overflow: hidden;
+  /* Checkerboard so transparent areas read as transparent, like OBS. */
+  background-color: #0b0b0d;
+  background-image:
+    linear-gradient(45deg, #151518 25%, transparent 25%),
+    linear-gradient(-45deg, #151518 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #151518 75%),
+    linear-gradient(-45deg, transparent 75%, #151518 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+.overlay-mirror__frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  background: transparent;
+}

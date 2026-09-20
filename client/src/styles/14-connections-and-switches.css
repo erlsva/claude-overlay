@@ -1,0 +1,173 @@
+/* Twitch connection cards */
+.connection-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.connection-card--error {
+  border-color: #7b3439;
+  background: rgba(239, 68, 68, 0.08);
+  color: #f5a3a8;
+  font-size: var(--fs-sm);
+}
+.connection-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.connection-card__name {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.connection-card__name strong {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.connection-card__name small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.connection-card__hint,
+.connection-card__note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.connection-card__hint {
+  color: var(--text-muted);
+}
+.connection-card__note {
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid #f59e0b;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: rgba(245, 158, 11, 0.08);
+  color: #f6d38a;
+}
+.connection-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.connection-card__actions .studio-primary {
+  width: auto;
+  flex: 1 1 auto;
+}
+.connection-card__tests {
+  border-top: 1px solid var(--line);
+  margin: 0 calc(var(--space-4) * -1) calc(var(--space-4) * -1);
+  padding: 0 var(--space-4);
+}
+.connection-card__tests summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  list-style: none;
+}
+.connection-card__tests summary::-webkit-details-marker {
+  display: none;
+}
+.connection-card__tests summary::after {
+  content: "+";
+  color: var(--accent-text);
+  font-size: 18px;
+  font-weight: var(--fw-regular);
+}
+.connection-card__tests[open] summary::after {
+  content: "−";
+}
+.connection-card__tests summary:hover {
+  color: var(--text-primary);
+}
+.connection-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+
+/* Status pills and quiet destructive buttons */
+.status-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+.status-pill i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.status-pill--ok {
+  border-color: #286849;
+  color: #8be0b4;
+}
+.status-pill--ok i {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+.status-pill--bad {
+  border-color: #704044;
+  color: #f4a7aa;
+}
+.status-pill--bad i {
+  background: #ef4444;
+}
+.ui-button--quiet-danger {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
+.ui-button--quiet-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #fca5a5 !important;
+}
+
+/* Settings cards: hairline-separated rows instead of boxes inside boxes. */
+.switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.switch-card > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.switch-card strong {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.switch-card small {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}

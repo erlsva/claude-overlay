@@ -1,0 +1,124 @@
+.chat-emote-card {
+  gap: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.chat-emote-card__title {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+}
+.chat-emote-card__description {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.chat-emote-card > .chat-emote-card__title + * {
+  margin-top: var(--space-2);
+}
+.chat-emote-setting,
+.chat-emote-range {
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+.chat-emote-setting + .chat-emote-setting,
+.chat-emote-setting + .chat-emote-range,
+.chat-emote-range + .chat-emote-setting,
+.chat-emote-range + .chat-emote-range {
+  border-top: 1px solid var(--line);
+}
+.chat-emote-setting > span,
+.chat-emote-range > span {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+.chat-emote-range {
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+}
+.chat-emote-range strong {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.chat-emote-setting select {
+  min-width: 150px;
+}
+.chat-emote-setting input[type="color"] {
+  width: 44px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  cursor: pointer;
+}
+.chat-emote-motion-toggle {
+  border-color: var(--line);
+  background: var(--bg-sunken);
+}
+.chat-emote-note {
+  margin: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.chat-emote-preview {
+  border-color: var(--line);
+}
+
+/* Raw checkboxes in Studio render as the same switch used everywhere else. */
+.studio-panel input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-control);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+.studio-panel input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 160ms ease;
+}
+.studio-panel input[type="checkbox"]:checked {
+  border-color: var(--accent-border);
+  background: var(--accent-solid);
+}
+.studio-panel input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+  background: var(--accent-contrast);
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-panel input[type="checkbox"],
+  .studio-panel input[type="checkbox"]::after {
+    transition: none;
+  }
+}

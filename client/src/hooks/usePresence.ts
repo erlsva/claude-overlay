@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
-/** How long exit animations run. Keep in sync with `--motion-exit` in App.css. */
+/** How long exit animations run. Keep in sync with `--motion-exit` in styles/base.css. */
 export const EXIT_MS = 140;
 
 /**
  * Keeps something mounted while its exit animation plays.
  *
  * Render it while `mounted` is true and put `state` on a `data-state`
- * attribute; the `.motion-*` classes in App.css animate both directions.
+ * attribute; the `.motion-*` classes in styles/feedback.css animate both directions.
  */
 export function usePresence(open: boolean, exitMs = EXIT_MS) {
   const [lingering, setLingering] = useState(open);

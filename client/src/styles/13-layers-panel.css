@@ -1,0 +1,126 @@
+/* ---------------------------------------------------------------------------
+   Layers sidebar
+   ------------------------------------------------------------------------- */
+.layers-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.layers-panel__search {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+.layers-panel__search input {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+}
+.layers-panel__search input::placeholder {
+  color: var(--text-muted);
+}
+.layers-panel__search input:focus {
+  border-color: var(--accent-border);
+  outline: none;
+}
+.layer-selection-hint {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+/* Layer rows: the name gets the whole row. Rename, reorder and delete appear
+   on hover or focus (and on the selected row); visibility is always shown. */
+.layer-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  margin: 0;
+  padding: 2px var(--space-1) 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.layer-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.layer-row.is-selected {
+  background: var(--accent-surface);
+  box-shadow: inset 2px 0 0 var(--accent-border);
+  color: var(--text-primary);
+}
+.layer-row.is-grouped {
+  margin-left: var(--space-3);
+}
+.layer-row__icon {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+.layer-row.is-selected .layer-row__icon {
+  color: var(--accent-text);
+}
+.layer-row__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-md) !important;
+  font-weight: var(--fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.layer-row.is-hidden .layer-row__label {
+  color: var(--text-muted);
+}
+.layer-row__tools {
+  display: none;
+  align-items: center;
+}
+.layer-row:hover .layer-row__tools,
+.layer-row:focus-within .layer-row__tools,
+.layer-row.is-selected .layer-row__tools {
+  display: flex;
+}
+/* While tools are shown they overlay the tail of the name, so give them a
+   solid backing that matches the row state. */
+.layer-row__tools {
+  padding-left: var(--space-1);
+  background: var(--bg-panel);
+  border-radius: var(--radius-sm);
+}
+.layer-row:hover .layer-row__tools {
+  background: color-mix(in srgb, var(--bg-panel) 90%, white);
+}
+.layer-row.is-selected .layer-row__tools {
+  background: var(--accent-surface);
+}
+.layer-row .ui-icon-button {
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 26px !important;
+}
+.layer-row__arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.layer-row.is-hidden .layer-row__eye {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+}

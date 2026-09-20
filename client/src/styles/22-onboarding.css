@@ -1,0 +1,188 @@
+.onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 5, 7, 0.76);
+  backdrop-filter: blur(7px);
+}
+.onboarding-dialog {
+  width: min(760px, 100%);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent-border) 55%, var(--line-strong));
+  border-radius: 14px;
+  background: var(--bg-sunken);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+  /* One fixed size for every step, so the dialog never jumps between pages. */
+  display: flex;
+  height: min(540px, calc(100vh - 48px));
+  flex-direction: column;
+}
+.onboarding-dialog > header,
+.onboarding-dialog > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+}
+.onboarding-dialog > header {
+  border-bottom: 1px solid var(--line);
+}
+.onboarding-dialog > footer {
+  border-top: 1px solid var(--line);
+}
+.onboarding-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+.onboarding-brand svg {
+  color: var(--accent-text);
+}
+.onboarding-dialog > header .ui-icon-button {
+  border: 1px solid var(--line-strong);
+  background: var(--bg-control);
+  color: var(--text-secondary);
+}
+.onboarding-content {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(235px, 0.8fr) minmax(0, 1.2fr);
+  animation: onboarding-step 220ms ease-out both;
+}
+@keyframes onboarding-step {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-content {
+    animation: none;
+  }
+}
+.onboarding-visual {
+  position: relative;
+  display: grid;
+  place-content: center;
+  padding: 32px;
+  border-right: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.22), transparent 52%),
+    var(--bg-sunken);
+  color: var(--accent-text);
+}
+.onboarding-scope-sample {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  display: grid;
+  gap: 7px;
+  transform: translateX(-50%);
+}
+.onboarding-scope-sample .action-scope-badge {
+  margin: 0;
+}
+.onboarding-flow-sample {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.onboarding-flow-sample span {
+  padding: 6px 8px;
+  border: 1px solid var(--accent-border);
+  border-radius: 5px;
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.onboarding-copy {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 32px 38px;
+}
+.onboarding-eyebrow {
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.onboarding-copy h2 {
+  margin: 8px 0 10px;
+  color: #f3f4f6;
+  font-size: 24px;
+  line-height: 1.15;
+}
+.onboarding-copy p {
+  margin: 0;
+  color: #aeb5c0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.onboarding-copy ul {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.onboarding-copy li {
+  position: relative;
+  padding-left: 17px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.onboarding-copy li::before {
+  position: absolute;
+  top: 0.55em;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-border);
+  content: "";
+}
+.onboarding-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.onboarding-progress button {
+  width: 22px;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #414149;
+  cursor: pointer;
+  transition:
+    width 160ms ease,
+    background 160ms ease;
+}
+.onboarding-progress button.active {
+  width: 36px;
+  background: var(--accent-border);
+}
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.onboarding-actions .ui-button {
+  width: auto;
+  min-height: 32px;
+}
