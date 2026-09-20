@@ -159,8 +159,9 @@ export function ChatEmoteLayer({
         x = Math.random() * Math.max(1, width - particleWidth);
         y = Math.random() * Math.max(1, height - size - labelHeight);
         if (activeSettings.motion === "pop-floor") {
-          vx = (Math.random() < 0.5 ? -1 : 1) * speed * (0.45 + Math.random() * 0.55);
-          vy = -speed * (0.25 + Math.random() * 0.55);
+          // Drops straight down from where it appeared.
+          vx = 0;
+          vy = 0;
         } else {
           const angle = Math.random() * Math.PI * 2;
           vx = Math.cos(angle) * speed;
