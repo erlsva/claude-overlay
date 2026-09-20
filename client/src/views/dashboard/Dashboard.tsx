@@ -9,7 +9,7 @@ import { TextDialog } from "../../components/TextDialog";
 import TileController from "../../components/TileController";
 import { MessageCircle, Volume2, Activity } from "lucide-react";
 import { Toolbar } from "../../components/toolbar/Toolbar";
-import { ElementPanel } from "../../components/ElementPanel";
+import { ElementPanel } from "../../components/layers/ElementPanel";
 import { RoleTag } from "../../components/RoleTag";
 import { WhitelistPanel } from "../../components/WhitelistPanel";
 import { SetupGuide } from "../../components/SetupGuide";
