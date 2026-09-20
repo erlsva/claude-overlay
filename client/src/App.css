@@ -288,7 +288,7 @@ textarea:focus-visible {
       rgba(var(--accent-rgb), 0.2),
       transparent 42%
     ),
-    linear-gradient(145deg, #0b0b0c 0%, var(--bg-sunken) 52%, var(--accent-surface) 100%);
+    linear-gradient(180deg, #0b0b0c 0%, var(--bg-sunken) 100%);
   color: #f8fafc;
 }
 
