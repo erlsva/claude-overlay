@@ -25,7 +25,7 @@ import {
   softLimit,
   tameSpikes,
   writeWav,
-} from "./dsp.js";
+} from "./dsp/index.js";
 import {
   buildSoundPrompt,
   enrichSoundPrompt,

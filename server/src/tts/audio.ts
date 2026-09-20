@@ -18,7 +18,7 @@ import {
   softLimit,
   tameSpikes,
   type Alignment,
-} from "./dsp.js";
+} from "./dsp/index.js";
 import {
   buildSoundPrompt,
   isHugeSound,

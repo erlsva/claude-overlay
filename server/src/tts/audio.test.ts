@@ -14,7 +14,7 @@ import {
   speechTempo,
 } from "./audio.js";
 import { parsePrompt } from "./shared/scene.js";
-import { readWav } from "./dsp.js";
+import { readWav } from "./dsp/index.js";
 
 test("final TTS encoding normalizes loud input below the true-peak ceiling", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "tts-limiter-test-"));

@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { renderAudio } from "./audio.js";
-import { channelFilter, characterPitch, effectTail, finalWordTiming, RATE } from "./dsp.js";
+import { channelFilter, characterPitch, effectTail, finalWordTiming, RATE } from "./dsp/index.js";
 import { parsePrompt } from "./shared/scene.js";
 
 test("TTS echo repeats only the final word within the total scene duration", () => {
