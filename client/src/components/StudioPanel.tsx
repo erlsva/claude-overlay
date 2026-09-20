@@ -137,6 +137,7 @@ const TRIGGER_EVENT_LABELS: Partial<Record<OverlayTrigger["event"], string>> = {
   "channel-points": "Channel points",
   ban: "Ban",
   timeout: "Timeout",
+  prediction: "New prediction",
 };
 
 const triggerActionLabel = (action: OverlayTrigger["action"]) =>
@@ -912,6 +913,7 @@ export function StudioPanel(props: StudioPanelProps) {
               const channel = status.channel;
               const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
               const hasBanAccess = status.scopes.includes("channel:moderate");
+              const hasPredictionAccess = status.scopes.includes("channel:read:predictions");
               return (
                 <div key={channel} className="connection-card">
                   <div className="connection-card__head">
@@ -930,7 +932,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   </div>
                   <p className="connection-card__hint">
                     Event access for follows, subscriptions, Bits, channel
-                    points, Hype Trains, bans, and timeouts.
+                    points, Hype Trains, bans, timeouts, and predictions.
                   </p>
                   {status.connected && hasLegacyChatAccess && (
                     <p className="connection-card__note">
@@ -941,6 +943,11 @@ export function StudioPanel(props: StudioPanelProps) {
                   {status.connected && !hasBanAccess && (
                     <p className="connection-card__note">
                       Reconnect this broadcaster once to enable ban and timeout events.
+                    </p>
+                  )}
+                  {status.connected && hasBanAccess && !hasPredictionAccess && (
+                    <p className="connection-card__note">
+                      Reconnect this broadcaster once to enable prediction events.
                     </p>
                   )}
                   <div className="connection-card__actions">
@@ -973,6 +980,7 @@ export function StudioPanel(props: StudioPanelProps) {
                           "channel-points",
                           "ban",
                           "timeout",
+                          "prediction",
                         ] as const
                       ).map((type) => (
                         <button
@@ -1088,6 +1096,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   </option>
                   <option value="ban">Permanent ban</option>
                   <option value="timeout">Timeout</option>
+                  <option value="prediction">New prediction started</option>
                 </select>
                 <select
                   style={fieldStyle}
@@ -1263,6 +1272,7 @@ export function StudioPanel(props: StudioPanelProps) {
                   <code title="Moderation reason">{"{reason}"}</code>
                   <code title="Permanent or timeout duration">{"{duration}"}</code>
                   <code title="Either ban or timeout">{"{banType}"}</code>
+                  <code title="Title of the prediction that started">{"{title}"}</code>
                 </div>
                 {triggerAction === "tts" && (
                   <>

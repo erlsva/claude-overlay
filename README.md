@@ -33,7 +33,8 @@ Konva is not used by the current application code.
 - Plays one-shot Pop, Pulse, Spin, Shake, and directional slide animations on selected media,
   configurable physics, sender labels, limits, and a chatter blacklist.
 - Receives authenticated Twitch follows, subscriptions, gift subscriptions,
-  Bits, raids, and custom channel-point redemptions through EventSub webhooks.
+  Bits, raids, custom channel-point redemptions, bans, timeouts, and new predictions
+  through EventSub webhooks.
 - Shows a live, silent **overlay preview** in the dashboard (top bar → Overlay →
   monitor icon). It runs the real overlay at `/overlay?mirror=1`, including chat
   emotes and the TTS notice, is muted at the browser level, and is never counted

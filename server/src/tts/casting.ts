@@ -1,4 +1,4 @@
-import { detectIntensity, intensityRank, type Intensity, type Scene } from "./shared/scene.js";
+import { detectAccent, detectIntensity, intensityRank, stripAccentWords, type Intensity, type Scene } from "./shared/scene.js";
 export type AccountVoice = {
   voice_id: string;
   name: string;
@@ -118,15 +118,31 @@ function generalPerformanceCue(scene: Scene): string {
     .replace(/[:;,]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  // The accent becomes its own tag, so "angry welshman" keeps just "angry" here.
+  cue = stripAccentWords(cue).replace(/\s+/g, " ").trim();
   if (!cue || /^(?:neutral|natural|normal|default)(?: speech| delivery| voice)?$/i.test(cue)) return "";
   // A long sentence is an explanation, and Eleven may read it aloud as speech.
   return cue.split(" ").length <= 4 ? cue : "";
 }
+// "welshman" and "frenchman" say the gender inside the word.
+const nationalityPrefix = "french|welsh|irish|english|scots|dutch|norse|cave|space|snow|super|bat|spider|iron";
 function gender(text: string) {
-  return /\b(woman|female|girl)\b/.test(text)
+  return new RegExp(`\\b(?:woman|female|girl|(?:${nationalityPrefix})woman)\\b`).test(text)
     ? "female"
-    : /\b(man|male|boy)\b/.test(text)
+    : new RegExp(`\\b(?:man|male|boy|(?:${nationalityPrefix})man)\\b`).test(text)
       ? "male"
+      : null;
+}
+/**
+ * A character that names no gender still has one in the listener's mind. Demons, trolls
+ * and monsters are deep male voices; asking for a "demonic voice" must not return a woman.
+ * An explicit gender in the request always wins over this.
+ */
+function impliedGender(text: string) {
+  return /\b(?:demon\w*|devil\w*|satan\w*|troll|ogre|orc|monster|giant|beast|zombie|guy|dude|gentleman|sir|dad|father|grandpa|king|lord)\b/.test(text)
+    ? "male"
+    : /\b(?:witch|queen|lady|princess|mom|mother|grandma|girlfriend)\b/.test(text)
+      ? "female"
       : null;
 }
 export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
@@ -155,7 +171,8 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
       result.push({ ...previous, scene: index });
       continue;
     }
-    const requestedGender = gender(character);
+    const requestedGender = gender(character) || impliedGender(character);
+    const accent = detectAccent(character);
     // Cast for the character's most demanding delivery across the whole script.
     // A neutral opening line must not lock a later scream to a relaxed narrator.
     const needsIntensity = scenes
@@ -218,6 +235,8 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
         const relaxed = /\b(relaxed|calm|soothing|gentle|chill|laid-back|reassuring)\b/.test(description);
         const performanceScore = needsIntensity ? intensity + (voice.labels?.use_case === "characters_animation" ? 25 : 0) - (relaxed ? 80 : 0) : 0;
         const matches = expanded.filter((t) => words(description).includes(t)).length;
+        // A catalogue voice that already carries the accent is a better start than a neutral one.
+        const accentScore = accent && accent.labels.some((label) => (voice.labels?.accent || "").toLowerCase().includes(label)) ? 40 : 0;
         return {
           voice,
           matches,
@@ -232,7 +251,7 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
                   ? -100
                   : 0
               : 0) +
-            matches * 10 + ageScore + performanceScore,
+            matches * 10 + ageScore + performanceScore + accentScore,
         };
       })
       .sort(
@@ -295,6 +314,8 @@ export function speechRequest(scene: Scene) {
   const intensity = sceneIntensity(scene);
   const intense = intensity !== "normal";
   const direction = `${scene.character || ""} ${scene.delivery || ""}`.toLowerCase();
+  // Only the user's own short direction counts; a model's long explanation is not their wording.
+  const accent = detectAccent((scene.delivery || "").length <= 160 ? direction : scene.character || "");
 
   // Keep the planner's own tags, cleaned, and never touch them with the emphasis
   // rules below: upper-casing a tag turns it into something the model ignores.
@@ -321,6 +342,7 @@ export function speechRequest(scene: Scene) {
   if (intense) add(intensityTag[intensity]);
   for (const tag of lead) {
     if (intense && /^(?:shout|yell|scream|shriek|roar|bellow)\w*$/.test(tag)) continue;
+    if (accent && /\baccent\b/.test(tag)) continue;
     add(tag);
   }
 
@@ -344,6 +366,8 @@ export function speechRequest(scene: Scene) {
       if (cue && !/\b(?:scream|shout|yell)\w*/i.test(cue)) add(cue.toLowerCase());
     }
   }
+  // The engine writes the accent tag itself, right after the intensity, from the user's words.
+  if (accent) tags.splice(tags[0] && intense ? 1 : 0, 0, accent.tag);
   const prefix = tags.slice(0, 3).map((tag) => `[${tag}]`).join(" ");
 
   const closed = /[.!?…]\s*(?:\[[^\]]+])?\s*$/.test(rest);

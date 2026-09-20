@@ -22,7 +22,7 @@ const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
 const redirectUri = twitchEventsRedirectUri;
 // Broadcasters only authorize the read permissions needed by EventSub. Outgoing
 // chat uses the independently-authorized chatbot account below.
-export const EVENT_SCOPES = ["moderator:read:followers", "channel:read:subscriptions", "bits:read", "channel:read:redemptions", "channel:read:hype_train", "channel:moderate"];
+export const EVENT_SCOPES = ["moderator:read:followers", "channel:read:subscriptions", "bits:read", "channel:read:redemptions", "channel:read:hype_train", "channel:moderate", "channel:read:predictions"];
 export const CHATBOT_AUTH_KEY = "__chatbot__";
 export const CHATBOT_SCOPES = ["user:write:chat"];
 const chatbotLogin = (process.env.CHAT_BOT_USERNAME ?? "dankchapbot").trim().toLowerCase();
@@ -118,7 +118,7 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
     const channel = req.params.channel as EventChannel;
     const type = req.body?.type as TriggerEventType;
     if (!isEventChannel(channel) || !canManageEventChannel(req, channel)) return res.status(403).json({ error: "Not allowed" });
-    if (!["follow", "subscribe", "gift-subscribe", "raid", "bits", "channel-points", "ban", "timeout"].includes(type)) return res.status(400).json({ error: "Unsupported event" });
+    if (!["follow", "subscribe", "gift-subscribe", "raid", "bits", "channel-points", "ban", "timeout", "prediction"].includes(type)) return res.status(400).json({ error: "Unsupported event" });
     emitEvent(type, {
       message: { text: "Test event" }, channel, broadcaster_user_login: channel,
       user_name: "Test Viewer", from_broadcaster_user_name: "Test Raider",
@@ -128,6 +128,7 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
       duration_months: type === "subscribe" ? 1 : undefined,
       total: type === "gift-subscribe" ? 5 : undefined,
       reward: type === "channel-points" ? { title: "Test reward" } : undefined,
+      title: type === "prediction" ? "Will the streamer win this run?" : undefined,
       moderator_user_name: type === "ban" || type === "timeout" ? "Test Moderator" : undefined,
       reason: type === "ban" || type === "timeout" ? "Test moderation reason" : undefined,
       is_permanent: type === "ban" ? true : type === "timeout" ? false : undefined,

@@ -331,8 +331,9 @@ function renderEventMessage(template: string, event: TriggerEventPayload, maxLen
     duration: event.is_permanent ? "permanent" : `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`,
     bantype: event.is_permanent ? "ban" : "timeout",
     message: String(event.user_input ?? event.message?.text?.replace(/^\S+\s*/, "") ?? ""),
+    title: String(event.title ?? ""),
   };
-  return template.replace(/\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType|message)\}/gi, (_, key: string) => values[key.toLowerCase()] ?? "").slice(0, maxLength);
+  return template.replace(/\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType|message|title)\}/gi, (_, key: string) => values[key.toLowerCase()] ?? "").slice(0, maxLength);
 }
 
 async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayload) {

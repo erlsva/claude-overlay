@@ -208,6 +208,17 @@ not the room or the length: those are applied by the overlay.
   described that way to the sound model, slowed down so they are deeper and longer,
   and given a stronger effect.
 
+## Accents and characters
+
+Name the accent in the character and it is applied: `angry welshman`, `sad french man`,
+`scottish pirate`, `posh british woman`. The engine adds a `[strong Welsh accent]` style tag to the
+line itself (v3 understands these), and a voice whose ElevenLabs accent label already matches is
+preferred. Accents work best on expressive voices; a very flat narrator voice only hints at them.
+
+`welshman` and `frenchman` also tell the engine the speaker is male. A character that names no
+gender still gets a sensible one: demons, devils, trolls, ogres and monsters get a male voice
+(say `demon woman` for a female one).
+
 ## Behind a door
 
 Say where the voice is and it sounds like it. `behind a door`, `through a wall`,

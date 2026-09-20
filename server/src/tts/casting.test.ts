@@ -306,3 +306,51 @@ test("how something is said does not pick who says it: a screaming troll gets th
     delete process.env.TTS_SHOUT_VOICES;
   }
 });
+
+test("a demon with no stated gender is cast as a man, never the screaming woman", () => {
+  const catalog: AccountVoice[] = [
+    { voice_id: "woman", name: "Screaming woman", category: "generated" },
+    { voice_id: "man", name: "Screaming man clone", category: "generated" },
+  ];
+  process.env.TTS_SHOUT_VOICES = "Screaming man clone, Screaming woman";
+  try {
+    for (const character of ["demonic voice", "demon", "monster", "giant", "devil"]) {
+      const [casting] = castScenes([scene({ character, intensity: "scream" })], catalog);
+      assert.equal(casting.voiceId, "man", character);
+    }
+    const [woman] = castScenes([scene({ character: "demon woman", intensity: "scream" })], catalog);
+    assert.equal(woman.voiceId, "woman", "an explicit gender still wins");
+  } finally {
+    delete process.env.TTS_SHOUT_VOICES;
+  }
+});
+
+test("welshman and frenchman are men, and their accent is a tag on the line", () => {
+  const catalog: AccountVoice[] = [
+    { voice_id: "f", name: "Bright", labels: { gender: "female" } },
+    { voice_id: "m", name: "Gareth", labels: { gender: "male", accent: "british" } },
+  ];
+  const [casting] = castScenes([scene({ character: "angry welshman", delivery: "angry welshman" })], catalog);
+  assert.equal(casting.voiceId, "m");
+  const welsh = speechRequest(scene({ character: "angry welshman", delivery: "angry welshman", dialogue: "[angry] Get off my land." }));
+  assert.equal(welsh.text, "[strong Welsh accent] [angry] Get off my land.");
+  const french = speechRequest(scene({ character: "sad french man", delivery: "sad french man", dialogue: "Je suis triste." }));
+  assert.match(french.text, /^\[strong French accent\]/);
+  assert.doesNotMatch(french.text, /french man|welshman/i, "the nationality is not repeated as a performance tag");
+});
+
+test("the accent tag sits after the intensity tag and replaces the planner's own", () => {
+  const request = speechRequest(scene({
+    character: "screaming scottish pirate",
+    delivery: "screaming scottish pirate",
+    intensity: "scream",
+    dialogue: "[scottish accent] [angry] Come here!",
+  }));
+  assert.match(request.text, /^\[screaming\] \[strong Scottish accent\] \[angry\] /);
+  assert.equal((request.text.match(/accent/g) || []).length, 1);
+});
+
+test("plain speech is untouched: no accent tag and no nationality guesswork", () => {
+  assert.equal(speechRequest(scene({ character: "man", delivery: "", dialogue: "Hello there" })).text, "Hello there");
+  assert.doesNotMatch(speechRequest(scene({ dialogue: "I am german in spirit", character: "" })).text, /accent/);
+});

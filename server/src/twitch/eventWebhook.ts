@@ -28,6 +28,8 @@ const subscriptions = [
   ["channel.raid", "1", (id: string) => ({ to_broadcaster_user_id: id })],
   ["channel.channel_points_custom_reward_redemption.add", "1", (id: string) => ({ broadcaster_user_id: id })],
   ["channel.ban", "1", (id: string) => ({ broadcaster_user_id: id })],
+  // Needs a permission that connections made before predictions existed do not have.
+  ["channel.prediction.begin", "1", (id: string) => ({ broadcaster_user_id: id }), "channel:read:predictions"],
 ] as const;
 
 export async function registerEventSubscriptions(auth: StoredEventAuth) {
@@ -37,7 +39,9 @@ export async function registerEventSubscriptions(auth: StoredEventAuth) {
   }
   if (!callback.startsWith("https://")) throw new Error("TWITCH_EVENTSUB_CALLBACK_URL must use HTTPS");
   const token = await getAppAccessToken();
-  for (const [type, version, condition] of subscriptions) {
+  for (const [type, version, condition, requiredScope] of subscriptions as ReadonlyArray<readonly [string, string, (id: string) => Record<string, string>, string?]>) {
+    // An older connection cannot subscribe to this yet; the rest must still register.
+    if (requiredScope && !auth.scopes.includes(requiredScope)) continue;
     const response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
       method: "POST",
       headers: { "Client-Id": twitchClientId, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -70,6 +74,7 @@ const eventTypes: Record<string, TriggerEventType> = {
   "channel.cheer": "bits",
   "channel.raid": "raid",
   "channel.channel_points_custom_reward_redemption.add": "channel-points",
+  "channel.prediction.begin": "prediction",
 };
 
 export function createEventWebhook(emitEvent: (type: TriggerEventType, event: any) => void) {

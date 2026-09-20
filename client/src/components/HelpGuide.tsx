@@ -183,7 +183,7 @@ const sections = [
       ],
       [
         "Twitch event filters",
-        "Run actions for follows, subscriptions, gifts, raids, Bits, channel points, permanent bans, or timeouts. Limit numeric and reward events with their matching filters.",
+        "Run actions for follows, subscriptions, gifts, raids, Bits, channel points, permanent bans, timeouts, or new predictions. Limit numeric and reward events with their matching filters.",
       ],
       [
         "Chat message variables",
