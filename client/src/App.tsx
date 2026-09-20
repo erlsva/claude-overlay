@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import "./App.css";
 import { useAuth } from "./hooks/useAuth";
-import { Dashboard } from "./views/Dashboard";
+import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
 import { ToastProvider, useToast } from "./components/ToastProvider";
