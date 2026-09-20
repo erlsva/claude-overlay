@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { type DrawToolMode, renderAction } from "../../components/DrawingCanvas";
+import { type DrawToolMode, renderAction } from "../../components/drawing/renderStroke";
 import { WORKSPACE_W, WORKSPACE_H } from "../../canvas/config";
 import { SERVER_URL } from "../../config/server";
 import { authHeaders } from "../../hooks/useAuth";

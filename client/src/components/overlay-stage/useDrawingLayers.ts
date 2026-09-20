@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { STREAM_OFFSET_X, STREAM_OFFSET_Y } from "../../canvas/config";
 import type { DrawStroke } from "../../types";
-import { renderAction } from "../DrawingCanvas";
+import { renderAction } from "../drawing/renderStroke";
 import type { LiveStroke } from "./types";
 import type { OverlayRefs } from "./useOverlayRefs";
 

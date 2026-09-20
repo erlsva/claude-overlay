@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { type DrawToolMode } from "../DrawingCanvas";
+import type { DrawToolMode } from "../drawing/renderStroke";
 import { BUTTON_HEIGHT, TOOLBAR_FONT_SIZE } from "./constants";
 import type { ToolbarProps } from "./types";
 

@@ -1,6 +1,6 @@
 import { OverlayMirror } from "../../components/OverlayMirror";
 import { CanvasStage } from "../../components/canvas-stage/CanvasStage";
-import { DrawingCanvas } from "../../components/DrawingCanvas";
+import { DrawingCanvas } from "../../components/drawing/DrawingCanvas";
 import { WORKSPACE_W, WORKSPACE_H } from "../../canvas/config";
 import { HelpGuide } from "../../components/HelpGuide";
 import { SupportDiagnostics } from "../../components/SupportDiagnostics";

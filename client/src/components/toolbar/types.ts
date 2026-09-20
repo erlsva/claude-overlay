@@ -1,6 +1,6 @@
 import { type CanvasElement } from "../../types";
 import { type MutableRefObject, type ReactNode } from "react";
-import { type DrawToolMode } from "../DrawingCanvas";
+import type { DrawToolMode } from "../drawing/renderStroke";
 
 export interface ToolbarProps {
   onAdd: (element: CanvasElement) => void;
