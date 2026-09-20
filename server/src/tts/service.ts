@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { interpretPrompt } from "./interpreter.js";
+import { interpretPrompt } from "./interpreter/index.js";
 import {
   eleven,
   FINAL_SOUND_EFFECT_FILTER,

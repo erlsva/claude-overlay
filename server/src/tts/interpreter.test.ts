@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { blockCount, decodePlan, interpretPrompt } from "./interpreter.js";
+import { blockCount, decodePlan, interpretPrompt } from "./interpreter/index.js";
 import { castScenes } from "./casting.js";
 
 const voices = [
