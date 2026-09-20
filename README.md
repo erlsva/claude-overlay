@@ -59,20 +59,27 @@ Konva is not used by the current application code.
 .
 ├── client/                 React, Vite, TypeScript, Socket.IO client
 │   └── src/
-│       ├── canvas/         Element transforms and DVD motion
-│       ├── components/     Canvas, Studio, toolbars, dialogs, and effects
-│       ├── hooks/          Authentication, sockets, and Twitch live state
-│       └── views/          Dashboard, login, and OBS overlay
-└── server/                 Node.js, Express, Socket.IO, PostgreSQL, tmi.js
-    └── src/
-        ├── auth/           Twitch login, signed sessions, and authorization
-        ├── db/             LowDB studio data and PostgreSQL whitelist
-        ├── socket/         Realtime handlers and input validation
-        ├── state/          In-memory canvas history
-        ├── tts/            Scene planning, voice casting, audio rendering, and clip storage
-        ├── twitch/         Chat listener, Event OAuth, and EventSub webhooks
-        └── uploads/        Validated media uploads and Myinstants resolution
+│       ├── views/          Pages: login, the OBS overlay, and the dashboard (views/dashboard/)
+│       ├── components/     Screens and dialogs; big ones are folders (toolbar/, studio/, tts/, ...)
+│       ├── canvas/         DOM-level canvas code: transforms, handles, dragging, DVD motion
+│       ├── hooks/          Sockets (hooks/socket/), authentication, presence, Twitch state
+│       └── styles/         All CSS as numbered files; load order matters
+├── server/                 Node.js, Express, Socket.IO, PostgreSQL, tmi.js
+│   └── src/
+│       ├── auth/           Twitch login, signed sessions, and authorization
+│       ├── socket/         Realtime handlers (one file per area) and input validation
+│       ├── playback/       What the overlay plays: media, fly-across, sounds, TTS
+│       ├── triggers/       Chat commands and Twitch events turned into actions
+│       ├── twitch/         Chat listener, Event OAuth, and EventSub webhooks
+│       ├── tts/            Planning, casting, audio rendering, and clip storage
+│       ├── db/, state/     LowDB and PostgreSQL storage; in-memory canvas history
+│       └── library/, uploads/   Media library and validated uploads
+├── shared/                 Types and constants both sides use (copied by scripts/sync-shared.mjs)
+└── docs/                   ARCHITECTURE.md and TTS.md
 ```
+
+How the code is organised, how to add a feature, and the file-size rules are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Runtime model and persistence
 
@@ -382,9 +389,12 @@ Before deploying:
 ```bash
 cd client
 npm run build
+npm test
+npm run check:size
 
 cd ../server
 npm test
+npm run check:size
 npm audit --omit=dev
 ```
 

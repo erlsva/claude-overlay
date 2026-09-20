@@ -8,7 +8,7 @@ import {
   createElementNode,
   updateElementNode,
   syncGroupBoxes,
-} from "../../canvas/syncElements";
+} from "../../canvas/sync";
 import type { CanvasStageProps } from "./types";
 import type { useStageRefs } from "./useStageRefs";
 import type { useStageViewport } from "./useStageViewport";

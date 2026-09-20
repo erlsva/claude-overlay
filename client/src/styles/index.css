@@ -7,7 +7,9 @@
 @import "./05-command-chain-and-drawing.css";
 @import "./06-confirm-dialog.css";
 @import "./07-soundboard-and-studio-items.css";
-@import "./08-tts.css";
+@import "./08-tts-composer.css";
+@import "./08a-tts-status.css";
+@import "./08b-tts-player.css";
 @import "./09-chat-emote-particles.css";
 @import "./10-selected-layer-controls.css";
 @import "./11-chat-emote-settings.css";
