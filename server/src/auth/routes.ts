@@ -10,7 +10,11 @@ import {
 import { getWhitelistEntry } from "../db/index.js";
 import { signToken, verifyToken } from "./jwt.js";
 import { loginRateLimit } from "../middleware/rateLimits.js";
-import { getConfiguredTwitchChannels, getDefaultTwitchChannel, getStreamerLogins } from "../twitch/channels.js";
+import {
+  getConfiguredTwitchChannels,
+  getDefaultTwitchChannel,
+  getStreamerLogins,
+} from "../twitch/channels.js";
 import type { UserRole } from "../types.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();

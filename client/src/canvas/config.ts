@@ -28,10 +28,20 @@ export interface TextConfig {
 }
 
 export const DEFAULT_TEXT_CONFIG: TextConfig = {
-  text: "", color: "#ffffff", fontSize: 48, fontFamily: "Inter", fontWeight: 700,
-  textAlign: "center", lineHeight: 1.15, letterSpacing: 0, strokeColor: "#000000",
-  strokeWidth: 0, shadowEnabled: true, shadowColor: "#000000",
-  backgroundEnabled: false, backgroundColor: "#111111",
+  text: "",
+  color: "#ffffff",
+  fontSize: 48,
+  fontFamily: "Inter",
+  fontWeight: 700,
+  textAlign: "center",
+  lineHeight: 1.15,
+  letterSpacing: 0,
+  strokeColor: "#000000",
+  strokeWidth: 0,
+  shadowEnabled: true,
+  shadowColor: "#000000",
+  backgroundEnabled: false,
+  backgroundColor: "#111111",
 };
 
 const TEXT_CONFIG_PREFIX = "text:v2:";
@@ -46,19 +56,42 @@ function normalizeTextConfig(value: Partial<TextConfig>): TextConfig {
   return {
     ...DEFAULT_TEXT_CONFIG,
     text: typeof value.text === "string" ? value.text.slice(0, 9_500) : "",
-    color: typeof value.color === "string" && HEX_COLOR.test(value.color) ? value.color : DEFAULT_TEXT_CONFIG.color,
+    color:
+      typeof value.color === "string" && HEX_COLOR.test(value.color)
+        ? value.color
+        : DEFAULT_TEXT_CONFIG.color,
     fontSize: finiteNumber(value.fontSize, DEFAULT_TEXT_CONFIG.fontSize, 8, 400),
-    fontFamily: typeof value.fontFamily === "string" && value.fontFamily.length <= 80 ? value.fontFamily : DEFAULT_TEXT_CONFIG.fontFamily,
+    fontFamily:
+      typeof value.fontFamily === "string" && value.fontFamily.length <= 80
+        ? value.fontFamily
+        : DEFAULT_TEXT_CONFIG.fontFamily,
     fontWeight: finiteNumber(value.fontWeight, DEFAULT_TEXT_CONFIG.fontWeight, 100, 900),
-    textAlign: (["left", "center", "right"] as const).includes(value.textAlign as TextAlignment) ? value.textAlign as TextAlignment : DEFAULT_TEXT_CONFIG.textAlign,
+    textAlign: (["left", "center", "right"] as const).includes(value.textAlign as TextAlignment)
+      ? (value.textAlign as TextAlignment)
+      : DEFAULT_TEXT_CONFIG.textAlign,
     lineHeight: finiteNumber(value.lineHeight, DEFAULT_TEXT_CONFIG.lineHeight, 0.8, 2.5),
     letterSpacing: finiteNumber(value.letterSpacing, DEFAULT_TEXT_CONFIG.letterSpacing, -5, 30),
-    strokeColor: typeof value.strokeColor === "string" && HEX_COLOR.test(value.strokeColor) ? value.strokeColor : DEFAULT_TEXT_CONFIG.strokeColor,
+    strokeColor:
+      typeof value.strokeColor === "string" && HEX_COLOR.test(value.strokeColor)
+        ? value.strokeColor
+        : DEFAULT_TEXT_CONFIG.strokeColor,
     strokeWidth: finiteNumber(value.strokeWidth, DEFAULT_TEXT_CONFIG.strokeWidth, 0, 12),
-    shadowEnabled: typeof value.shadowEnabled === "boolean" ? value.shadowEnabled : DEFAULT_TEXT_CONFIG.shadowEnabled,
-    shadowColor: typeof value.shadowColor === "string" && HEX_COLOR.test(value.shadowColor) ? value.shadowColor : DEFAULT_TEXT_CONFIG.shadowColor,
-    backgroundEnabled: typeof value.backgroundEnabled === "boolean" ? value.backgroundEnabled : DEFAULT_TEXT_CONFIG.backgroundEnabled,
-    backgroundColor: typeof value.backgroundColor === "string" && HEX_COLOR.test(value.backgroundColor) ? value.backgroundColor : DEFAULT_TEXT_CONFIG.backgroundColor,
+    shadowEnabled:
+      typeof value.shadowEnabled === "boolean"
+        ? value.shadowEnabled
+        : DEFAULT_TEXT_CONFIG.shadowEnabled,
+    shadowColor:
+      typeof value.shadowColor === "string" && HEX_COLOR.test(value.shadowColor)
+        ? value.shadowColor
+        : DEFAULT_TEXT_CONFIG.shadowColor,
+    backgroundEnabled:
+      typeof value.backgroundEnabled === "boolean"
+        ? value.backgroundEnabled
+        : DEFAULT_TEXT_CONFIG.backgroundEnabled,
+    backgroundColor:
+      typeof value.backgroundColor === "string" && HEX_COLOR.test(value.backgroundColor)
+        ? value.backgroundColor
+        : DEFAULT_TEXT_CONFIG.backgroundColor,
   };
 }
 

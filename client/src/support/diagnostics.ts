@@ -38,7 +38,10 @@ export function buildDiagnosticReport(snapshot: DiagnosticSnapshot, now = new Da
     "",
     "Recent notifications:",
     ...(recent.length
-      ? recent.map((item) => `- ${new Date(item.at).toISOString()} [${item.kind.toUpperCase()}] ${item.message}`)
+      ? recent.map(
+          (item) =>
+            `- ${new Date(item.at).toISOString()} [${item.kind.toUpperCase()}] ${item.message}`,
+        )
       : ["- None in this browser session"]),
     "",
     "This report intentionally excludes login tokens, OAuth credentials, media URLs, and message contents.",

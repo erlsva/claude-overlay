@@ -105,9 +105,7 @@ export function blockCount(prompt: string): number | undefined {
     parseSpeechRate(segment.text);
     parsePauseSeconds(segment.text);
   }
-  return segments.some((segment) => segment.explicitBlock)
-    ? segments.length
-    : undefined;
+  return segments.some((segment) => segment.explicitBlock) ? segments.length : undefined;
 }
 export function decodePlan(
   response: any,
@@ -116,16 +114,12 @@ export function decodePlan(
   prompt?: string,
 ) {
   if (response.status !== "completed")
-    throw new Error(
-      "OpenAI did not finish the scene plan. Try a shorter prompt.",
-    );
+    throw new Error("OpenAI did not finish the scene plan. Try a shorter prompt.");
   const content = (response.output || []).flatMap((item: any) =>
     item.type === "message" ? item.content || [] : [],
   );
   if (content.some((item: any) => item.type === "refusal"))
-    throw new Error(
-      "OpenAI could not interpret this prompt. Try rephrasing it.",
-    );
+    throw new Error("OpenAI could not interpret this prompt. Try rephrasing it.");
   const text =
     content
       .filter((item: any) => item.type === "output_text")
@@ -144,9 +138,7 @@ export function decodePlan(
       })
       .parse(JSON.parse(json));
   } catch {
-    throw new Error(
-      "OpenAI returned an invalid scene plan. Try simplifying the prompt.",
-    );
+    throw new Error("OpenAI returned an invalid scene plan. Try simplifying the prompt.");
   }
   if (expectedCount !== undefined && plan.scenes.length !== expectedCount)
     throw new Error(
@@ -163,7 +155,8 @@ export function decodePlan(
     scene.effect = ["echo", "reverb", "both"].includes(String(scene.effect))
       ? scene.effect
       : "none";
-    scene.intensity = scene.intensity === "shout" || scene.intensity === "scream" ? scene.intensity : "normal";
+    scene.intensity =
+      scene.intensity === "shout" || scene.intensity === "scream" ? scene.intensity : "normal";
     scene.backgroundVolume =
       typeof scene.backgroundVolume === "number"
         ? Math.max(0, Math.min(1, scene.backgroundVolume))
@@ -195,20 +188,12 @@ export function decodePlan(
       if (typeof scene.sound !== "string" || !scene.sound.trim()) {
         const original = segment.text
           .replace(/;\s*\d+(?:\.\d+)?s\s*$/i, "")
-          .replace(
-            /\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi,
-            "",
-          )
-          .replace(
-            /\b(?:in|inside)\s+(?:a\s+)?(?:cave|church|cathedral)\b/gi,
-            "",
-          )
+          .replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi, "")
+          .replace(/\b(?:in|inside)\s+(?:a\s+)?(?:cave|church|cathedral)\b/gi, "")
           .replace(/\s+/g, " ")
           .trim();
         scene.sound = original;
-        plan.warnings.push(
-          `Scene ${index + 1} was corrected from narration to a sound effect.`,
-        );
+        plan.warnings.push(`Scene ${index + 1} was corrected from narration to a sound effect.`);
       }
       scene.dialogue = "";
       scene.character = "";
@@ -222,23 +207,18 @@ export function decodePlan(
       // squeeze speech and cut effect tails.
       scene.duration = timing ? timing.seconds : null;
       scene.effect = detectEffect(segment.text);
-      scene.channel =
-        /\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i.test(
-          segment.text,
-        )
-          ? "intercom"
-          : "clean";
+      scene.channel = /\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i.test(segment.text)
+        ? "intercom"
+        : "clean";
       scene.distant = /\b(distant|far away|faraway)\b/i.test(segment.text);
       scene.effectStrength = isExtreme(segment.text) ? "extreme" : "normal";
       scene.room = detectRoom(segment.text);
       scene.muffled = detectMuffled(segment.text) || undefined;
     } else {
-      const outsideQuotes = segment.text.replace(
-        /"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g,
-        "",
+      const outsideQuotes = segment.text.replace(/"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g, "");
+      const requestsBackground = /\b(?:while|background|underneath|alongside)\b/i.test(
+        outsideQuotes,
       );
-      const requestsBackground =
-        /\b(?:while|background|underneath|alongside)\b/i.test(outsideQuotes);
       if (!requestsBackground) scene.sound = "";
       else scene.sound = sanitizeSoundPrompt(String(scene.sound), segment.text);
       const timing = parseTrailingDuration(segment.text);
@@ -251,14 +231,9 @@ export function decodePlan(
       // omission must not silently turn "in a cave" into dry studio speech.
       const authoredEffect = detectEffect(outsideQuotes);
       if (authoredEffect !== "none") scene.effect = authoredEffect;
-      if (
-        /\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i.test(
-          outsideQuotes,
-        )
-      )
+      if (/\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i.test(outsideQuotes))
         scene.channel = "intercom";
-      if (/\b(distant|far away|faraway)\b/i.test(outsideQuotes))
-        scene.distant = true;
+      if (/\b(distant|far away|faraway)\b/i.test(outsideQuotes)) scene.distant = true;
       if (isExtreme(outsideQuotes)) scene.effectStrength = "extreme";
       scene.room = detectRoom(outsideQuotes);
       scene.muffled = detectMuffled(outsideQuotes) || undefined;
@@ -273,25 +248,16 @@ export function decodePlan(
       warnings: plan.warnings,
     };
   } catch {
-    throw new Error(
-      "OpenAI returned an invalid scene plan. Try simplifying the prompt.",
-    );
+    throw new Error("OpenAI returned an invalid scene plan. Try simplifying the prompt.");
   }
   const identities = new Map<string, string>();
   for (const scene of validated.scenes) {
     scene.prepared = true;
-    if (
-      scene.preferredVoiceId &&
-      !voices.some((v) => v.voice_id === scene.preferredVoiceId)
-    )
-      throw new Error(
-        "OpenAI selected an unavailable voice. Preview the scene again.",
-      );
+    if (scene.preferredVoiceId && !voices.some((v) => v.voice_id === scene.preferredVoiceId))
+      throw new Error("OpenAI selected an unavailable voice. Preview the scene again.");
     const identity = (scene.character || scene.voice).trim().toLowerCase();
-    if (identities.has(identity))
-      scene.preferredVoiceId = identities.get(identity);
-    else if (scene.preferredVoiceId)
-      identities.set(identity, scene.preferredVoiceId);
+    if (identities.has(identity)) scene.preferredVoiceId = identities.get(identity);
+    else if (scene.preferredVoiceId) identities.set(identity, scene.preferredVoiceId);
   }
   return validated;
 }
@@ -367,9 +333,7 @@ export async function interpretPrompt(
     if (
       response.status === 429 &&
       (detail?.error?.type === "insufficient_quota" ||
-        ["insufficient_quota", "credit_balance_exhausted"].includes(
-          detail?.error?.code || "",
-        ))
+        ["insufficient_quota", "credit_balance_exhausted"].includes(detail?.error?.code || ""))
     )
       throw new Error(
         "OpenAI API credits are unavailable for this project. Add API credits or check the project budget in OpenAI Platform billing, then preview again.",

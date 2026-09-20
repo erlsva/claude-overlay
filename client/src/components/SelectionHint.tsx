@@ -11,9 +11,7 @@ export function SelectionHint({
   elements: CanvasElement[];
   selectedIds: Set<string>;
 }) {
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(DISMISSED_KEY) === "true",
-  );
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === "true");
   const [visible, setVisible] = useState(false);
   const lastShownSelection = useRef("");
 
@@ -25,11 +23,7 @@ export function SelectionHint({
     selection.length > 1 &&
     !!selection[0]?.groupId &&
     selection.every((element) => element.groupId === selection[0].groupId);
-  const kind = grouped
-    ? "group"
-    : selection.length > 1
-      ? "multiple"
-      : selection[0]?.type;
+  const kind = grouped ? "group" : selection.length > 1 ? "multiple" : selection[0]?.type;
   const selectionSignature = [...selectedIds].sort().join(",");
 
   useEffect(() => {
@@ -89,7 +83,8 @@ export function SelectionHint({
     >
       <Lightbulb size={14} color="var(--accent-text)" />
       <span style={{ lineHeight: 1.45 }}>
-        {specific} · Alt disables snapping · Shift snaps rotation · Ctrl/Cmd+C copies · Delete removes
+        {specific} · Alt disables snapping · Shift snaps rotation · Ctrl/Cmd+C copies · Delete
+        removes
       </span>
       <button
         className="ui-button ui-button--compact"

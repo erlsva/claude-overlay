@@ -1,8 +1,16 @@
 /** Media types the dashboard accepts as uploads. */
 export const allowedMimeTypes = new Set([
-  "image/jpeg", "image/png", "image/gif", "image/webp",
-  "video/mp4", "video/webm",
-  "audio/mpeg", "audio/wav", "audio/ogg", "audio/mp3", "audio/webm",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "video/mp4",
+  "video/webm",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/mp3",
+  "audio/webm",
 ]);
 
 /** Checks a file's first bytes against the type it claims to be. */

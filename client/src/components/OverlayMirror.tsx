@@ -24,7 +24,10 @@ const frameHeight = (width: number) => (width * STREAM_HEIGHT) / STREAM_WIDTH;
 function loadBox(): Box | null {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Box> | null;
-    if (value && [value.x, value.y, value.width].every((n) => typeof n === "number" && Number.isFinite(n))) {
+    if (
+      value &&
+      [value.x, value.y, value.width].every((n) => typeof n === "number" && Number.isFinite(n))
+    ) {
       return value as Box;
     }
   } catch {
@@ -51,14 +54,25 @@ function saveBox(box: Box) {
  * the space currently available, so opening a side panel squeezes it only while
  * the panel is open.
  */
-export function OverlayMirror({ onClose, state = "open" }: { onClose: () => void; state?: "open" | "closed" }) {
+export function OverlayMirror({
+  onClose,
+  state = "open",
+}: {
+  onClose: () => void;
+  state?: "open" | "closed";
+}) {
   const rootRef = useRef<HTMLElement>(null);
   const [desired, setDesired] = useState<Box | null>(loadBox);
   const desiredRef = useRef(desired);
   desiredRef.current = desired;
   const [ready, setReady] = useState(false);
   const [, setLayoutTick] = useState(0);
-  const gesture = useRef<{ kind: "move" | "resize"; pointerX: number; pointerY: number; start: Box } | null>(null);
+  const gesture = useRef<{
+    kind: "move" | "resize";
+    pointerX: number;
+    pointerY: number;
+    start: Box;
+  } | null>(null);
 
   const bounds = () => {
     const parent = rootRef.current?.offsetParent as HTMLElement | null;
@@ -80,7 +94,10 @@ export function OverlayMirror({ onClose, state = "open" }: { onClose: () => void
 
   const homeBox = (): Box => {
     const area = bounds();
-    const width = Math.min(DEFAULT_WIDTH, Math.max(MIN_WIDTH, area.width - EDGE_GAP * 2 - FRAME_BORDER));
+    const width = Math.min(
+      DEFAULT_WIDTH,
+      Math.max(MIN_WIDTH, area.width - EDGE_GAP * 2 - FRAME_BORDER),
+    );
     return fit({ width, x: area.width - width - EDGE_GAP - FRAME_BORDER, y: EDGE_GAP });
   };
 
@@ -108,7 +125,12 @@ export function OverlayMirror({ onClose, state = "open" }: { onClose: () => void
       if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      gesture.current = { kind, pointerX: event.clientX, pointerY: event.clientY, start: shownRef.current };
+      gesture.current = {
+        kind,
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        start: shownRef.current,
+      };
     },
     [],
   );
@@ -126,7 +148,8 @@ export function OverlayMirror({ onClose, state = "open" }: { onClose: () => void
     const area = bounds();
     const widest = Math.min(
       area.width - active.start.x - FRAME_BORDER,
-      ((area.height - active.start.y - HEADER_HEIGHT - FRAME_BORDER) * STREAM_WIDTH) / STREAM_HEIGHT,
+      ((area.height - active.start.y - HEADER_HEIGHT - FRAME_BORDER) * STREAM_WIDTH) /
+        STREAM_HEIGHT,
     );
     const width = Math.min(
       Math.max(active.start.width + Math.max(dx, (dy * STREAM_WIDTH) / STREAM_HEIGHT), MIN_WIDTH),
@@ -195,7 +218,10 @@ export function OverlayMirror({ onClose, state = "open" }: { onClose: () => void
           <X size={14} />
         </button>
       </header>
-      <div className="overlay-mirror__frame" style={{ width: shown.width, height: frameHeight(shown.width) }}>
+      <div
+        className="overlay-mirror__frame"
+        style={{ width: shown.width, height: frameHeight(shown.width) }}
+      >
         <iframe
           title="Live overlay preview"
           src={`${window.location.origin}/overlay?mirror=1`}

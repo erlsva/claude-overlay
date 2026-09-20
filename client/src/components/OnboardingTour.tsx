@@ -33,8 +33,7 @@ const steps = [
   {
     eyebrow: "Media",
     title: "Bring in media",
-    description:
-      "Use Add media or drop a file onto the canvas. Text and Draw sit right beside it.",
+    description: "Use Add media or drop a file onto the canvas. Text and Draw sit right beside it.",
     Icon: ImagePlus,
     points: [
       "Ctrl/Cmd + V pastes an image, GIF or text straight onto the canvas.",
@@ -45,8 +44,7 @@ const steps = [
   {
     eyebrow: "Studio",
     title: "Sounds, automations and emotes",
-    description:
-      "Studio is where the overlay reacts to chat, Twitch events and your own buttons.",
+    description: "Studio is where the overlay reacts to chat, Twitch events and your own buttons.",
     Icon: SlidersHorizontal,
     points: [
       "Sounds: Preview plays only in your browser, Play on overlay is heard on stream.",
@@ -125,7 +123,11 @@ export function OnboardingTour({
   const lastStep = step === steps.length - 1;
 
   return (
-    <div className="onboarding-backdrop motion-backdrop" data-state={presence.state} role="presentation">
+    <div
+      className="onboarding-backdrop motion-backdrop"
+      data-state={presence.state}
+      role="presentation"
+    >
       <section
         className="onboarding-dialog motion-dialog"
         data-state={presence.state}
@@ -167,13 +169,27 @@ export function OnboardingTour({
             <p>{current.description}</p>
             {current.points.length > 0 && (
               <ul>
-                {current.points.map((point) => <li key={point}>{point}</li>)}
+                {current.points.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
               </ul>
             )}
             {"checklist" in current && current.checklist && (
               <div className="onboarding-checklist">
-                <ChecklistItem done={hasLayers} label="Add your first layer" action="Add text" Icon={Type} onClick={onStartText} />
-                <ChecklistItem done={overlayConnected} label="Overlay is online in OBS" action="Set it up" Icon={Radio} onClick={onOpenSetup} />
+                <ChecklistItem
+                  done={hasLayers}
+                  label="Add your first layer"
+                  action="Add text"
+                  Icon={Type}
+                  onClick={onStartText}
+                />
+                <ChecklistItem
+                  done={overlayConnected}
+                  label="Overlay is online in OBS"
+                  action="Set it up"
+                  Icon={Radio}
+                  onClick={onOpenSetup}
+                />
               </div>
             )}
           </div>
@@ -199,7 +215,9 @@ export function OnboardingTour({
             )}
             {lastStep ? (
               <>
-                <button className="ui-button" onClick={onClose}>Skip for now</button>
+                <button className="ui-button" onClick={onClose}>
+                  Skip for now
+                </button>
                 <button className="ui-button studio-primary" onClick={onOpenSetup}>
                   <Rocket size={14} /> Open setup guide
                 </button>
@@ -216,12 +234,28 @@ export function OnboardingTour({
   );
 }
 
-function ChecklistItem({ done, label, action, Icon, onClick }: { done: boolean; label: string; action: string; Icon: typeof Type; onClick: () => void }) {
+function ChecklistItem({
+  done,
+  label,
+  action,
+  Icon,
+  onClick,
+}: {
+  done: boolean;
+  label: string;
+  action: string;
+  Icon: typeof Type;
+  onClick: () => void;
+}) {
   return (
     <div className={done ? "onboarding-checklist__item done" : "onboarding-checklist__item"}>
       {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-      <span><Icon size={13} /> {label}</span>
-      <button className="ui-button ui-button--compact" onClick={onClick}>{done ? "Review" : action}</button>
+      <span>
+        <Icon size={13} /> {label}
+      </span>
+      <button className="ui-button ui-button--compact" onClick={onClick}>
+        {done ? "Review" : action}
+      </button>
     </div>
   );
 }

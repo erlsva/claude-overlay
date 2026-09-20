@@ -26,9 +26,33 @@ test("rejects invalid or oversized elements", () => {
 test("only allows supported update fields and values", () => {
   assert.equal(validElementUpdate({ x: 12, mediaVolume: 0.5 }), true);
   assert.equal(validElementUpdate({ autoVisibility: true }), true);
-  assert.equal(validElementUpdate({ locked: true, opacity: 0.5, enterAnimation: "pop", exitAnimation: "fade" }), true);
-  assert.equal(validElementUpdate({ effectAnimation: "shake", effectId: "animation-1", effectStartedAt: Date.now(), effectDurationMs: 700 }), true);
-  assert.equal(validElementUpdate({ effectAnimation: "bounce", effectId: "animation-2", effectStartedAt: Date.now(), effectDurationMs: 1200 }), true);
+  assert.equal(
+    validElementUpdate({
+      locked: true,
+      opacity: 0.5,
+      enterAnimation: "pop",
+      exitAnimation: "fade",
+    }),
+    true,
+  );
+  assert.equal(
+    validElementUpdate({
+      effectAnimation: "shake",
+      effectId: "animation-1",
+      effectStartedAt: Date.now(),
+      effectDurationMs: 700,
+    }),
+    true,
+  );
+  assert.equal(
+    validElementUpdate({
+      effectAnimation: "bounce",
+      effectId: "animation-2",
+      effectStartedAt: Date.now(),
+      effectDurationMs: 1200,
+    }),
+    true,
+  );
   assert.equal(
     validElementUpdate({
       dvdEnabled: true,
@@ -46,15 +70,42 @@ test("only allows supported update fields and values", () => {
   assert.equal(validElementUpdate({ opacity: 1.5 }), false);
   assert.equal(validElementUpdate({ enterAnimation: "unsafe" } as never), false);
   assert.equal(validElementUpdate({ effectAnimation: "unsafe" } as never), false);
-  assert.equal(validElementUpdate({ effectAnimation: "pulse", effectStartedAt: Date.now(), effectDurationMs: 20_000 }), false);
+  assert.equal(
+    validElementUpdate({
+      effectAnimation: "pulse",
+      effectStartedAt: Date.now(),
+      effectDurationMs: 20_000,
+    }),
+    false,
+  );
 });
 test("bounds stored drawing data", () => {
-  const stroke: DrawStroke = { id: "stroke-1", points: [[1, 2]], color: "#fff", size: 4, eraser: false };
+  const stroke: DrawStroke = {
+    id: "stroke-1",
+    points: [[1, 2]],
+    color: "#fff",
+    size: 4,
+    eraser: false,
+  };
   assert.equal(validStroke(stroke), true);
   assert.equal(validStroke({ ...stroke, points: [[Number.NaN, 2]] }), false);
   assert.equal(validStroke({ ...stroke, size: 201 }), false);
-  assert.equal(validStroke({ ...stroke, points: [[1, 2], [30, 40]], tool: "arrow", opacity: 0.5 }), true);
-  assert.equal(validStroke({ ...stroke, tool: "fill", fillX: 10, fillY: 10, fillTolerance: 80 }), true);
+  assert.equal(
+    validStroke({
+      ...stroke,
+      points: [
+        [1, 2],
+        [30, 40],
+      ],
+      tool: "arrow",
+      opacity: 0.5,
+    }),
+    true,
+  );
+  assert.equal(
+    validStroke({ ...stroke, tool: "fill", fillX: 10, fillY: 10, fillTolerance: 80 }),
+    true,
+  );
   assert.equal(validStroke({ ...stroke, tool: "spray" } as never), false);
   assert.equal(validStroke({ ...stroke, opacity: 1.5 }), false);
   assert.equal(validStroke({ ...stroke, fillTolerance: 300 }), false);

@@ -28,7 +28,10 @@ export async function playTestTone(): Promise<ToneResult> {
     master.gain.value = 0.25;
     master.connect(context.destination);
     // Two notes so it is easy to recognise on a stream mix.
-    [[880, 0], [1175, 0.22]].forEach(([frequency, offset]) => {
+    [
+      [880, 0],
+      [1175, 0.22],
+    ].forEach(([frequency, offset]) => {
       const oscillator = context.createOscillator();
       const envelope = context.createGain();
       oscillator.type = "sine";

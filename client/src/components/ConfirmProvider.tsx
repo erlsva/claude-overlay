@@ -61,36 +61,56 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {options && presence.mounted && createPortal(
-        <div className="confirm-backdrop motion-backdrop" data-state={presence.state} onMouseDown={() => close(false)}>
-          <section
-            className="confirm-dialog motion-dialog"
+      {options &&
+        presence.mounted &&
+        createPortal(
+          <div
+            className="confirm-backdrop motion-backdrop"
             data-state={presence.state}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="confirm-title"
-            aria-describedby="confirm-message"
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={() => close(false)}
           >
-            <header>
-              <span className={options.danger ? "danger" : ""}><CircleAlert size={18} /></span>
-              <h2 id="confirm-title">{options.title}</h2>
-              <button className="ui-icon-button confirm-dialog__close" onClick={() => close(false)} title="Close confirmation"><X size={15} /></button>
-            </header>
-            <p id="confirm-message">{options.message}</p>
-            <footer>
-              <button ref={cancelButton} className="ui-button confirm-dialog__cancel" onClick={() => close(false)}>Cancel</button>
-              <button
-                className={`ui-button ${options.danger ? "ui-danger" : "studio-primary"}`}
-                onClick={() => close(true)}
-              >
-                {options.confirmLabel ?? "Confirm"}
-              </button>
-            </footer>
-          </section>
-        </div>,
-        document.body,
-      )}
+            <section
+              className="confirm-dialog motion-dialog"
+              data-state={presence.state}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="confirm-title"
+              aria-describedby="confirm-message"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <header>
+                <span className={options.danger ? "danger" : ""}>
+                  <CircleAlert size={18} />
+                </span>
+                <h2 id="confirm-title">{options.title}</h2>
+                <button
+                  className="ui-icon-button confirm-dialog__close"
+                  onClick={() => close(false)}
+                  title="Close confirmation"
+                >
+                  <X size={15} />
+                </button>
+              </header>
+              <p id="confirm-message">{options.message}</p>
+              <footer>
+                <button
+                  ref={cancelButton}
+                  className="ui-button confirm-dialog__cancel"
+                  onClick={() => close(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className={`ui-button ${options.danger ? "ui-danger" : "studio-primary"}`}
+                  onClick={() => close(true)}
+                >
+                  {options.confirmLabel ?? "Confirm"}
+                </button>
+              </footer>
+            </section>
+          </div>,
+          document.body,
+        )}
     </ConfirmContext.Provider>
   );
 }

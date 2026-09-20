@@ -1,10 +1,5 @@
 import type { CanvasElement } from "../types";
-import {
-  STREAM_H,
-  STREAM_OFFSET_X,
-  STREAM_OFFSET_Y,
-  STREAM_W,
-} from "./config";
+import { STREAM_H, STREAM_OFFSET_X, STREAM_OFFSET_Y, STREAM_W } from "./config";
 
 export function getDvdPosition(element: CanvasElement, now = Date.now()) {
   if (
@@ -63,6 +58,6 @@ function reflect(value: number, min: number, max: number) {
   const range = max - min;
   if (range <= 0) return min;
   const period = range * 2;
-  const wrapped = ((value - min) % period + period) % period;
+  const wrapped = (((value - min) % period) + period) % period;
   return min + (wrapped <= range ? wrapped : period - wrapped);
 }

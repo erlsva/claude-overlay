@@ -26,10 +26,19 @@ const subscriptions = [
   ["channel.subscription.gift", "1", (id: string) => ({ broadcaster_user_id: id })],
   ["channel.cheer", "1", (id: string) => ({ broadcaster_user_id: id })],
   ["channel.raid", "1", (id: string) => ({ to_broadcaster_user_id: id })],
-  ["channel.channel_points_custom_reward_redemption.add", "1", (id: string) => ({ broadcaster_user_id: id })],
+  [
+    "channel.channel_points_custom_reward_redemption.add",
+    "1",
+    (id: string) => ({ broadcaster_user_id: id }),
+  ],
   ["channel.ban", "1", (id: string) => ({ broadcaster_user_id: id })],
   // Needs a permission that connections made before predictions existed do not have.
-  ["channel.prediction.begin", "1", (id: string) => ({ broadcaster_user_id: id }), "channel:read:predictions"],
+  [
+    "channel.prediction.begin",
+    "1",
+    (id: string) => ({ broadcaster_user_id: id }),
+    "channel:read:predictions",
+  ],
 ] as const;
 
 export async function registerEventSubscriptions(auth: StoredEventAuth) {
@@ -37,15 +46,27 @@ export async function registerEventSubscriptions(auth: StoredEventAuth) {
     console.warn("Skipping EventSub registration: callback URL or secret is not configured");
     return;
   }
-  if (!callback.startsWith("https://")) throw new Error("TWITCH_EVENTSUB_CALLBACK_URL must use HTTPS");
+  if (!callback.startsWith("https://"))
+    throw new Error("TWITCH_EVENTSUB_CALLBACK_URL must use HTTPS");
   const token = await getAppAccessToken();
-  for (const [type, version, condition, requiredScope] of subscriptions as ReadonlyArray<readonly [string, string, (id: string) => Record<string, string>, string?]>) {
+  for (const [type, version, condition, requiredScope] of subscriptions as ReadonlyArray<
+    readonly [string, string, (id: string) => Record<string, string>, string?]
+  >) {
     // An older connection cannot subscribe to this yet; the rest must still register.
     if (requiredScope && !auth.scopes.includes(requiredScope)) continue;
     const response = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
       method: "POST",
-      headers: { "Client-Id": twitchClientId, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ type, version, condition: condition(auth.twitchUserId), transport: { method: "webhook", callback, secret } }),
+      headers: {
+        "Client-Id": twitchClientId,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type,
+        version,
+        condition: condition(auth.twitchUserId),
+        transport: { method: "webhook", callback, secret },
+      }),
     });
     if (!response.ok && response.status !== 409) {
       const detail = await response.text();
@@ -60,7 +81,10 @@ function validSignature(req: Request, body: Buffer) {
   const timestamp = String(req.header("Twitch-Eventsub-Message-Timestamp") ?? "");
   const supplied = String(req.header("Twitch-Eventsub-Message-Signature") ?? "");
   if (!id || !timestamp || Math.abs(Date.now() - Date.parse(timestamp)) > 10 * 60_000) return false;
-  const expected = `sha256=${createHmac("sha256", secret).update(id + timestamp).update(body).digest("hex")}`;
+  const expected = `sha256=${createHmac("sha256", secret)
+    .update(id + timestamp)
+    .update(body)
+    .digest("hex")}`;
   const left = Buffer.from(expected);
   const right = Buffer.from(supplied);
   return left.length === right.length && timingSafeEqual(left, right);
@@ -81,19 +105,32 @@ export function createEventWebhook(emitEvent: (type: TriggerEventType, event: an
   const router = Router();
   router.post("/", (req, res) => {
     const body = req.body as Buffer;
-    if (!Buffer.isBuffer(body) || !validSignature(req, body)) return res.status(403).send("Invalid EventSub signature");
+    if (!Buffer.isBuffer(body) || !validSignature(req, body))
+      return res.status(403).send("Invalid EventSub signature");
     let payload: any;
-    try { payload = JSON.parse(body.toString("utf8")); }
-    catch { return res.status(400).send("Invalid JSON"); }
+    try {
+      payload = JSON.parse(body.toString("utf8"));
+    } catch {
+      return res.status(400).send("Invalid JSON");
+    }
     const messageType = req.header("Twitch-Eventsub-Message-Type");
-    if (messageType === "webhook_callback_verification") return res.type("text/plain").send(payload.challenge);
+    if (messageType === "webhook_callback_verification")
+      return res.type("text/plain").send(payload.challenge);
     if (messageType === "notification") {
       const messageId = String(req.header("Twitch-Eventsub-Message-Id") ?? "");
       if (isDuplicateMessage(messageId)) return res.sendStatus(204);
-      const type = payload.subscription?.type === "channel.ban"
-        ? (payload.event?.is_permanent ? "ban" : "timeout")
-        : eventTypes[payload.subscription?.type];
-      if (type) emitEvent(type, { ...payload.event, channel: payload.event?.broadcaster_user_login ?? payload.event?.to_broadcaster_user_login });
+      const type =
+        payload.subscription?.type === "channel.ban"
+          ? payload.event?.is_permanent
+            ? "ban"
+            : "timeout"
+          : eventTypes[payload.subscription?.type];
+      if (type)
+        emitEvent(type, {
+          ...payload.event,
+          channel:
+            payload.event?.broadcaster_user_login ?? payload.event?.to_broadcaster_user_login,
+        });
     }
     return res.sendStatus(204);
   });

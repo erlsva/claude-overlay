@@ -28,7 +28,8 @@ export interface LibraryStore {
 let tableReady: Promise<void> | undefined;
 function ensureTable(): Promise<void> {
   tableReady ??= postgres!
-    .query(`CREATE TABLE IF NOT EXISTS media_library (
+    .query(
+      `CREATE TABLE IF NOT EXISTS media_library (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       mime TEXT NOT NULL,
@@ -36,7 +37,8 @@ function ensureTable(): Promise<void> {
       data BYTEA NOT NULL,
       added_by TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`)
+    )`,
+    )
     .then(() => undefined)
     .catch((error) => {
       tableReady = undefined;
@@ -58,12 +60,17 @@ const neonStore: LibraryStore = {
   kind: "neon",
   async list() {
     await ensureTable();
-    const result = await postgres!.query("SELECT id, name, mime, size, added_by, created_at FROM media_library ORDER BY created_at DESC");
+    const result = await postgres!.query(
+      "SELECT id, name, mime, size, added_by, created_at FROM media_library ORDER BY created_at DESC",
+    );
     return result.rows.map(rowToItem);
   },
   async get(id) {
     await ensureTable();
-    const result = await postgres!.query("SELECT id, name, mime, size, added_by, created_at FROM media_library WHERE id = $1", [id]);
+    const result = await postgres!.query(
+      "SELECT id, name, mime, size, added_by, created_at FROM media_library WHERE id = $1",
+      [id],
+    );
     return result.rows[0] ? rowToItem(result.rows[0]) : null;
   },
   async readData(id) {
@@ -85,7 +92,9 @@ const neonStore: LibraryStore = {
   },
   async usedBytes() {
     await ensureTable();
-    const result = await postgres!.query("SELECT COALESCE(SUM(size), 0)::bigint AS total FROM media_library");
+    const result = await postgres!.query(
+      "SELECT COALESCE(SUM(size), 0)::bigint AS total FROM media_library",
+    );
     return Number(result.rows[0]?.total ?? 0);
   },
 };

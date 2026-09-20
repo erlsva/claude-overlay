@@ -1,7 +1,20 @@
 import { getChatEmoteSettings, getStudioData } from "../db/index.js";
-import type { ActivityItem, CanvasState, ChatEmoteSettings, DrawStroke, DvdCelebrationSettings, ElementPreset, OverlayTrigger, SavedScene, SoundboardItem } from "../types.js";
+import type {
+  ActivityItem,
+  CanvasState,
+  ChatEmoteSettings,
+  DrawStroke,
+  DvdCelebrationSettings,
+  ElementPreset,
+  OverlayTrigger,
+  SavedScene,
+  SoundboardItem,
+} from "../types.js";
 
-export interface CanvasSnapshot { elements: CanvasState['elements']; strokes: DrawStroke[]; }
+export interface CanvasSnapshot {
+  elements: CanvasState["elements"];
+  strokes: DrawStroke[];
+}
 
 export interface CanvasStore {
   canvasState: CanvasState;
@@ -56,7 +69,9 @@ export const canvasStore: CanvasStore = {
         ? stored.additionalEmotes.filter((name) => /^[a-z0-9_]{1,64}$/i.test(name)).slice(0, 100)
         : [],
       blockedEmotes: Array.isArray(stored?.blockedEmotes)
-        ? stored.blockedEmotes.filter((name) => typeof name === "string" && /^\S{1,64}$/.test(name)).slice(0, 100)
+        ? stored.blockedEmotes
+            .filter((name) => typeof name === "string" && /^\S{1,64}$/.test(name))
+            .slice(0, 100)
         : [],
     };
   })(),

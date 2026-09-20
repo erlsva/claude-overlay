@@ -46,9 +46,7 @@ type PlaybackController = {
   state: () => TtsPlaybackState;
 };
 let playbackController: PlaybackController | undefined;
-export function setTtsPlayer(
-  player: (clip: TtsClip, volume: number) => Promise<void>,
-) {
+export function setTtsPlayer(player: (clip: TtsClip, volume: number) => Promise<void>) {
   play = player;
 }
 let overlayOnline: (() => boolean) | undefined;
@@ -105,22 +103,17 @@ export function attributeReplay(clip: TtsClip, sender: string): TtsClip {
   return { ...clip, sender: sender.slice(0, 100) };
 }
 async function voices() {
-  const data = (await (
-    await eleven("voices", process.env.ELEVENLABS_API_KEY || "")
-  ).json()) as { voices: AccountVoice[] };
+  const data = (await (await eleven("voices", process.env.ELEVENLABS_API_KEY || "")).json()) as {
+    voices: AccountVoice[];
+  };
   return data.voices;
 }
 export async function preview(prompt: string, owner: string) {
   z.string().trim().min(1).max(6000).parse(prompt);
-  if (previews >= 2)
-    throw new Error("Two previews are already running. Please wait.");
+  if (previews >= 2) throw new Error("Two previews are already running. Please wait.");
   previews++;
   try {
-    const plan = await interpretPrompt(
-      prompt,
-      process.env.OPENAI_API_KEY || "",
-      await voices(),
-    );
+    const plan = await interpretPrompt(prompt, process.env.OPENAI_API_KEY || "", await voices());
     for (const [id, p] of plans) if (p.expires < Date.now()) plans.delete(id);
     if (plans.size >= 100) plans.delete(plans.keys().next().value!);
     const planId = randomUUID();
@@ -144,25 +137,17 @@ export function submit(input: {
 }) {
   z.string().trim().min(1).max(6000).parse(input.prompt);
   if (input.play && !getTtsPlaybackState().enabled)
-    throw new Error(
-      "TTS playback is turned off. Turn it on before playing on the overlay.",
-    );
+    throw new Error("TTS playback is turned off. Turn it on before playing on the overlay.");
   // Nothing can play without an open overlay, so refuse before any credits are spent.
   if (input.play && overlayOnline && !overlayOnline())
     throw new Error(
       "The overlay is not open, so nothing would play. Open the overlay and try again. No credits were spent.",
     );
-  if (pending >= 10)
-    throw new Error("The TTS queue is full. Try again after a clip finishes.");
+  if (pending >= 10) throw new Error("The TTS queue is full. Try again after a clip finishes.");
   let prepared: Scene[] | undefined;
   if (input.planId) {
     const p = plans.get(input.planId);
-    if (
-      !p ||
-      p.owner !== input.owner ||
-      p.prompt !== input.prompt ||
-      p.expires < Date.now()
-    )
+    if (!p || p.owner !== input.owner || p.prompt !== input.prompt || p.expires < Date.now())
       throw new Error("Preview expired or prompt changed. Preview again.");
     prepared = p.scenes;
   }
@@ -204,22 +189,14 @@ export function submit(input: {
           !process.env.ELEVENLABS_API_KEY ||
           !process.env.DISCORD_TTS_WEBHOOK_URL
         )
-          throw new Error(
-            "Configure OpenAI, ElevenLabs and Discord TTS server keys first.",
-          );
+          throw new Error("Configure OpenAI, ElevenLabs and Discord TTS server keys first.");
         // Confirm persistent storage is available before spending generation credits.
         await getClip("storage-check");
         job.message = "Interpreting performance";
         const catalog = await voices();
         const scenes = scenesSchema.parse(
           prepared ||
-            (
-              await interpretPrompt(
-                input.prompt,
-                process.env.OPENAI_API_KEY,
-                catalog,
-              )
-            ).scenes,
+            (await interpretPrompt(input.prompt, process.env.OPENAI_API_KEY, catalog)).scenes,
         );
         temp = await mkdtemp(path.join(os.tmpdir(), "overlay-tts-"));
         await mkdir(path.join(temp, "clips"));
@@ -239,12 +216,12 @@ export function submit(input: {
         });
         job.message = "Encoding and saving to Discord";
         const mp3 = path.join(temp, `${id}.mp3`);
-        const containsSpeech=scenes.some(scene=>scene.dialogue.trim());
+        const containsSpeech = scenes.some((scene) => scene.dialogue.trim());
         await run([
           "-i",
           path.join(temp, "clips", `${id}.wav`),
           "-af",
-          containsSpeech?FINAL_TTS_FILTER:FINAL_SOUND_EFFECT_FILTER,
+          containsSpeech ? FINAL_TTS_FILTER : FINAL_SOUND_EFFECT_FILTER,
           "-codec:a",
           "libmp3lame",
           "-b:a",
@@ -259,10 +236,7 @@ export function submit(input: {
           createdAt: new Date().toISOString(),
           duration,
         };
-        const discordMessageId = await uploadClip(
-          await readFile(mp3),
-          metadata,
-        );
+        const discordMessageId = await uploadClip(await readFile(mp3), metadata);
         clip = { ...metadata, discordMessageId };
         try {
           await saveClip(clip);
@@ -279,9 +253,7 @@ export function submit(input: {
           await play(clip, overlayVolume);
         } catch (error) {
           playbackFailed = true;
-          addWarning(
-            error instanceof Error ? error.message : "Overlay playback failed.",
-          );
+          addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
         }
       }
       job.status = "complete";

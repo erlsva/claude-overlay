@@ -14,8 +14,16 @@ interface SegmentedProps<T extends string | number> {
 }
 
 /** Pill selector whose highlight slides to the chosen option, like the Studio tabs. */
-export function Segmented<T extends string | number>({ label, value, options, onChange }: SegmentedProps<T>) {
-  const index = Math.max(0, options.findIndex((option) => option.value === value));
+export function Segmented<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: SegmentedProps<T>) {
+  const index = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
   return (
     <div
       className="segmented"

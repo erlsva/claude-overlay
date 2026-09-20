@@ -18,7 +18,8 @@ const encryptionValue = process.env.TWITCH_TOKEN_ENCRYPTION_KEY;
 function key() {
   if (!encryptionValue) throw new Error("TWITCH_TOKEN_ENCRYPTION_KEY is not configured");
   const decoded = Buffer.from(encryptionValue, "base64");
-  if (decoded.length !== 32) throw new Error("TWITCH_TOKEN_ENCRYPTION_KEY must be a Base64 encoded 32-byte key");
+  if (decoded.length !== 32)
+    throw new Error("TWITCH_TOKEN_ENCRYPTION_KEY must be a Base64 encoded 32-byte key");
   return decoded;
 }
 function encrypt(value: string) {
@@ -49,29 +50,48 @@ export async function initializeEventAuthStore() {
   // Older development builds restricted this table to Vicksy/Wixels. Event
   // authorization targets are now configuration-driven so a test account can
   // be connected without changing any preview or overlay channel behavior.
-  await postgres.query("ALTER TABLE twitch_event_auth DROP CONSTRAINT IF EXISTS twitch_event_auth_channel_check");
+  await postgres.query(
+    "ALTER TABLE twitch_event_auth DROP CONSTRAINT IF EXISTS twitch_event_auth_channel_check",
+  );
 }
 
 export async function saveEventAuth(value: StoredEventAuth) {
   if (!postgres) throw new Error("DATABASE_URL is not configured");
-  await postgres.query(`INSERT INTO twitch_event_auth
+  await postgres.query(
+    `INSERT INTO twitch_event_auth
     (channel,twitch_user_id,display_name,encrypted_access_token,encrypted_refresh_token,expires_at,scopes,updated_at)
     VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
     ON CONFLICT (channel) DO UPDATE SET twitch_user_id=EXCLUDED.twitch_user_id,
     display_name=EXCLUDED.display_name, encrypted_access_token=EXCLUDED.encrypted_access_token,
     encrypted_refresh_token=EXCLUDED.encrypted_refresh_token, expires_at=EXCLUDED.expires_at,
-    scopes=EXCLUDED.scopes, updated_at=NOW()`, [value.channel, value.twitchUserId,
-    value.displayName, encrypt(value.accessToken), encrypt(value.refreshToken), value.expiresAt,
-    JSON.stringify(value.scopes)]);
+    scopes=EXCLUDED.scopes, updated_at=NOW()`,
+    [
+      value.channel,
+      value.twitchUserId,
+      value.displayName,
+      encrypt(value.accessToken),
+      encrypt(value.refreshToken),
+      value.expiresAt,
+      JSON.stringify(value.scopes),
+    ],
+  );
 }
 export async function getEventAuth(channel: EventChannel): Promise<StoredEventAuth | null> {
   if (!postgres) return null;
-  const result = await postgres.query("SELECT * FROM twitch_event_auth WHERE channel=$1", [channel]);
+  const result = await postgres.query("SELECT * FROM twitch_event_auth WHERE channel=$1", [
+    channel,
+  ]);
   const row = result.rows[0];
   if (!row) return null;
-  return { channel, twitchUserId: row.twitch_user_id, displayName: row.display_name,
-    accessToken: decrypt(row.encrypted_access_token), refreshToken: decrypt(row.encrypted_refresh_token),
-    expiresAt: Number(row.expires_at), scopes: row.scopes };
+  return {
+    channel,
+    twitchUserId: row.twitch_user_id,
+    displayName: row.display_name,
+    accessToken: decrypt(row.encrypted_access_token),
+    refreshToken: decrypt(row.encrypted_refresh_token),
+    expiresAt: Number(row.expires_at),
+    scopes: row.scopes,
+  };
 }
 export async function getValidEventAuth(channel: EventChannel): Promise<StoredEventAuth | null> {
   const auth = await getEventAuth(channel);
@@ -90,4 +110,6 @@ export async function getValidEventAuth(channel: EventChannel): Promise<StoredEv
 export async function deleteEventAuth(channel: EventChannel) {
   if (postgres) await postgres.query("DELETE FROM twitch_event_auth WHERE channel=$1", [channel]);
 }
-export function eventDatabaseConfigured() { return !!postgres && !!encryptionValue; }
+export function eventDatabaseConfigured() {
+  return !!postgres && !!encryptionValue;
+}

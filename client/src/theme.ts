@@ -9,11 +9,8 @@ export const DEFAULT_CUSTOM_ACCENT = "#4f46e5";
 /** Build the full accessible accent palette from the user's single color. */
 export function customAccentVariables(hex: string): CSSProperties {
   const value = hex.replace("#", "");
-  const rgb = [0, 2, 4].map((offset) =>
-    Number.parseInt(value.slice(offset, offset + 2), 16),
-  );
-  const luminance =
-    (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+  const rgb = [0, 2, 4].map((offset) => Number.parseInt(value.slice(offset, offset + 2), 16));
+  const luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
   const mix = (target: number, amount: number) =>
     `#${rgb
       .map((channel) =>

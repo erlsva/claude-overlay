@@ -11,7 +11,10 @@ export const myinstantsRouter = Router();
 myinstantsRouter.post("/resolve", requireAuth, externalLookupRateLimit, async (req, res) => {
   try {
     const submitted = new URL(String(req.body?.url ?? ""));
-    if (submitted.protocol !== "https:" || !["myinstants.com", "www.myinstants.com"].includes(submitted.hostname)) {
+    if (
+      submitted.protocol !== "https:" ||
+      !["myinstants.com", "www.myinstants.com"].includes(submitted.hostname)
+    ) {
       return res.status(400).json({ error: "Use an HTTPS Myinstants sound-page or MP3 link" });
     }
     if (directPath.test(submitted.pathname)) {
@@ -44,7 +47,10 @@ myinstantsRouter.post("/resolve", requireAuth, externalLookupRateLimit, async (r
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > maxHtmlBytes) { await reader.cancel(); throw new Error("Myinstants page was unexpectedly large"); }
+      if (size > maxHtmlBytes) {
+        await reader.cancel();
+        throw new Error("Myinstants page was unexpectedly large");
+      }
       chunks.push(value);
     }
     const html = Buffer.concat(chunks).toString("utf8");
@@ -54,6 +60,10 @@ myinstantsRouter.post("/resolve", requireAuth, externalLookupRateLimit, async (r
     return res.json({ url: `https://www.myinstants.com${path}`, title });
   } catch (error) {
     console.error("Myinstants link resolution failed", error);
-    return res.status(400).json({ error: error instanceof Error ? error.message : "Could not resolve Myinstants link" });
+    return res
+      .status(400)
+      .json({
+        error: error instanceof Error ? error.message : "Could not resolve Myinstants link",
+      });
   }
 });

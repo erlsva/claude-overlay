@@ -24,13 +24,24 @@ import { twitchClientId } from "./auth/twitch.js";
 import { CHATBOT_AUTH_KEY, createEventRoutes } from "./twitch/eventRoutes.js";
 import { createEventWebhook } from "./twitch/eventWebhook.js";
 import { resolveSevenTvEmotes, stackEmotes } from "./seventv/emotes.js";
-import { getFeatureFlags, initializeChatEmoteSettingsStore, initializeFeatureFlagsStore, initializeWhitelistStore } from "./db/index.js";
+import {
+  getFeatureFlags,
+  initializeChatEmoteSettingsStore,
+  initializeFeatureFlagsStore,
+  initializeWhitelistStore,
+} from "./db/index.js";
 import { myinstantsRouter } from "./uploads/myinstants.js";
 import { createFeatureRouter } from "./features/routes.js";
 import { libraryRouter } from "./library/routes.js";
 
 import { ttsRouter } from "./tts/routes.js";
-import { getTtsPlaybackState, setTtsOverlayCheck, setTtsPlaybackController, setTtsPlayer, submit as submitTts } from "./tts/service.js";
+import {
+  getTtsPlaybackState,
+  setTtsOverlayCheck,
+  setTtsPlaybackController,
+  setTtsPlayer,
+  submit as submitTts,
+} from "./tts/service.js";
 const app = express();
 const httpServer = createServer(app);
 
@@ -39,7 +50,11 @@ const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:5173";
 // ---------------------------------------------------------------------------
 app.set("trust proxy", 1);
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
-app.use("/twitch/eventsub", express.raw({ type: "application/json", limit: "256kb" }), createEventWebhook(emitTwitchEvent));
+app.use(
+  "/twitch/eventsub",
+  express.raw({ type: "application/json", limit: "256kb" }),
+  createEventWebhook(emitTwitchEvent),
+);
 app.use(express.json());
 await initializeEventAuthStore().catch((error) =>
   console.error("Event database initialization failed", error),
@@ -60,9 +75,15 @@ if (storedChatEmoteSettings) {
   canvasStore.chatEmoteSettings = {
     ...canvasStore.chatEmoteSettings,
     ...storedChatEmoteSettings,
-    blacklist: Array.isArray(storedChatEmoteSettings.blacklist) ? storedChatEmoteSettings.blacklist : [],
-    additionalEmotes: Array.isArray(storedChatEmoteSettings.additionalEmotes) ? storedChatEmoteSettings.additionalEmotes : [],
-    blockedEmotes: Array.isArray(storedChatEmoteSettings.blockedEmotes) ? storedChatEmoteSettings.blockedEmotes : [],
+    blacklist: Array.isArray(storedChatEmoteSettings.blacklist)
+      ? storedChatEmoteSettings.blacklist
+      : [],
+    additionalEmotes: Array.isArray(storedChatEmoteSettings.additionalEmotes)
+      ? storedChatEmoteSettings.additionalEmotes
+      : [],
+    blockedEmotes: Array.isArray(storedChatEmoteSettings.blockedEmotes)
+      ? storedChatEmoteSettings.blockedEmotes
+      : [],
   };
 }
 app.use(createEventRoutes(emitTwitchEvent));
@@ -94,23 +115,26 @@ const presentationRestores = new Map<string, PresentationRestore>();
 const mediaCompletionWaiters = new Map<string, Set<() => void>>();
 const soundCompletionWaiters = new Map<string, (error?: string) => void>();
 let ttsPlaybackEnabled = true;
-let activeTtsPlayback: {
-  clipId: string;
-  playbackId: string;
-  prompt: string;
-  sender: string;
-  paused: boolean;
-  volume: number;
-  pause: () => void;
-  resume: () => void;
-  setVolume: (volume: number) => void;
-} | undefined;
+let activeTtsPlayback:
+  | {
+      clipId: string;
+      playbackId: string;
+      prompt: string;
+      sender: string;
+      paused: boolean;
+      volume: number;
+      pause: () => void;
+      resume: () => void;
+      setVolume: (volume: number) => void;
+    }
+  | undefined;
 const emitTtsStatus = () => io.emit("tts:status", getTtsPlaybackState());
 app.use("/tts", ttsRouter);
 setTtsOverlayCheck(() => activeOverlays.size > 0);
 setTtsPlayer(async (clip, volume) => {
   if (!ttsPlaybackEnabled) throw new Error("TTS playback is turned off.");
-  if (!activeOverlays.size) throw new Error("The overlay is offline. Replay the saved clip once the overlay is open.");
+  if (!activeOverlays.size)
+    throw new Error("The overlay is offline. Replay the saved clip once the overlay is open.");
   if (activeTtsPlayback) {
     io.to("overlay").emit("sound:stop", { id: activeTtsPlayback.clipId });
     soundCompletionWaiters.get(activeTtsPlayback.playbackId)?.();
@@ -154,10 +178,24 @@ setTtsPlayer(async (clip, volume) => {
       activeTtsPlayback.volume = nextVolume;
       io.to("overlay").emit("sound:volume", { id: clip.id, volume: nextVolume });
     };
-    activeTtsPlayback = { clipId: clip.id, playbackId, prompt: clip.prompt, sender: clip.sender, paused: false, volume, pause, resume, setVolume };
+    activeTtsPlayback = {
+      clipId: clip.id,
+      playbackId,
+      prompt: clip.prompt,
+      sender: clip.sender,
+      paused: false,
+      volume,
+      pause,
+      resume,
+      setVolume,
+    };
     soundCompletionWaiters.set(playbackId, finish);
     schedule();
-    const serverUrl = (process.env.PUBLIC_SERVER_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:3001").replace(/\/$/, "");
+    const serverUrl = (
+      process.env.PUBLIC_SERVER_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      "http://localhost:3001"
+    ).replace(/\/$/, "");
     io.to("overlay").emit("sound:play", {
       id: clip.id,
       name: clip.prompt.slice(0, 80),
@@ -168,13 +206,22 @@ setTtsPlayer(async (clip, volume) => {
     emitTtsStatus();
   });
 });
-app.use("/features", createFeatureRouter((flags) => io.emit("features:updated", flags)));
+app.use(
+  "/features",
+  createFeatureRouter((flags) => io.emit("features:updated", flags)),
+);
 setTtsPlaybackController({
   state: () => ({
     enabled: ttsPlaybackEnabled,
     active: !!activeTtsPlayback,
     paused: activeTtsPlayback?.paused ?? false,
-    ...(activeTtsPlayback ? { clipId: activeTtsPlayback.clipId, prompt: activeTtsPlayback.prompt, sender: activeTtsPlayback.sender } : {}),
+    ...(activeTtsPlayback
+      ? {
+          clipId: activeTtsPlayback.clipId,
+          prompt: activeTtsPlayback.prompt,
+          sender: activeTtsPlayback.sender,
+        }
+      : {}),
   }),
   stop: () => {
     if (!activeTtsPlayback) return false;
@@ -281,9 +328,10 @@ function presentElement(
   if (placement === "fit" || placement === "fill") {
     const originalWidth = pending.changes.width ?? element.width;
     const originalHeight = pending.changes.height ?? element.height;
-    const factor = placement === "fit"
-      ? Math.min(STREAM_W / originalWidth, STREAM_H / originalHeight)
-      : Math.max(STREAM_W / originalWidth, STREAM_H / originalHeight);
+    const factor =
+      placement === "fit"
+        ? Math.min(STREAM_W / originalWidth, STREAM_H / originalHeight)
+        : Math.max(STREAM_W / originalWidth, STREAM_H / originalHeight);
     changes.width = originalWidth * factor;
     changes.height = originalHeight * factor;
     changes.x = STREAM_OFFSET_X + (STREAM_W - changes.width) / 2;
@@ -292,20 +340,30 @@ function presentElement(
   } else if (placement !== "current" && placement !== "random") {
     const width = pending.changes.width ?? element.width;
     const height = pending.changes.height ?? element.height;
-    const horizontal = placement.endsWith("left") ? "left" : placement.endsWith("right") ? "right" : "center";
-    const vertical = placement.startsWith("top") ? "top" : placement.startsWith("bottom") ? "bottom" : "center";
+    const horizontal = placement.endsWith("left")
+      ? "left"
+      : placement.endsWith("right")
+        ? "right"
+        : "center";
+    const vertical = placement.startsWith("top")
+      ? "top"
+      : placement.startsWith("bottom")
+        ? "bottom"
+        : "center";
     const isCorner = horizontal !== "center" && vertical !== "center";
     const margin = isCorner ? 0 : 40;
-    changes.x = horizontal === "left"
-      ? STREAM_OFFSET_X + margin
-      : horizontal === "right"
-        ? STREAM_OFFSET_X + STREAM_W - width - margin
-        : STREAM_OFFSET_X + (STREAM_W - width) / 2;
-    changes.y = vertical === "top"
-      ? STREAM_OFFSET_Y + margin
-      : vertical === "bottom"
-        ? STREAM_OFFSET_Y + STREAM_H - height - margin
-        : STREAM_OFFSET_Y + (STREAM_H - height) / 2;
+    changes.x =
+      horizontal === "left"
+        ? STREAM_OFFSET_X + margin
+        : horizontal === "right"
+          ? STREAM_OFFSET_X + STREAM_W - width - margin
+          : STREAM_OFFSET_X + (STREAM_W - width) / 2;
+    changes.y =
+      vertical === "top"
+        ? STREAM_OFFSET_Y + margin
+        : vertical === "bottom"
+          ? STREAM_OFFSET_Y + STREAM_H - height - margin
+          : STREAM_OFFSET_Y + (STREAM_H - height) / 2;
     changes.rotation = 0;
   }
   Object.assign(element, changes);
@@ -316,11 +374,14 @@ function presentElement(
 type TriggerEventPayload = Record<string, any>;
 
 function renderEventMessage(template: string, event: TriggerEventPayload, maxLength = 500) {
-  const timeoutMinutes = event.ends_at && event.banned_at
-    ? Math.max(1, Math.ceil((Date.parse(event.ends_at) - Date.parse(event.banned_at)) / 60_000))
-    : 0;
+  const timeoutMinutes =
+    event.ends_at && event.banned_at
+      ? Math.max(1, Math.ceil((Date.parse(event.ends_at) - Date.parse(event.banned_at)) / 60_000))
+      : 0;
   const values: Record<string, string> = {
-    user: String(event.user_name ?? event.chatter_user_name ?? event.from_broadcaster_user_name ?? "Viewer"),
+    user: String(
+      event.user_name ?? event.chatter_user_name ?? event.from_broadcaster_user_name ?? "Viewer",
+    ),
     months: String(event.cumulative_months ?? event.duration_months ?? 0),
     viewers: String(event.viewers ?? 0),
     bits: String(event.bits ?? 0),
@@ -328,26 +389,43 @@ function renderEventMessage(template: string, event: TriggerEventPayload, maxLen
     channel: String(event.channel ?? event.broadcaster_user_login ?? ""),
     moderator: String(event.moderator_user_name ?? event.moderator_user_login ?? "Moderator"),
     reason: String(event.reason ?? ""),
-    duration: event.is_permanent ? "permanent" : `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`,
+    duration: event.is_permanent
+      ? "permanent"
+      : `${timeoutMinutes} minute${timeoutMinutes === 1 ? "" : "s"}`,
     bantype: event.is_permanent ? "ban" : "timeout",
     message: String(event.user_input ?? event.message?.text?.replace(/^\S+\s*/, "") ?? ""),
     title: String(event.title ?? ""),
   };
-  return template.replace(/\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType|message|title)\}/gi, (_, key: string) => values[key.toLowerCase()] ?? "").slice(0, maxLength);
+  return template
+    .replace(
+      /\{(user|months|viewers|bits|reward|channel|moderator|reason|duration|banType|message|title)\}/gi,
+      (_, key: string) => values[key.toLowerCase()] ?? "",
+    )
+    .slice(0, maxLength);
 }
 
 async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayload) {
   const channel = String(event.channel ?? event.broadcaster_user_login ?? "").toLowerCase();
   const broadcasterAuth = channel ? await getValidEventAuth(channel) : null;
   const chatbotAuth = await getValidEventAuth(CHATBOT_AUTH_KEY);
-  if (!broadcasterAuth) throw new Error(`No Twitch Events connection for ${channel || "this channel"}`);
+  if (!broadcasterAuth)
+    throw new Error(`No Twitch Events connection for ${channel || "this channel"}`);
   if (!chatbotAuth) throw new Error("The chatbot is not connected");
   if (!step.chatMessage) throw new Error("The chat message is empty");
-  if (!chatbotAuth.scopes.includes("user:write:chat")) throw new Error(`${chatbotAuth.displayName} must reconnect to grant chat-message permission`);
+  if (!chatbotAuth.scopes.includes("user:write:chat"))
+    throw new Error(`${chatbotAuth.displayName} must reconnect to grant chat-message permission`);
   const response = await fetch("https://api.twitch.tv/helix/chat/messages", {
     method: "POST",
-    headers: { "Client-Id": twitchClientId, Authorization: `Bearer ${chatbotAuth.accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ broadcaster_id: broadcasterAuth.twitchUserId, sender_id: chatbotAuth.twitchUserId, message: renderEventMessage(step.chatMessage, event) }),
+    headers: {
+      "Client-Id": twitchClientId,
+      Authorization: `Bearer ${chatbotAuth.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      broadcaster_id: broadcasterAuth.twitchUserId,
+      sender_id: chatbotAuth.twitchUserId,
+      message: renderEventMessage(step.chatMessage, event),
+    }),
   });
   if (!response.ok) {
     const detail = await response.text();
@@ -357,79 +435,114 @@ async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayloa
 
 function executeTriggerStep(step: TriggerStep, event: TriggerEventPayload): Promise<void> {
   if (step.action === "tts") {
-    if (!getFeatureFlags().tts) return Promise.reject(new Error("TTS is currently disabled by the overlay owner"));
-    const sender = String(event.chatter_user_name || event.user_name || event.user_login || "Twitch");
+    if (!getFeatureFlags().tts)
+      return Promise.reject(new Error("TTS is currently disabled by the overlay owner"));
+    const sender = String(
+      event.chatter_user_name || event.user_name || event.user_login || "Twitch",
+    );
     const prompt = renderEventMessage(step.chatMessage || "{message}", event, 6000);
     try {
       const request = submitTts({ prompt, sender, owner: "trigger", play: true });
       return request.completion.then(async () => {
         if (request.job.status === "failed" || request.job.warning) {
-          const failure = new Error(request.job.error || request.job.warning || "TTS generation failed");
+          const failure = new Error(
+            request.job.error || request.job.warning || "TTS generation failed",
+          );
           if (step.ttsErrorMessage) {
-            try { await sendEventChatMessage({ action: "send-chat", chatMessage: step.ttsErrorMessage }, event); }
-            catch (chatError) { console.error("Could not send TTS failure message", chatError); }
+            try {
+              await sendEventChatMessage(
+                { action: "send-chat", chatMessage: step.ttsErrorMessage },
+                event,
+              );
+            } catch (chatError) {
+              console.error("Could not send TTS failure message", chatError);
+            }
           }
           throw failure;
         }
       });
     } catch (error) {
       if (step.ttsErrorMessage) {
-        void sendEventChatMessage({ action: "send-chat", chatMessage: step.ttsErrorMessage }, event)
-          .catch((chatError) => console.error("Could not send TTS failure message", chatError));
+        void sendEventChatMessage(
+          { action: "send-chat", chatMessage: step.ttsErrorMessage },
+          event,
+        ).catch((chatError) => console.error("Could not send TTS failure message", chatError));
       }
       return Promise.reject(error);
     }
   }
-  if (step.action === 'refresh-overlay') { io.emit('overlay:refresh'); return Promise.resolve(); }
-  if (step.action === 'send-chat') return sendEventChatMessage(step, event);
-  if (step.action === 'play-sound') {
-    const sound = canvasStore.sounds.find(item => item.id === step.targetId);
+  if (step.action === "refresh-overlay") {
+    io.emit("overlay:refresh");
+    return Promise.resolve();
+  }
+  if (step.action === "send-chat") return sendEventChatMessage(step, event);
+  if (step.action === "play-sound") {
+    const sound = canvasStore.sounds.find((item) => item.id === step.targetId);
     if (!sound) return Promise.resolve();
     const playbackId = randomUUID();
-    io.to('overlay').emit('sound:play', { ...sound, playbackId });
+    io.to("overlay").emit("sound:play", { ...sound, playbackId });
     return new Promise<void>((resolve) => {
-      const fallback = setTimeout(() => {
-        soundCompletionWaiters.delete(playbackId);
-        resolve();
-      }, 10 * 60 * 1000);
+      const fallback = setTimeout(
+        () => {
+          soundCompletionWaiters.delete(playbackId);
+          resolve();
+        },
+        10 * 60 * 1000,
+      );
       soundCompletionWaiters.set(playbackId, () => {
         clearTimeout(fallback);
         resolve();
       });
     });
   }
-  const element = canvasStore.canvasState.elements.find(item => item.id === step.targetId);
+  const element = canvasStore.canvasState.elements.find((item) => item.id === step.targetId);
   if (!element) return Promise.resolve();
-  if (step.action === 'play-media') {
-    if (element.type !== 'video' && element.type !== 'audio') return Promise.resolve();
+  if (step.action === "play-media") {
+    if (element.type !== "video" && element.type !== "audio") return Promise.resolve();
     presentElement(element, step.placement);
     element.autoVisibility = true;
-    io.emit('element:updated', { id: element.id, changes: { autoVisibility: true } });
-    io.emit('media:control', { id: element.id, action: 'play', currentTime: 0 });
+    io.emit("element:updated", { id: element.id, changes: { autoVisibility: true } });
+    io.emit("media:control", { id: element.id, action: "play", currentTime: 0 });
     return waitForMediaEnd(element.id);
   }
-  if (step.action === 'fly-across') {
-    if (!['image', 'gif', 'video'].includes(element.type)) return Promise.resolve();
+  if (step.action === "fly-across") {
+    if (!["image", "gif", "video"].includes(element.type)) return Promise.resolve();
     flyElement(element, step.flyDirection, step.durationSeconds ?? 5);
     return delay((step.durationSeconds ?? 5) * 1000);
   }
-  if (step.action === 'show-temporary') {
-    if (!['image', 'gif'].includes(element.type)) return Promise.resolve();
+  if (step.action === "show-temporary") {
+    if (!["image", "gif"].includes(element.type)) return Promise.resolve();
     const pending = presentElement(element, step.placement);
-    if (pending) pending.timer = setTimeout(() => restorePresentation(element.id), (step.durationSeconds ?? 5) * 1000);
+    if (pending)
+      pending.timer = setTimeout(
+        () => restorePresentation(element.id),
+        (step.durationSeconds ?? 5) * 1000,
+      );
     return delay((step.durationSeconds ?? 5) * 1000);
   }
   const changes: Partial<CanvasElement> = {};
-  if (step.action === 'show-element') changes.visible = true;
-  if (step.action === 'hide-element') changes.visible = false;
-  if (step.action === 'toggle-element') changes.visible = !element.visible;
-  if (step.action === 'enable-dvd') Object.assign(changes, { dvdEnabled: true, dvdStartedAt: Date.now(), dvdStartX: element.x, dvdStartY: element.y, dvdVelocityX: 120 + Math.random() * 100, dvdVelocityY: (Math.random() > .5 ? 1 : -1) * (120 + Math.random() * 100) });
+  if (step.action === "show-element") changes.visible = true;
+  if (step.action === "hide-element") changes.visible = false;
+  if (step.action === "toggle-element") changes.visible = !element.visible;
+  if (step.action === "enable-dvd")
+    Object.assign(changes, {
+      dvdEnabled: true,
+      dvdStartedAt: Date.now(),
+      dvdStartX: element.x,
+      dvdStartY: element.y,
+      dvdVelocityX: 120 + Math.random() * 100,
+      dvdVelocityY: (Math.random() > 0.5 ? 1 : -1) * (120 + Math.random() * 100),
+    });
   Object.assign(element, changes);
-  io.emit('element:updated', { id: element.id, changes });
+  io.emit("element:updated", { id: element.id, changes });
   return Promise.resolve();
 }
 
-async function executeTriggerSteps(steps: TriggerStep[], event: TriggerEventPayload, onError?: (error: unknown) => void) {
+async function executeTriggerSteps(
+  steps: TriggerStep[],
+  event: TriggerEventPayload,
+  onError?: (error: unknown) => void,
+) {
   let previousCompletion = Promise.resolve();
   for (const step of steps) {
     if (step.timing === "after-previous") await previousCompletion;
@@ -449,18 +562,23 @@ function flyElement(
   const pending = presentElement(element, "current", false);
   const width = pending?.changes.width ?? element.width;
   const height = pending?.changes.height ?? element.height;
-  const [movement, lane] = direction.split(/-(?=top$|center$|bottom$|left$|right$)/) as [string, string];
+  const [movement, lane] = direction.split(/-(?=top$|center$|bottom$|left$|right$)/) as [
+    string,
+    string,
+  ];
   const horizontal = movement === "left-to-right" || movement === "right-to-left";
-  const laneX = lane === "left"
-    ? STREAM_OFFSET_X
-    : lane === "right"
-      ? STREAM_OFFSET_X + STREAM_W - width
-      : STREAM_OFFSET_X + (STREAM_W - width) / 2;
-  const laneY = lane === "top"
-    ? STREAM_OFFSET_Y
-    : lane === "bottom"
-      ? STREAM_OFFSET_Y + STREAM_H - height
-      : STREAM_OFFSET_Y + (STREAM_H - height) / 2;
+  const laneX =
+    lane === "left"
+      ? STREAM_OFFSET_X
+      : lane === "right"
+        ? STREAM_OFFSET_X + STREAM_W - width
+        : STREAM_OFFSET_X + (STREAM_W - width) / 2;
+  const laneY =
+    lane === "top"
+      ? STREAM_OFFSET_Y
+      : lane === "bottom"
+        ? STREAM_OFFSET_Y + STREAM_H - height
+        : STREAM_OFFSET_Y + (STREAM_H - height) / 2;
   let fromX = laneX;
   let toX = laneX;
   let fromY = laneY;
@@ -531,13 +649,27 @@ app.post("/triggers/:id/test", requireAuth, (req, res) => {
     cumulative_months: amount ?? 3,
   };
   const record = (action: string) => {
-    canvasStore.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user: tester, action });
+    canvasStore.activity.unshift({
+      id: randomUUID(),
+      at: new Date().toISOString(),
+      user: tester,
+      action,
+    });
     canvasStore.activity = canvasStore.activity.slice(0, 50);
-    io.to("dashboard").emit("studio:sync", { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
+    io.to("dashboard").emit("studio:sync", {
+      scenes: canvasStore.scenes,
+      presets: canvasStore.presets,
+      sounds: canvasStore.sounds,
+      triggers: canvasStore.triggers,
+      activity: canvasStore.activity,
+      twitchConnected: canvasStore.twitchConnected,
+    });
   };
   record(`tested “${trigger.name}”`);
   void executeTriggerSteps(trigger.steps?.length ? trigger.steps : [trigger], event, (error) => {
-    const message = (error instanceof Error ? error.message : "Unknown error").replace(/s+/g, " ").slice(0, 180);
+    const message = (error instanceof Error ? error.message : "Unknown error")
+      .replace(/s+/g, " ")
+      .slice(0, 180);
     record(`test of “${trigger.name}” failed: ${message}`);
   });
   res.status(202).json({ started: true });
@@ -586,121 +718,195 @@ io.on("connection", (socket) => {
 });
 
 const triggerCooldowns = new Map<string, number>();
-configureTwitchEvents((eventType, event) => {
-  const emoteSender = (event.chatter_user_login ?? "").toLowerCase();
-  const emoteSenderBlocked = canvasStore.chatEmoteSettings.blacklist.includes(emoteSender);
-  const emoteSenderKey = emoteSender || event.chatter_user_id || "unknown";
-  const canSpawnChatEmote = () => {
-    const blockedUntil = chatEmoteSenderCooldowns.get(emoteSenderKey) ?? 0;
-    if (blockedUntil > Date.now()) return false;
-    chatEmoteSenderCooldowns.delete(emoteSenderKey);
-    return true;
-  };
-  const markChatEmoteSpawned = () => {
-    const lifetimeMs = canvasStore.chatEmoteSettings.lifetimeSeconds * 1000;
-    const blockedUntil = Date.now() + lifetimeMs;
-    chatEmoteSenderCooldowns.set(emoteSenderKey, blockedUntil);
-    setTimeout(() => {
-      if (chatEmoteSenderCooldowns.get(emoteSenderKey) === blockedUntil)
-        chatEmoteSenderCooldowns.delete(emoteSenderKey);
-    }, lifetimeMs);
-  };
-  if (eventType === "chat-command" && canvasStore.chatEmoteSettings.enabled && !emoteSenderBlocked && canSpawnChatEmote()) {
-    const nativeEmotes = event.native_emotes ?? [];
-    if (nativeEmotes.length || event.room_id) void (event.room_id
-      ? resolveSevenTvEmotes(event.room_id, event.message.text)
-      : Promise.resolve([])
-    ).then((emotes) => {
-      type PositionedEmote = (typeof emotes)[number];
-      const nativePositions = new Set(nativeEmotes.map((item) => item.position));
-      const orderedEmotes: PositionedEmote[] = [
-        ...nativeEmotes.map((item) => ({ ...item, isZeroWidth: false })),
-        ...emotes.filter((item) => !nativePositions.has(item.position ?? -1)),
-      ].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const { stacks, leadingOverlays } = stackEmotes(orderedEmotes);
-      // Filter after stacking so modifiers of a blocked base cannot migrate
-      // onto a different emote in the message.
-      const blocked = new Set(canvasStore.chatEmoteSettings.blockedEmotes.map((name) => name.toLowerCase()));
-      for (let index = stacks.length - 1; index >= 0; index--) {
-        if (blocked.has(stacks[index].base.name.toLowerCase())) stacks.splice(index, 1);
-        else stacks[index].overlays = stacks[index].overlays.filter((item) => !blocked.has(item.name.toLowerCase()));
-      }
-      for (let index = leadingOverlays.length - 1; index >= 0; index--) {
-        if (blocked.has(leadingOverlays[index].name.toLowerCase())) leadingOverlays.splice(index, 1);
-      }
-      const emote = stacks[0]?.base ?? leadingOverlays[0];
-      if (emote && canSpawnChatEmote()) {
-        const firstOverlays = stacks[0]?.overlays ?? leadingOverlays;
-        const allowlist = new Set(canvasStore.chatEmoteSettings.additionalEmotes.map((name) => name.toLowerCase()));
-        const additional = stacks
-          .filter((_stack, index) => index > 0)
-          .filter((stack) => allowlist.has(stack.base.name.toLowerCase()))
-          .map((stack) => ({
-            id: randomUUID(),
-            emoteId: stack.base.id,
-            name: stack.base.name,
-            imageUrl: stack.base.imageUrl,
-            overlays: stack.overlays.map((item) => ({ emoteId: item.id, name: item.name, imageUrl: item.imageUrl })),
-          }));
-        markChatEmoteSpawned();
-        io.to("overlay").emit("chat-emote:spawn", {
-          id: randomUUID(),
-          emoteId: emote.id,
-          name: emote.name,
-          imageUrl: emote.imageUrl,
-          overlays: firstOverlays
-            .filter((item) => item.id !== emote.id)
-            .map((item) => ({ emoteId: item.id, name: item.name, imageUrl: item.imageUrl })),
-          additional,
-          sender: event.chatter_user_name || event.chatter_user_login || "Viewer",
-          senderLogin: emoteSender,
-          senderColor: event.chatter_color,
+configureTwitchEvents(
+  (eventType, event) => {
+    const emoteSender = (event.chatter_user_login ?? "").toLowerCase();
+    const emoteSenderBlocked = canvasStore.chatEmoteSettings.blacklist.includes(emoteSender);
+    const emoteSenderKey = emoteSender || event.chatter_user_id || "unknown";
+    const canSpawnChatEmote = () => {
+      const blockedUntil = chatEmoteSenderCooldowns.get(emoteSenderKey) ?? 0;
+      if (blockedUntil > Date.now()) return false;
+      chatEmoteSenderCooldowns.delete(emoteSenderKey);
+      return true;
+    };
+    const markChatEmoteSpawned = () => {
+      const lifetimeMs = canvasStore.chatEmoteSettings.lifetimeSeconds * 1000;
+      const blockedUntil = Date.now() + lifetimeMs;
+      chatEmoteSenderCooldowns.set(emoteSenderKey, blockedUntil);
+      setTimeout(() => {
+        if (chatEmoteSenderCooldowns.get(emoteSenderKey) === blockedUntil)
+          chatEmoteSenderCooldowns.delete(emoteSenderKey);
+      }, lifetimeMs);
+    };
+    if (
+      eventType === "chat-command" &&
+      canvasStore.chatEmoteSettings.enabled &&
+      !emoteSenderBlocked &&
+      canSpawnChatEmote()
+    ) {
+      const nativeEmotes = event.native_emotes ?? [];
+      if (nativeEmotes.length || event.room_id)
+        void (
+          event.room_id
+            ? resolveSevenTvEmotes(event.room_id, event.message.text)
+            : Promise.resolve([])
+        ).then((emotes) => {
+          type PositionedEmote = (typeof emotes)[number];
+          const nativePositions = new Set(nativeEmotes.map((item) => item.position));
+          const orderedEmotes: PositionedEmote[] = [
+            ...nativeEmotes.map((item) => ({ ...item, isZeroWidth: false })),
+            ...emotes.filter((item) => !nativePositions.has(item.position ?? -1)),
+          ].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+          const { stacks, leadingOverlays } = stackEmotes(orderedEmotes);
+          // Filter after stacking so modifiers of a blocked base cannot migrate
+          // onto a different emote in the message.
+          const blocked = new Set(
+            canvasStore.chatEmoteSettings.blockedEmotes.map((name) => name.toLowerCase()),
+          );
+          for (let index = stacks.length - 1; index >= 0; index--) {
+            if (blocked.has(stacks[index].base.name.toLowerCase())) stacks.splice(index, 1);
+            else
+              stacks[index].overlays = stacks[index].overlays.filter(
+                (item) => !blocked.has(item.name.toLowerCase()),
+              );
+          }
+          for (let index = leadingOverlays.length - 1; index >= 0; index--) {
+            if (blocked.has(leadingOverlays[index].name.toLowerCase()))
+              leadingOverlays.splice(index, 1);
+          }
+          const emote = stacks[0]?.base ?? leadingOverlays[0];
+          if (emote && canSpawnChatEmote()) {
+            const firstOverlays = stacks[0]?.overlays ?? leadingOverlays;
+            const allowlist = new Set(
+              canvasStore.chatEmoteSettings.additionalEmotes.map((name) => name.toLowerCase()),
+            );
+            const additional = stacks
+              .filter((_stack, index) => index > 0)
+              .filter((stack) => allowlist.has(stack.base.name.toLowerCase()))
+              .map((stack) => ({
+                id: randomUUID(),
+                emoteId: stack.base.id,
+                name: stack.base.name,
+                imageUrl: stack.base.imageUrl,
+                overlays: stack.overlays.map((item) => ({
+                  emoteId: item.id,
+                  name: item.name,
+                  imageUrl: item.imageUrl,
+                })),
+              }));
+            markChatEmoteSpawned();
+            io.to("overlay").emit("chat-emote:spawn", {
+              id: randomUUID(),
+              emoteId: emote.id,
+              name: emote.name,
+              imageUrl: emote.imageUrl,
+              overlays: firstOverlays
+                .filter((item) => item.id !== emote.id)
+                .map((item) => ({ emoteId: item.id, name: item.name, imageUrl: item.imageUrl })),
+              additional,
+              sender: event.chatter_user_name || event.chatter_user_login || "Viewer",
+              senderLogin: emoteSender,
+              senderColor: event.chatter_color,
+            });
+          }
         });
-      }
-    });
-  }
-  const now = Date.now();
-  for (const trigger of canvasStore.triggers) {
-    if (!trigger.enabled || trigger.event !== eventType) continue;
-    if ((triggerCooldowns.get(trigger.id) ?? 0) > now) continue;
-    const message = String(event.message?.text ?? '').trim().split(/\s+/)[0]?.toLowerCase();
-    const reward = String(event.reward?.title ?? '').toLowerCase();
-    if (eventType === 'chat-command' && trigger.match?.toLowerCase() !== message) continue;
-    if (eventType === 'chat-command') {
-      const roleRank: Record<ChatPermission, number> = { everyone: 0, vip: 1, moderator: 2, streamer: 3 };
-      const required = trigger.permission ?? 'everyone';
-      const chatter = event.chatter_role ?? 'everyone';
-      if (roleRank[chatter] < roleRank[required]) continue;
     }
-    if (eventType === 'channel-points' && trigger.match && trigger.match.toLowerCase() !== reward) continue;
-    const eventAmount = eventType === 'bits' ? Number(event.bits ?? 0)
-      : eventType === 'raid' ? Number((event as any).viewers ?? 0)
-        : eventType === 'gift-subscribe' ? Number((event as any).total ?? 0)
-          : eventType === 'subscribe' ? Number((event as any).cumulative_months ?? (event as any).duration_months ?? 1)
-            : 0;
-    if (trigger.minimum !== undefined && eventAmount < trigger.minimum) continue;
-    if (trigger.channel && trigger.channel !== String((event as any).channel ?? (event as any).broadcaster_user_login ?? '').toLowerCase()) continue;
-    triggerCooldowns.set(trigger.id, now + trigger.cooldownSeconds * 1000);
-    canvasStore.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user: 'Twitch', action: `ran trigger “${trigger.name}”` });
-    canvasStore.activity = canvasStore.activity.slice(0, 50);
-    io.to('dashboard').emit('studio:sync', { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
-    const steps = trigger.steps?.length ? trigger.steps : [trigger];
-    void executeTriggerSteps(steps, event, (error) => {
-      const message = (error instanceof Error ? error.message : "Unknown error").replace(/\s+/g, " ").slice(0, 180);
-      canvasStore.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user: "Twitch", action: `trigger “${trigger.name}” failed: ${message}` });
+    const now = Date.now();
+    for (const trigger of canvasStore.triggers) {
+      if (!trigger.enabled || trigger.event !== eventType) continue;
+      if ((triggerCooldowns.get(trigger.id) ?? 0) > now) continue;
+      const message = String(event.message?.text ?? "")
+        .trim()
+        .split(/\s+/)[0]
+        ?.toLowerCase();
+      const reward = String(event.reward?.title ?? "").toLowerCase();
+      if (eventType === "chat-command" && trigger.match?.toLowerCase() !== message) continue;
+      if (eventType === "chat-command") {
+        const roleRank: Record<ChatPermission, number> = {
+          everyone: 0,
+          vip: 1,
+          moderator: 2,
+          streamer: 3,
+        };
+        const required = trigger.permission ?? "everyone";
+        const chatter = event.chatter_role ?? "everyone";
+        if (roleRank[chatter] < roleRank[required]) continue;
+      }
+      if (eventType === "channel-points" && trigger.match && trigger.match.toLowerCase() !== reward)
+        continue;
+      const eventAmount =
+        eventType === "bits"
+          ? Number(event.bits ?? 0)
+          : eventType === "raid"
+            ? Number((event as any).viewers ?? 0)
+            : eventType === "gift-subscribe"
+              ? Number((event as any).total ?? 0)
+              : eventType === "subscribe"
+                ? Number((event as any).cumulative_months ?? (event as any).duration_months ?? 1)
+                : 0;
+      if (trigger.minimum !== undefined && eventAmount < trigger.minimum) continue;
+      if (
+        trigger.channel &&
+        trigger.channel !==
+          String(
+            (event as any).channel ?? (event as any).broadcaster_user_login ?? "",
+          ).toLowerCase()
+      )
+        continue;
+      triggerCooldowns.set(trigger.id, now + trigger.cooldownSeconds * 1000);
+      canvasStore.activity.unshift({
+        id: randomUUID(),
+        at: new Date().toISOString(),
+        user: "Twitch",
+        action: `ran trigger “${trigger.name}”`,
+      });
       canvasStore.activity = canvasStore.activity.slice(0, 50);
-      io.to("dashboard").emit("studio:sync", { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: canvasStore.twitchConnected });
+      io.to("dashboard").emit("studio:sync", {
+        scenes: canvasStore.scenes,
+        presets: canvasStore.presets,
+        sounds: canvasStore.sounds,
+        triggers: canvasStore.triggers,
+        activity: canvasStore.activity,
+        twitchConnected: canvasStore.twitchConnected,
+      });
+      const steps = trigger.steps?.length ? trigger.steps : [trigger];
+      void executeTriggerSteps(steps, event, (error) => {
+        const message = (error instanceof Error ? error.message : "Unknown error")
+          .replace(/\s+/g, " ")
+          .slice(0, 180);
+        canvasStore.activity.unshift({
+          id: randomUUID(),
+          at: new Date().toISOString(),
+          user: "Twitch",
+          action: `trigger “${trigger.name}” failed: ${message}`,
+        });
+        canvasStore.activity = canvasStore.activity.slice(0, 50);
+        io.to("dashboard").emit("studio:sync", {
+          scenes: canvasStore.scenes,
+          presets: canvasStore.presets,
+          sounds: canvasStore.sounds,
+          triggers: canvasStore.triggers,
+          activity: canvasStore.activity,
+          twitchConnected: canvasStore.twitchConnected,
+        });
+      });
+    }
+  },
+  (connected) => {
+    canvasStore.twitchConnected = connected;
+    io.to("dashboard").emit("studio:sync", {
+      scenes: canvasStore.scenes,
+      presets: canvasStore.presets,
+      sounds: canvasStore.sounds,
+      triggers: canvasStore.triggers,
+      activity: canvasStore.activity,
+      twitchConnected: connected,
     });
-  }
-}, connected => {
-  canvasStore.twitchConnected = connected;
-  io.to('dashboard').emit('studio:sync', { scenes: canvasStore.scenes, presets: canvasStore.presets, sounds: canvasStore.sounds, triggers: canvasStore.triggers, activity: canvasStore.activity, twitchConnected: connected });
-});
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 const PORT = Number(process.env.PORT ?? 3001);
-httpServer.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`),
-);
+httpServer.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

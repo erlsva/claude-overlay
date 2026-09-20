@@ -1,4 +1,4 @@
-export type MediaType = 'image' | 'gif' | 'video' | 'audio' | 'text';
+export type MediaType = "image" | "gif" | "video" | "audio" | "text";
 
 export interface CanvasElement {
   id: string;
@@ -42,16 +42,80 @@ export interface CanvasElement {
   effectDurationMs?: number;
 }
 
-export type ElementAnimation = 'none' | 'fade' | 'pop' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'spin';
-export type ElementEffectAnimation = 'pop' | 'pulse' | 'spin' | 'shake' | 'bounce' | 'float' | 'sway' | 'heartbeat';
-export interface SavedScene { id: string; name: string; elements: CanvasElement[]; strokes: DrawStroke[]; updatedAt: string; }
-export interface ElementPreset { id: string; name: string; elements: CanvasElement[]; createdAt: string; }
-export interface SoundboardItem { id: string; name: string; url: string; volume: number; }
-export type TriggerEventType = 'chat-command' | 'follow' | 'subscribe' | 'gift-subscribe' | 'raid' | 'bits' | 'channel-points' | 'ban' | 'timeout' | 'prediction';
-export type TriggerActionType = 'show-element' | 'show-temporary' | 'fly-across' | 'hide-element' | 'toggle-element' | 'play-media' | 'play-sound' | 'enable-dvd' | 'refresh-overlay' | 'send-chat' | 'tts';
-export type TriggerPlacement = 'current' | 'random' | 'fit' | 'fill' | 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
-export type FlyDirection = 'left-to-right-top' | 'left-to-right-center' | 'left-to-right-bottom' | 'right-to-left-top' | 'right-to-left-center' | 'right-to-left-bottom' | 'top-to-bottom-left' | 'top-to-bottom-center' | 'top-to-bottom-right' | 'bottom-to-top-left' | 'bottom-to-top-center' | 'bottom-to-top-right';
-export type ChatPermission = 'everyone' | 'vip' | 'moderator' | 'streamer';
+export type ElementAnimation =
+  "none" | "fade" | "pop" | "slide-left" | "slide-right" | "slide-up" | "slide-down" | "spin";
+export type ElementEffectAnimation =
+  "pop" | "pulse" | "spin" | "shake" | "bounce" | "float" | "sway" | "heartbeat";
+export interface SavedScene {
+  id: string;
+  name: string;
+  elements: CanvasElement[];
+  strokes: DrawStroke[];
+  updatedAt: string;
+}
+export interface ElementPreset {
+  id: string;
+  name: string;
+  elements: CanvasElement[];
+  createdAt: string;
+}
+export interface SoundboardItem {
+  id: string;
+  name: string;
+  url: string;
+  volume: number;
+}
+export type TriggerEventType =
+  | "chat-command"
+  | "follow"
+  | "subscribe"
+  | "gift-subscribe"
+  | "raid"
+  | "bits"
+  | "channel-points"
+  | "ban"
+  | "timeout"
+  | "prediction";
+export type TriggerActionType =
+  | "show-element"
+  | "show-temporary"
+  | "fly-across"
+  | "hide-element"
+  | "toggle-element"
+  | "play-media"
+  | "play-sound"
+  | "enable-dvd"
+  | "refresh-overlay"
+  | "send-chat"
+  | "tts";
+export type TriggerPlacement =
+  | "current"
+  | "random"
+  | "fit"
+  | "fill"
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+export type FlyDirection =
+  | "left-to-right-top"
+  | "left-to-right-center"
+  | "left-to-right-bottom"
+  | "right-to-left-top"
+  | "right-to-left-center"
+  | "right-to-left-bottom"
+  | "top-to-bottom-left"
+  | "top-to-bottom-center"
+  | "top-to-bottom-right"
+  | "bottom-to-top-left"
+  | "bottom-to-top-center"
+  | "bottom-to-top-right";
+export type ChatPermission = "everyone" | "vip" | "moderator" | "streamer";
 export interface TriggerStep {
   action: TriggerActionType;
   targetId?: string;
@@ -63,8 +127,19 @@ export interface TriggerStep {
   chatMessage?: string;
   ttsErrorMessage?: string;
 }
-export interface TtsPlaybackState { enabled: boolean; active: boolean; paused: boolean; volume?: number; clipId?: string; prompt?: string; sender?: string; }
-export interface FeatureFlags { tts: boolean; scenes: boolean; }
+export interface TtsPlaybackState {
+  enabled: boolean;
+  active: boolean;
+  paused: boolean;
+  volume?: number;
+  clipId?: string;
+  prompt?: string;
+  sender?: string;
+}
+export interface FeatureFlags {
+  tts: boolean;
+  scenes: boolean;
+}
 export interface OverlayTrigger extends TriggerStep {
   id: string;
   name: string;
@@ -77,8 +152,20 @@ export interface OverlayTrigger extends TriggerStep {
   permission?: ChatPermission;
   steps?: TriggerStep[];
 }
-export interface ActivityItem { id: string; at: string; user: string; action: string; }
-export interface StudioState { scenes: SavedScene[]; presets: ElementPreset[]; sounds: SoundboardItem[]; triggers: OverlayTrigger[]; activity: ActivityItem[]; twitchConnected: boolean; }
+export interface ActivityItem {
+  id: string;
+  at: string;
+  user: string;
+  action: string;
+}
+export interface StudioState {
+  scenes: SavedScene[];
+  presets: ElementPreset[];
+  sounds: SoundboardItem[];
+  triggers: OverlayTrigger[];
+  activity: ActivityItem[];
+  twitchConnected: boolean;
+}
 
 export interface CanvasState {
   elements: CanvasElement[];
@@ -86,7 +173,8 @@ export interface CanvasState {
 export interface DvdCelebrationSettings {
   volume: number;
   soundUrl: string | null;
-  counterPosition: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+  counterPosition:
+    "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right";
 }
 export interface ChatEmoteSettings {
   enabled: boolean;
@@ -111,18 +199,31 @@ export interface ChatEmoteSpawn {
   name: string;
   imageUrl: string;
   overlays?: Array<{ emoteId: string; name: string; imageUrl: string }>;
-  additional?: Array<{ id: string; emoteId: string; name: string; imageUrl: string; overlays?: Array<{ emoteId: string; name: string; imageUrl: string }> }>;
+  additional?: Array<{
+    id: string;
+    emoteId: string;
+    name: string;
+    imageUrl: string;
+    overlays?: Array<{ emoteId: string; name: string; imageUrl: string }>;
+  }>;
   sender: string;
   senderLogin?: string;
   senderColor?: string;
 }
 
-export interface ElementAddedPayload { element: CanvasElement; }
-export interface ElementUpdatedPayload { id: string; changes: Partial<CanvasElement>; }
-export interface ElementRemovedPayload { id: string; }
+export interface ElementAddedPayload {
+  element: CanvasElement;
+}
+export interface ElementUpdatedPayload {
+  id: string;
+  changes: Partial<CanvasElement>;
+}
+export interface ElementRemovedPayload {
+  id: string;
+}
 export interface MediaControlPayload {
   id: string;
-  action: 'play' | 'pause' | 'seek';
+  action: "play" | "pause" | "seek";
   currentTime: number;
 }
 
@@ -136,7 +237,7 @@ export interface CursorPayload {
   y: number;
 }
 
-export type UserRole = 'owner' | 'streamer' | 'super-moderator' | 'moderator';
+export type UserRole = "owner" | "streamer" | "super-moderator" | "moderator";
 
 export interface UserPresencePayload {
   userId: string;
@@ -171,69 +272,69 @@ export interface LiveDrawStroke {
 }
 
 export interface ServerToClientEvents {
-  'state:sync': (state: CanvasState) => void;
-  'element:added': (payload: ElementAddedPayload) => void;
-  'element:updated': (payload: ElementUpdatedPayload) => void;
-  'element:removed': (payload: ElementRemovedPayload) => void;
-  'media:control': (payload: MediaControlPayload) => void;
-  'cursor:move': (payload: CursorPayload) => void;
-  'user:joined': (payload: UserPresencePayload) => void;
-  'user:left': (payload: { userId: string }) => void;
-  'users:list': (payload: UserPresencePayload[]) => void;
-  'session:revoked': () => void;
-  'session:role_updated': () => void;
-  'overlay:refresh': () => void;
-  'overlay:status': (payload: { connected: boolean; count: number }) => void;
-  'draw:stroke': (stroke: DrawStroke) => void;
-  'draw:clear': () => void;
-  'draw:sync': (strokes: DrawStroke[]) => void;
-  'draw:live': (stroke: LiveDrawStroke) => void;
-  'dvd:settings': (settings: DvdCelebrationSettings) => void;
-  'chat-emote:settings': (settings: ChatEmoteSettings) => void;
-  'chat-emote:spawn': (spawn: ChatEmoteSpawn) => void;
-  'studio:sync': (state: StudioState) => void;
-  'history:status': (status: { canUndo: boolean; canRedo: boolean }) => void;
-  'sound:play': (item: SoundboardItem & { playbackId?: string }) => void;
-  'sound:stop': (payload: { id: string }) => void;
-  'sound:pause': (payload: { id: string }) => void;
-  'sound:resume': (payload: { id: string }) => void;
-  'sound:volume': (payload: { id: string; volume: number }) => void;
-  'tts:status': (state: TtsPlaybackState) => void;
-  'features:updated': (flags: FeatureFlags) => void;
-  'overlay:test-audio': (payload: { testId: string }) => void;
-  'overlay:test-result': (payload: { testId: string; ok: boolean; error?: string }) => void;
-  'chat:channel': (payload: { channel: string }) => void;
+  "state:sync": (state: CanvasState) => void;
+  "element:added": (payload: ElementAddedPayload) => void;
+  "element:updated": (payload: ElementUpdatedPayload) => void;
+  "element:removed": (payload: ElementRemovedPayload) => void;
+  "media:control": (payload: MediaControlPayload) => void;
+  "cursor:move": (payload: CursorPayload) => void;
+  "user:joined": (payload: UserPresencePayload) => void;
+  "user:left": (payload: { userId: string }) => void;
+  "users:list": (payload: UserPresencePayload[]) => void;
+  "session:revoked": () => void;
+  "session:role_updated": () => void;
+  "overlay:refresh": () => void;
+  "overlay:status": (payload: { connected: boolean; count: number }) => void;
+  "draw:stroke": (stroke: DrawStroke) => void;
+  "draw:clear": () => void;
+  "draw:sync": (strokes: DrawStroke[]) => void;
+  "draw:live": (stroke: LiveDrawStroke) => void;
+  "dvd:settings": (settings: DvdCelebrationSettings) => void;
+  "chat-emote:settings": (settings: ChatEmoteSettings) => void;
+  "chat-emote:spawn": (spawn: ChatEmoteSpawn) => void;
+  "studio:sync": (state: StudioState) => void;
+  "history:status": (status: { canUndo: boolean; canRedo: boolean }) => void;
+  "sound:play": (item: SoundboardItem & { playbackId?: string }) => void;
+  "sound:stop": (payload: { id: string }) => void;
+  "sound:pause": (payload: { id: string }) => void;
+  "sound:resume": (payload: { id: string }) => void;
+  "sound:volume": (payload: { id: string; volume: number }) => void;
+  "tts:status": (state: TtsPlaybackState) => void;
+  "features:updated": (flags: FeatureFlags) => void;
+  "overlay:test-audio": (payload: { testId: string }) => void;
+  "overlay:test-result": (payload: { testId: string; ok: boolean; error?: string }) => void;
+  "chat:channel": (payload: { channel: string }) => void;
 }
 
 export interface ClientToServerEvents {
-  'element:add': (payload: ElementAddedPayload) => void;
-  'element:update': (payload: ElementUpdatedPayload) => void;
-  'element:remove': (payload: ElementRemovedPayload) => void;
-  'media:control': (payload: MediaControlPayload) => void;
-  'media:ended': (payload: { id: string }) => void;
-  'sound:ended': (payload: { playbackId: string; error?: string }) => void;
-  'cursor:move': (payload: { x: number; y: number; showOnOverlay: boolean }) => void;
-  'overlay:refresh': () => void;
-  'overlay:test-audio': (payload: { testId: string }) => void;
-  'overlay:test-result': (payload: { testId: string; ok: boolean; error?: string }) => void;
-  'draw:stroke': (stroke: DrawStroke) => void;
-  'draw:clear': () => void;
-  'draw:live': (stroke: Omit<LiveDrawStroke, 'userId'>) => void;
-  'dvd:settings': (settings: DvdCelebrationSettings) => void;
-  'chat-emote:settings': (settings: ChatEmoteSettings) => void;
-  'history:undo': () => void;
-  'history:redo': () => void;
-  'scene:save': (payload: { id: string; name: string }) => void;
-  'scene:load': (payload: { id: string }) => void;
-  'scene:delete': (payload: { id: string }) => void;
-  'preset:save': (payload: { id: string; name: string; elementIds: string[] }) => void;
-  'preset:load': (payload: { id: string }) => void;
-  'preset:delete': (payload: { id: string }) => void;
-  'sound:save': (item: SoundboardItem) => void;
-  'sound:delete': (payload: { id: string }) => void;
-  'sound:play': (payload: { id: string }) => void;
-  'sound:stop': (payload: { id: string }) => void;
-  'trigger:save': (trigger: OverlayTrigger) => void;
-  'trigger:delete': (payload: { id: string }) => void;
-  'chat:channel:set': (payload: { channel: string }) => void;
+  "element:add": (payload: ElementAddedPayload) => void;
+  "element:update": (payload: ElementUpdatedPayload) => void;
+  "element:remove": (payload: ElementRemovedPayload) => void;
+  "media:control": (payload: MediaControlPayload) => void;
+  "media:ended": (payload: { id: string }) => void;
+  "sound:ended": (payload: { playbackId: string; error?: string }) => void;
+  "cursor:move": (payload: { x: number; y: number; showOnOverlay: boolean }) => void;
+  "overlay:refresh": () => void;
+  "overlay:test-audio": (payload: { testId: string }) => void;
+  "overlay:test-result": (payload: { testId: string; ok: boolean; error?: string }) => void;
+  "draw:stroke": (stroke: DrawStroke) => void;
+  "draw:clear": () => void;
+  "draw:live": (stroke: Omit<LiveDrawStroke, "userId">) => void;
+  "dvd:settings": (settings: DvdCelebrationSettings) => void;
+  "chat-emote:settings": (settings: ChatEmoteSettings) => void;
+  "history:undo": () => void;
+  "history:redo": () => void;
+  "scene:save": (payload: { id: string; name: string }) => void;
+  "scene:load": (payload: { id: string }) => void;
+  "scene:delete": (payload: { id: string }) => void;
+  "preset:save": (payload: { id: string; name: string; elementIds: string[] }) => void;
+  "preset:load": (payload: { id: string }) => void;
+  "preset:delete": (payload: { id: string }) => void;
+  "sound:save": (item: SoundboardItem) => void;
+  "sound:delete": (payload: { id: string }) => void;
+  "sound:play": (payload: { id: string }) => void;
+  "sound:stop": (payload: { id: string }) => void;
+  "trigger:save": (trigger: OverlayTrigger) => void;
+  "trigger:delete": (payload: { id: string }) => void;
+  "chat:channel:set": (payload: { channel: string }) => void;
 }

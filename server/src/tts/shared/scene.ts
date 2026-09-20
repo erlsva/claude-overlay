@@ -1,37 +1,44 @@
 import { z } from "zod";
 
-export const sceneSchema = z.object({
-  dialogue: z.string().max(2000),
-  sound: z.string().max(1000),
-  character: z.string().max(500).optional(),
-  delivery: z.string().max(1000).optional(),
-  channel: z.enum(["clean", "intercom"]).optional(),
-  distant: z.boolean().optional(),
-  effectStrength: z.enum(["normal", "extreme"]).optional(),
-  /** Heard through a door or wall, or from another room. */
-  muffled: z.boolean().optional(),
-  /** Which kind of reverb. Unset is a general small-to-medium room. */
-  room: z.enum(["cathedral", "indoor", "well"]).optional(),
-  /** How hard the line is delivered. Drives voice choice, tags and settings. */
-  intensity: z.enum(["normal", "shout", "scream"]).optional(),
-  prepared: z.boolean().optional(),
-  preferredVoiceId: z.string().max(100).optional(),
-  soundDuration: z.number().min(0.5).max(30).optional(),
-  stability: z.number().min(0).max(1).optional(),
-  speechRate: z.number().min(0.75).max(1.25).optional(),
-  voice: z.enum(["voice1", "voice2"]),
-  duration: z.number().min(0.5).max(30).nullable(),
-  /** "both" is an echo and a room together. */
-  effect: z.enum(["none", "echo", "reverb", "both"]),
-  backgroundVolume: z.number().min(0).max(1),
-}).refine((scene) => scene.dialogue.trim() || scene.sound.trim(), "Each scene needs dialogue or a sound.");
+export const sceneSchema = z
+  .object({
+    dialogue: z.string().max(2000),
+    sound: z.string().max(1000),
+    character: z.string().max(500).optional(),
+    delivery: z.string().max(1000).optional(),
+    channel: z.enum(["clean", "intercom"]).optional(),
+    distant: z.boolean().optional(),
+    effectStrength: z.enum(["normal", "extreme"]).optional(),
+    /** Heard through a door or wall, or from another room. */
+    muffled: z.boolean().optional(),
+    /** Which kind of reverb. Unset is a general small-to-medium room. */
+    room: z.enum(["cathedral", "indoor", "well"]).optional(),
+    /** How hard the line is delivered. Drives voice choice, tags and settings. */
+    intensity: z.enum(["normal", "shout", "scream"]).optional(),
+    prepared: z.boolean().optional(),
+    preferredVoiceId: z.string().max(100).optional(),
+    soundDuration: z.number().min(0.5).max(30).optional(),
+    stability: z.number().min(0).max(1).optional(),
+    speechRate: z.number().min(0.75).max(1.25).optional(),
+    voice: z.enum(["voice1", "voice2"]),
+    duration: z.number().min(0.5).max(30).nullable(),
+    /** "both" is an echo and a room together. */
+    effect: z.enum(["none", "echo", "reverb", "both"]),
+    backgroundVolume: z.number().min(0).max(1),
+  })
+  .refine(
+    (scene) => scene.dialogue.trim() || scene.sound.trim(),
+    "Each scene needs dialogue or a sound.",
+  );
 
 export const scenesSchema = z.array(sceneSchema).min(1).max(10);
 export type Scene = z.infer<typeof sceneSchema>;
 export type Intensity = NonNullable<Scene["intensity"]>;
 
-const screamWords = /\b(?:scream(?:s|ing|ed)?|shriek(?:s|ing|ed)?|screech(?:es|ing|ed)?|bloodcurdling|top of (?:his|her|their|my|your) lungs)\b/i;
-const shoutWords = /\b(?:yell(?:s|ing|ed)?|shout(?:s|ing|ed)?|bellow(?:s|ing|ed)?|roar(?:s|ing|ed)?|holler(?:s|ing|ed)?|loudly)\b/i;
+const screamWords =
+  /\b(?:scream(?:s|ing|ed)?|shriek(?:s|ing|ed)?|screech(?:es|ing|ed)?|bloodcurdling|top of (?:his|her|their|my|your) lungs)\b/i;
+const shoutWords =
+  /\b(?:yell(?:s|ing|ed)?|shout(?:s|ing|ed)?|bellow(?:s|ing|ed)?|roar(?:s|ing|ed)?|holler(?:s|ing|ed)?|loudly)\b/i;
 /**
  * How hard the user asked for a line to be delivered. Only call this with the
  * user's own wording (never a model's explanation), so a planner that merely
@@ -43,19 +50,29 @@ export function detectIntensity(text: string): Intensity {
   return "normal";
 }
 /** "gigantic", "huge" and friends mean a stronger effect and a bigger sound. */
-export const isExtreme = (text: string) => /\b(?:extreme|huge|massive|gigantic|enormous|colossal|titanic)\b/i.test(text);
+export const isExtreme = (text: string) =>
+  /\b(?:extreme|huge|massive|gigantic|enormous|colossal|titanic)\b/i.test(text);
 const wellPhrase = /\b(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well\b(?!-)/i;
-const indoorPhrase = /\b(?:indoors?|(?:in|inside)\s+(?:a|an|the)\s+(?:(?:small|large|big|empty|tiled)\s+)?(?:room|hall|house|building|bathroom|garage|warehouse|tunnel))\b/i;
+const indoorPhrase =
+  /\b(?:indoors?|(?:in|inside)\s+(?:a|an|the)\s+(?:(?:small|large|big|empty|tiled)\s+)?(?:room|hall|house|building|bathroom|garage|warehouse|tunnel))\b/i;
 /**
  * The kind of room. A cathedral is long, wide and bright; a well is narrow and
  * hollow; indoors is a small, close room. Anything else keeps the general reverb.
  */
 export const detectRoom = (text: string): Scene["room"] =>
-  /\b(?:church|cathedral)\b/i.test(text) ? "cathedral" : wellPhrase.test(text) ? "well" : indoorPhrase.test(text) ? "indoor" : undefined;
+  /\b(?:church|cathedral)\b/i.test(text)
+    ? "cathedral"
+    : wellPhrase.test(text)
+      ? "well"
+      : indoorPhrase.test(text)
+        ? "indoor"
+        : undefined;
 
 /** "behind a door", "from outside", "muffled": heard through something, not in the room. */
 export const detectMuffled = (text: string): boolean =>
-  /\b(?:muffled|(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door)|from\s+the\s+other\s+room|(?:on\s+)?the\s+other\s+side\s+of\s+(?:a|the)\s+(?:door|wall))\b/i.test(text);
+  /\b(?:muffled|(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door)|from\s+the\s+other\s+room|(?:on\s+)?the\s+other\s+side\s+of\s+(?:a|the)\s+(?:door|wall))\b/i.test(
+    text,
+  );
 
 /**
  * Accents a speaker can be asked to have. Eleven v3 understands "[strong French accent]"
@@ -65,12 +82,24 @@ export const detectMuffled = (text: string): boolean =>
 const accents: Array<{ pattern: RegExp; tag: string; labels: string[] }> = [
   { pattern: /french(?:man|woman)?|parisian/, tag: "strong French accent", labels: ["french"] },
   { pattern: /welsh(?:man|woman)?/, tag: "strong Welsh accent", labels: ["welsh", "british"] },
-  { pattern: /scottish|scots(?:man|woman)?|scotch|scot|glaswegian/, tag: "strong Scottish accent", labels: ["scottish", "british"] },
+  {
+    pattern: /scottish|scots(?:man|woman)?|scotch|scot|glaswegian/,
+    tag: "strong Scottish accent",
+    labels: ["scottish", "british"],
+  },
   { pattern: /irish(?:man|woman)?/, tag: "strong Irish accent", labels: ["irish"] },
   { pattern: /cockney/, tag: "strong Cockney accent", labels: ["british"] },
-  { pattern: /british|english(?:man|woman)?|posh|londoner/, tag: "British accent", labels: ["british"] },
+  {
+    pattern: /british|english(?:man|woman)?|posh|londoner/,
+    tag: "British accent",
+    labels: ["british"],
+  },
   { pattern: /australian|aussie/, tag: "strong Australian accent", labels: ["australian"] },
-  { pattern: /southern|texan|redneck|hillbilly/, tag: "strong Southern American accent", labels: ["american"] },
+  {
+    pattern: /southern|texan|redneck|hillbilly/,
+    tag: "strong Southern American accent",
+    labels: ["american"],
+  },
   { pattern: /new york(?:er)?|brooklyn/, tag: "strong New York accent", labels: ["american"] },
   { pattern: /canadian/, tag: "Canadian accent", labels: ["canadian", "american"] },
   { pattern: /russian|soviet/, tag: "strong Russian accent", labels: ["russian"] },
@@ -89,7 +118,11 @@ const accents: Array<{ pattern: RegExp; tag: string; labels: string[] }> = [
   { pattern: /turkish/, tag: "strong Turkish accent", labels: ["turkish"] },
   { pattern: /japanese/, tag: "strong Japanese accent", labels: ["japanese"] },
   { pattern: /chinese/, tag: "strong Chinese accent", labels: ["chinese"] },
-  { pattern: /south african/, tag: "strong South African accent", labels: ["south african", "african"] },
+  {
+    pattern: /south african/,
+    tag: "strong South African accent",
+    labels: ["south african", "african"],
+  },
   { pattern: /nigerian/, tag: "strong Nigerian accent", labels: ["nigerian", "african"] },
 ].map((entry) => ({ ...entry, pattern: new RegExp(`\\b(?:${entry.pattern.source})\\b`, "i") }));
 /** The accent asked for in the user's own words, as the Eleven tag text plus catalogue labels. */
@@ -98,7 +131,8 @@ export function detectAccent(text: string): { tag: string; labels: string[] } | 
   return found && { tag: found.tag, labels: found.labels };
 }
 /** Removes accent and nationality words, so they are not repeated as a performance tag. */
-export const stripAccentWords = (text: string) => accents.reduce((rest, entry) => rest.replace(new RegExp(entry.pattern.source, "gi"), " "), text);
+export const stripAccentWords = (text: string) =>
+  accents.reduce((rest, entry) => rest.replace(new RegExp(entry.pattern.source, "gi"), " "), text);
 
 const echoWord = /\becho(?:es|ing|ed)?\b/i;
 const roomWord = /\b(?:reverb(?:erat\w*)?|church|cathedral|cave|cavern)\b/i;
@@ -116,19 +150,25 @@ export function detectEffect(text: string): Scene["effect"] {
 export const intensityRank: Record<Intensity, number> = { normal: 0, shout: 1, scream: 2 };
 export type PromptSegment = { text: string; explicitBlock: boolean };
 
-const normalize = (input: string) => input
-  .replace(/&#(?:x20|32);|&nbsp;/gi, " ")
-  .replace(/&quot;|&#34;/gi, '"')
-  .replace(/&apos;|&#39;/gi, "'")
-  .trim();
+const normalize = (input: string) =>
+  input
+    .replace(/&#(?:x20|32);|&nbsp;/gi, " ")
+    .replace(/&quot;|&#34;/gi, '"')
+    .replace(/&apos;|&#39;/gi, "'")
+    .trim();
 
 const durationNumber = "(?:\\d+(?:[.,]\\d+)?|[.,]\\d+)";
-export function parseTrailingDuration(value: string): { seconds: number; index: number } | undefined {
-  const match = value.match(new RegExp(`[;,]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?)\\s*$`, "i"));
+export function parseTrailingDuration(
+  value: string,
+): { seconds: number; index: number } | undefined {
+  const match = value.match(
+    new RegExp(`[;,]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?)\\s*$`, "i"),
+  );
   if (!match || match.index === undefined) return undefined;
   return { seconds: Number(match[1].replace(",", ".")), index: match.index };
 }
-const speechRateDirective = /(?:^|[;,])\s*(?:speed|rate)\s*[:=]?\s*(0(?:[.,]\d+)?|1(?:[.,]\d+)?|\.\d+)\s*x?\s*(?=$|[;,])/i;
+const speechRateDirective =
+  /(?:^|[;,])\s*(?:speed|rate)\s*[:=]?\s*(0(?:[.,]\d+)?|1(?:[.,]\d+)?|\.\d+)\s*x?\s*(?=$|[;,])/i;
 export function parseSpeechRate(value: string): number | undefined {
   const precise = value.match(speechRateDirective);
   if (precise) {
@@ -148,23 +188,33 @@ export function stripSpeechRateDirective(value: string): string {
   return value.replace(speechRateDirective, " ").replace(/\s+/g, " ").trim();
 }
 export function parsePauseSeconds(value: string): number | undefined {
-  const suffix = value.match(new RegExp(`^(?:silence|pause|silent pause)(?:\\s+for)?\\s*(?:[:,;]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?))?$`, "i"));
-  const prefix = value.match(new RegExp(`^(${durationNumber})\\s*(?:s|sec(?:ond)?s?)\\s+(?:of\\s+)?(?:silence|pause)$`, "i"));
+  const suffix = value.match(
+    new RegExp(
+      `^(?:silence|pause|silent pause)(?:\\s+for)?\\s*(?:[:,;]?\\s*(${durationNumber})\\s*(?:s|sec(?:ond)?s?))?$`,
+      "i",
+    ),
+  );
+  const prefix = value.match(
+    new RegExp(`^(${durationNumber})\\s*(?:s|sec(?:ond)?s?)\\s+(?:of\\s+)?(?:silence|pause)$`, "i"),
+  );
   const match = suffix || prefix;
   if (!match) return undefined;
   const seconds = match[1] ? Number(match[1].replace(",", ".")) : 1;
-  if (seconds < 0.5 || seconds > 30) throw new Error("Pause durations must be between 0.5 and 30 seconds.");
+  if (seconds < 0.5 || seconds > 30)
+    throw new Error("Pause durations must be between 0.5 and 30 seconds.");
   return seconds;
 }
-const quotedDialogue = (value: string) => [
-  ...value.matchAll(/"((?:\\.|[^"\\])*)"/g),
-  ...value.matchAll(/“([^”]*)”/g),
-  ...value.matchAll(/‘([^’]*)’/g),
-].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-const withoutQuotedDialogue = (value: string) => value
-  .replace(/"(?:\\.|[^"\\])*"/g, "")
-  .replace(/“[^”]*”/g, "")
-  .replace(/‘[^’]*’/g, "");
+const quotedDialogue = (value: string) =>
+  [
+    ...value.matchAll(/"((?:\\.|[^"\\])*)"/g),
+    ...value.matchAll(/“([^”]*)”/g),
+    ...value.matchAll(/‘([^’]*)’/g),
+  ].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+const withoutQuotedDialogue = (value: string) =>
+  value
+    .replace(/"(?:\\.|[^"\\])*"/g, "")
+    .replace(/“[^”]*”/g, "")
+    .replace(/‘[^’]*’/g, "");
 
 /** Split mixed speech and ((directed scene)) blocks while retaining their order. */
 export function splitPromptSegments(input: string): PromptSegment[] {
@@ -181,21 +231,35 @@ export function splitPromptSegments(input: string): PromptSegment[] {
       if (remaining) segments.push({ text: remaining, explicitBlock: false });
       break;
     }
-    if (strayClose >= 0 && strayClose < start) throw new Error("Finish every TTS scene block with matching (( and )).");
+    if (strayClose >= 0 && strayClose < start)
+      throw new Error("Finish every TTS scene block with matching (( and )).");
     foundBlock = true;
     const before = text.slice(cursor, start).trim();
     if (before) segments.push({ text: before, explicitBlock: false });
     let end = -1;
-    let quote: '"' | '“' | '‘' | null = null;
+    let quote: '"' | "“" | "‘" | null = null;
     let escaped = false;
     for (let index = start + 2; index < text.length - 1; index++) {
       const character = text[index];
-      if (quote === '"' && character === "\\" && !escaped) { escaped = true; continue; }
+      if (quote === '"' && character === "\\" && !escaped) {
+        escaped = true;
+        continue;
+      }
       if (!escaped) {
-        if (!quote && (character === '"' || character === '“' || character === '‘')) quote = character;
-        else if ((quote === '"' && character === '"') || (quote === '“' && character === '”') || (quote === '‘' && character === '’')) quote = null;
-        else if (!quote && text.startsWith("((", index)) throw new Error("TTS scene blocks cannot be nested.");
-        else if (!quote && text.startsWith("))", index)) { end = index; break; }
+        if (!quote && (character === '"' || character === "“" || character === "‘"))
+          quote = character;
+        else if (
+          (quote === '"' && character === '"') ||
+          (quote === "“" && character === "”") ||
+          (quote === "‘" && character === "’")
+        )
+          quote = null;
+        else if (!quote && text.startsWith("((", index))
+          throw new Error("TTS scene blocks cannot be nested.");
+        else if (!quote && text.startsWith("))", index)) {
+          end = index;
+          break;
+        }
       }
       escaped = false;
     }
@@ -273,10 +337,16 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
       if (dialogue && speechRate !== undefined) scene.speechRate = speechRate;
       if (dialogue) scene.intensity = detectIntensity(direction);
       if (dialogue) {
-        const before = description.slice(0, quotes[0].index).split(/\bwhile\b/i).pop()!;
+        const before = description
+          .slice(0, quotes[0].index)
+          .split(/\bwhile\b/i)
+          .pop()!;
         const describedCharacter = before
           .toLowerCase()
-          .replace(/\b(?:says|saying|telling|speaking|speaks|screams|screaming|yells|yelling|shouts|shouting|whispers|whispering|cries|crying|sobs|sobbing)\b[\s\S]*$/i, "")
+          .replace(
+            /\b(?:says|saying|telling|speaking|speaks|screams|screaming|yells|yelling|shouts|shouting|whispers|whispering|cries|crying|sobs|sobbing)\b[\s\S]*$/i,
+            "",
+          )
           .replace(/\b(?:with|echoing|echo|reverb|distant)\b/g, "")
           .replace(/^\s*(?:a|an|the)\s+/, "")
           .replace(/[:;,]/g, " ")
@@ -284,10 +354,16 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
           .trim();
         // Keep a recurring human role stable even when each scene describes a
         // different location or performance. Those details belong in delivery.
-        scene.character = describedCharacter.match(/^(?:(?:young|old|elderly|middle[ -]?aged)\s+)?(?:man|woman|boy|girl)\b/i)?.[0]
-          || describedCharacter
-          || "narrator";
-        scene.delivery = direction.split(/\bwhile\b/i).pop()!.trim();
+        scene.character =
+          describedCharacter.match(
+            /^(?:(?:young|old|elderly|middle[ -]?aged)\s+)?(?:man|woman|boy|girl)\b/i,
+          )?.[0] ||
+          describedCharacter ||
+          "narrator";
+        scene.delivery = direction
+          .split(/\bwhile\b/i)
+          .pop()!
+          .trim();
       }
       scenes.push(scene);
     }
@@ -306,7 +382,9 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
         const sound = parts
           .filter((part) => !/^\d+(?:\.\d+)?s$|^(echo|reverb)$/i.test(part))
           .join(", ");
-        scenes.push(base("", sound, voice, duration ? parseFloat(duration) : 5, detectEffect(match[2])));
+        scenes.push(
+          base("", sound, voice, duration ? parseFloat(duration) : 5, detectEffect(match[2])),
+        );
       }
       end = match.index! + match[0].length;
     }
@@ -317,7 +395,9 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
 
   const parsed = scenesSchema.safeParse(scenes);
   if (!parsed.success) {
-    throw new Error("Use 1–10 scenes, durations of 0.5–30 seconds, and nonempty dialogue or sound.");
+    throw new Error(
+      "Use 1–10 scenes, durations of 0.5–30 seconds, and nonempty dialogue or sound.",
+    );
   }
   return { scenes: parsed.data, warnings: [...new Set(warnings)] };
 }

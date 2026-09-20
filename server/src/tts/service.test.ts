@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attributeReplay, getTtsPlaybackState, setTtsOverlayCheck, setTtsPlaybackController, setTtsPlaybackVolume, submit } from "./service.js";
+import {
+  attributeReplay,
+  getTtsPlaybackState,
+  setTtsOverlayCheck,
+  setTtsPlaybackController,
+  setTtsPlaybackVolume,
+  submit,
+} from "./service.js";
 
 test("the overlay volume is remembered while nothing is playing", () => {
   setTtsPlaybackController({
@@ -41,7 +48,8 @@ test("disabled playback rejects before a paid TTS job is queued", () => {
     setEnabled: (enabled) => ({ enabled, active: false, paused: false }),
   });
   assert.throws(
-    () => submit({ prompt: "This must not spend credits", sender: "test", owner: "test", play: true }),
+    () =>
+      submit({ prompt: "This must not spend credits", sender: "test", owner: "test", play: true }),
     /playback is turned off/,
   );
 });
@@ -57,7 +65,8 @@ test("playback jobs are refused before generation while the overlay is closed", 
   });
   setTtsOverlayCheck(() => false);
   assert.throws(
-    () => submit({ prompt: "This must not spend credits", sender: "test", owner: "test", play: true }),
+    () =>
+      submit({ prompt: "This must not spend credits", sender: "test", owner: "test", play: true }),
     /overlay is not open/,
   );
   setTtsOverlayCheck(() => true);

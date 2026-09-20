@@ -29,18 +29,19 @@ function loadImageAspectRatio(imageUrl: string) {
   return new Promise<number>((resolve) => {
     const image = new Image();
     image.onload = () =>
-      resolve(
-        Math.max(
-          0.25,
-          Math.min(12, image.naturalWidth / Math.max(1, image.naturalHeight)),
-        ),
-      );
+      resolve(Math.max(0.25, Math.min(12, image.naturalWidth / Math.max(1, image.naturalHeight))));
     image.onerror = () => resolve(1);
     image.src = imageUrl;
   });
 }
 
-export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChange, clearSignal = 0 }: ChatEmoteLayerProps) {
+export function ChatEmoteLayer({
+  spawn,
+  settings,
+  preview = false,
+  onActiveChange,
+  clearSignal = 0,
+}: ChatEmoteLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const nodesRef = useRef(new Map<string, HTMLDivElement>());
@@ -85,9 +86,7 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
         Promise.all(
           sequence.map((item) =>
             Promise.all(
-              (item.overlays ?? []).map((overlay) =>
-                loadImageAspectRatio(overlay.imageUrl),
-              ),
+              (item.overlays ?? []).map((overlay) => loadImageAspectRatio(overlay.imageUrl)),
             ),
           ),
         ),
@@ -118,9 +117,7 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
       const aspectRatio = Math.max(sequenceAspectRatio, labelWidth / size);
       const particleWidth = size * aspectRatio;
       const speed = activeSettings.speed * scale;
-      const labelHeight = activeSettings.showNames
-        ? (activeSettings.nameFontSize + 8) * scale
-        : 0;
+      const labelHeight = activeSettings.showNames ? (activeSettings.nameFontSize + 8) * scale : 0;
       let x: number;
       let y: number;
       let vx: number;
@@ -160,10 +157,22 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
         x = alongX;
         y = alongY;
         let angle = angleOffset;
-        if (edge === 0) { x = 0; angle = angleOffset; }
-        if (edge === 1) { x = width - particleWidth; angle = Math.PI + angleOffset; }
-        if (edge === 2) { y = 0; angle = Math.PI / 2 + angleOffset; }
-        if (edge === 3) { y = height - size - labelHeight; angle = -Math.PI / 2 + angleOffset; }
+        if (edge === 0) {
+          x = 0;
+          angle = angleOffset;
+        }
+        if (edge === 1) {
+          x = width - particleWidth;
+          angle = Math.PI + angleOffset;
+        }
+        if (edge === 2) {
+          y = 0;
+          angle = Math.PI / 2 + angleOffset;
+        }
+        if (edge === 3) {
+          y = height - size - labelHeight;
+          angle = -Math.PI / 2 + angleOffset;
+        }
         vx = Math.cos(angle) * speed;
         vy = Math.sin(angle) * speed;
       }
@@ -182,9 +191,12 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
         cornerDirection: activeSettings.motion === "corners" ? activeSettings.direction : undefined,
       };
       setParticles((current) => {
-        const next = activeSettings.motion === "parade"
-          ? (current.length >= activeSettings.maxVisible ? current : [...current, particle])
-          : [...current, particle].slice(-activeSettings.maxVisible);
+        const next =
+          activeSettings.motion === "parade"
+            ? current.length >= activeSettings.maxVisible
+              ? current
+              : [...current, particle]
+            : [...current, particle].slice(-activeSettings.maxVisible);
         particlesRef.current = next;
         return next;
       });
@@ -194,9 +206,7 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
   useEffect(() => {
     const blocked = new Set(settings.blacklist);
     setParticles((current) =>
-      current.filter(
-        (particle) => !particle.senderLogin || !blocked.has(particle.senderLogin),
-      ),
+      current.filter((particle) => !particle.senderLogin || !blocked.has(particle.senderLogin)),
     );
   }, [settings.blacklist]);
 
@@ -209,9 +219,7 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
       const height = container?.clientHeight || 1080;
       const scale = preview ? 0.42 : 1;
       const size = settings.size * scale;
-      const labelHeight = settings.showNames
-        ? (settings.nameFontSize + 8) * scale
-        : 0;
+      const labelHeight = settings.showNames ? (settings.nameFontSize + 8) * scale : 0;
       const dt = Math.min(0.05, Math.max(0, (now - previous) / 1000));
       previous = now;
       const expired: string[] = [];
@@ -219,7 +227,8 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
         const particleWidth = size * particle.aspectRatio;
         const floorY = height - size - labelHeight;
         if (settings.motion === "parade") {
-          particle.vx = settings.direction === "left" ? -settings.speed * scale : settings.speed * scale;
+          particle.vx =
+            settings.direction === "left" ? -settings.speed * scale : settings.speed * scale;
           particle.vy = 0;
           particle.x += particle.vx * dt;
           particle.y = floorY;
@@ -228,26 +237,28 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
           if (
             (settings.direction === "left" && particle.x + particleWidth < 0) ||
             (settings.direction === "right" && particle.x > width)
-          ) expired.push(particle.id);
+          )
+            expired.push(particle.id);
           continue;
         }
         if (settings.motion === "corners") {
           const direction = particle.cornerDirection ?? settings.direction;
-          const waypoints = direction === "right"
-            ? [
-                [0, floorY],
-                [0, 0],
-                [width - particleWidth, 0],
-                [width - particleWidth, floorY],
-                [width + particleWidth, floorY],
-              ]
-            : [
-                [width - particleWidth, floorY],
-                [width - particleWidth, 0],
-                [0, 0],
-                [0, floorY],
-                [-particleWidth * 2, floorY],
-              ];
+          const waypoints =
+            direction === "right"
+              ? [
+                  [0, floorY],
+                  [0, 0],
+                  [width - particleWidth, 0],
+                  [width - particleWidth, floorY],
+                  [width + particleWidth, floorY],
+                ]
+              : [
+                  [width - particleWidth, floorY],
+                  [width - particleWidth, 0],
+                  [0, 0],
+                  [0, floorY],
+                  [-particleWidth * 2, floorY],
+                ];
           const waypointIndex = particle.cornerWaypointIndex ?? 0;
           const target = waypoints[waypointIndex];
           if (!target) {
@@ -271,9 +282,7 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
           continue;
         }
         const restingOnFloor =
-          settings.motion === "floor" &&
-          particle.y >= floorY - 0.5 &&
-          particle.vy === 0;
+          settings.motion === "floor" && particle.y >= floorY - 0.5 && particle.vy === 0;
         if (settings.motion === "floor" && !restingOnFloor)
           particle.vy += settings.gravity * scale * dt;
         if (restingOnFloor) particle.vx *= Math.pow(0.35, dt);
@@ -289,15 +298,15 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
         }
         if (particle.y + size + labelHeight >= height) {
           particle.y = floorY;
-          particle.vy = settings.motion === "floor" && Math.abs(particle.vy) < 80 * scale
-            ? 0
-            : -Math.abs(particle.vy) * (settings.motion === "floor" ? 0.68 : 1);
+          particle.vy =
+            settings.motion === "floor" && Math.abs(particle.vy) < 80 * scale
+              ? 0
+              : -Math.abs(particle.vy) * (settings.motion === "floor" ? 0.68 : 1);
           if (settings.motion === "floor") particle.vx *= 0.92;
         }
         const node = nodesRef.current.get(particle.id);
         if (node) node.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0)`;
-        if (now - particle.bornAt >= settings.lifetimeSeconds * 1000)
-          expired.push(particle.id);
+        if (now - particle.bornAt >= settings.lifetimeSeconds * 1000) expired.push(particle.id);
       }
       if (expired.length) {
         const expiredIds = new Set(expired);
@@ -307,11 +316,24 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [preview, settings.direction, settings.gravity, settings.lifetimeSeconds, settings.motion, settings.nameFontSize, settings.showNames, settings.size, settings.speed]);
+  }, [
+    preview,
+    settings.direction,
+    settings.gravity,
+    settings.lifetimeSeconds,
+    settings.motion,
+    settings.nameFontSize,
+    settings.showNames,
+    settings.size,
+    settings.speed,
+  ]);
 
   const scale = preview ? 0.42 : 1;
   return (
-    <div ref={containerRef} className={`chat-emote-layer${preview ? " chat-emote-layer--preview" : ""}`}>
+    <div
+      ref={containerRef}
+      className={`chat-emote-layer${preview ? " chat-emote-layer--preview" : ""}`}
+    >
       {particles.map((particle) => (
         <div
           key={particle.id}
@@ -337,7 +359,12 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
           )}
           <div className="chat-emote-sequence">
             {[
-              { emoteId: particle.emoteId, name: particle.name, imageUrl: particle.imageUrl, overlays: particle.overlays },
+              {
+                emoteId: particle.emoteId,
+                name: particle.name,
+                imageUrl: particle.imageUrl,
+                overlays: particle.overlays,
+              },
               ...(particle.additional ?? []),
             ].map((item, sequenceIndex) => (
               <div
@@ -353,7 +380,8 @@ export function ChatEmoteLayer({ spawn, settings, preview = false, onActiveChang
                   alt={item.name}
                   draggable={false}
                   style={{
-                    width: settings.size * scale * (particle.sequenceAspectRatios[sequenceIndex] ?? 1),
+                    width:
+                      settings.size * scale * (particle.sequenceAspectRatios[sequenceIndex] ?? 1),
                     height: settings.size * scale,
                   }}
                 />

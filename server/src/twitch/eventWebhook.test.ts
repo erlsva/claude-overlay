@@ -7,8 +7,13 @@ process.env.TWITCH_CLIENT_ID = "client";
 process.env.TWITCH_CLIENT_SECRET = "client-secret";
 
 const auth = (scopes: string[]) => ({
-  channel: "vicksy", twitchUserId: "42", displayName: "Vicksy",
-  accessToken: "a", refreshToken: "r", expiresAt: Date.now() + 3_600_000, scopes,
+  channel: "vicksy",
+  twitchUserId: "42",
+  displayName: "Vicksy",
+  accessToken: "a",
+  refreshToken: "r",
+  expiresAt: Date.now() + 3_600_000,
+  scopes,
 });
 
 async function register(scopes: string[]) {
@@ -17,7 +22,9 @@ async function register(scopes: string[]) {
   const requested: string[] = [];
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     if (String(url).includes("id.twitch.tv")) {
-      return new Response(JSON.stringify({ access_token: "app", expires_in: 3600 }), { status: 200 });
+      return new Response(JSON.stringify({ access_token: "app", expires_in: 3600 }), {
+        status: 200,
+      });
     }
     requested.push(JSON.parse(String(init?.body)).type);
     return new Response("{}", { status: 202 });

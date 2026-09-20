@@ -63,7 +63,8 @@ export async function saveClip(clip: TtsClip) {
 export async function getClip(id: string): Promise<TtsClip | undefined> {
   await init();
   if (postgres) {
-    return (await postgres.query("SELECT metadata FROM tts_clips WHERE id=$1", [id])).rows[0]?.metadata;
+    return (await postgres.query("SELECT metadata FROM tts_clips WHERE id=$1", [id])).rows[0]
+      ?.metadata;
   }
   return (await local()).find((clip) => clip.id === id);
 }
@@ -71,9 +72,9 @@ export async function getClip(id: string): Promise<TtsClip | undefined> {
 export async function listClips(): Promise<TtsClip[]> {
   await init();
   if (postgres) {
-    return (await postgres.query("SELECT metadata FROM tts_clips ORDER BY created_at DESC LIMIT 100")).rows.map(
-      (row) => row.metadata as TtsClip,
-    );
+    return (
+      await postgres.query("SELECT metadata FROM tts_clips ORDER BY created_at DESC LIMIT 100")
+    ).rows.map((row) => row.metadata as TtsClip);
   }
   return (await local()).slice(0, 100);
 }
@@ -81,7 +82,9 @@ export async function listClips(): Promise<TtsClip[]> {
 export async function deleteClip(id: string): Promise<TtsClip | undefined> {
   await init();
   if (postgres) {
-    const result = await postgres.query("DELETE FROM tts_clips WHERE id=$1 RETURNING metadata", [id]);
+    const result = await postgres.query("DELETE FROM tts_clips WHERE id=$1 RETURNING metadata", [
+      id,
+    ]);
     return result.rows[0]?.metadata;
   }
   const clips = await local();

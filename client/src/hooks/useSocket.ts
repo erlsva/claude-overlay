@@ -59,35 +59,32 @@ export function useSocket({
     () => localStorage.getItem("show_cursor_on_overlay") === "true",
   );
   const [strokes, setStrokes] = useState<DrawStroke[]>([]);
-  const [liveStrokes, setLiveStrokes] = useState<Map<string, LiveDrawStroke>>(
-    new Map(),
-  );
-  const [dvdCelebrationSettings, setDvdCelebrationSettingsState] =
-    useState<DvdCelebrationSettings>({
+  const [liveStrokes, setLiveStrokes] = useState<Map<string, LiveDrawStroke>>(new Map());
+  const [dvdCelebrationSettings, setDvdCelebrationSettingsState] = useState<DvdCelebrationSettings>(
+    {
       volume: 0.25,
       soundUrl: null,
       counterPosition: "top-right",
-    });
-  const [chatEmoteSettings, setChatEmoteSettingsState] =
-    useState<ChatEmoteSettings>({
-      enabled: false,
-      showNames: true,
-      nameBackgroundEnabled: true,
-      nameBackgroundColor: "#08080a",
-      nameFontSize: 12,
-      motion: "floor",
-      direction: "left",
-      gravity: 900,
-      size: 40,
-      speed: 180,
-      lifetimeSeconds: 12,
-      maxVisible: 20,
-      blacklist: [],
-      additionalEmotes: [],
-      blockedEmotes: [],
-    });
-  const [chatEmoteSpawn, setChatEmoteSpawn] =
-    useState<ChatEmoteSpawn | null>(null);
+    },
+  );
+  const [chatEmoteSettings, setChatEmoteSettingsState] = useState<ChatEmoteSettings>({
+    enabled: false,
+    showNames: true,
+    nameBackgroundEnabled: true,
+    nameBackgroundColor: "#08080a",
+    nameFontSize: 12,
+    motion: "floor",
+    direction: "left",
+    gravity: 900,
+    size: 40,
+    speed: 180,
+    lifetimeSeconds: 12,
+    maxVisible: 20,
+    blacklist: [],
+    additionalEmotes: [],
+    blockedEmotes: [],
+  });
+  const [chatEmoteSpawn, setChatEmoteSpawn] = useState<ChatEmoteSpawn | null>(null);
   const [studio, setStudio] = useState<StudioState>({
     scenes: [],
     presets: [],
@@ -101,7 +98,11 @@ export function useSocket({
     canRedo: false,
   });
   const [chatChannel, setChatChannelState] = useState(DEFAULT_TWITCH_CHANNEL);
-  const [ttsPlayback, setTtsPlayback] = useState<TtsPlaybackState>({ enabled: true, active: false, paused: false });
+  const [ttsPlayback, setTtsPlayback] = useState<TtsPlaybackState>({
+    enabled: true,
+    active: false,
+    paused: false,
+  });
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({ tts: true, scenes: false });
   const [previewingSoundIds, setPreviewingSoundIds] = useState<string[]>([]);
 
@@ -139,10 +140,13 @@ export function useSocket({
       audio.dataset.soundId = item.id;
       activeSoundAudioRef.current.add(audio);
       if (previewSoundId) {
-        const previews = previewAudioBySoundRef.current.get(previewSoundId) ?? new Set<HTMLAudioElement>();
+        const previews =
+          previewAudioBySoundRef.current.get(previewSoundId) ?? new Set<HTMLAudioElement>();
         previews.add(audio);
         previewAudioBySoundRef.current.set(previewSoundId, previews);
-        setPreviewingSoundIds((current) => (current.includes(previewSoundId) ? current : [...current, previewSoundId]));
+        setPreviewingSoundIds((current) =>
+          current.includes(previewSoundId) ? current : [...current, previewSoundId],
+        );
       }
       audio.preload = "auto";
       audio.volume = item.volume;
@@ -181,9 +185,7 @@ export function useSocket({
           cleanup();
           reportPlaybackEnded("The overlay could not load the audio.");
           if (reportError)
-            toast.error(
-              `Could not load “${item.name}”. Check its URL or uploaded file.`,
-            );
+            toast.error(`Could not load “${item.name}”. Check its URL or uploaded file.`);
         },
         { once: true },
       );
@@ -197,9 +199,7 @@ export function useSocket({
           reportPlaybackEnded("The overlay browser blocked or could not play the audio.");
           console.error("Soundboard playback failed:", error);
           if (reportError)
-            toast.error(
-              `Could not play “${item.name}”. The browser may have blocked audio.`,
-            );
+            toast.error(`Could not play “${item.name}”. The browser may have blocked audio.`);
         });
     },
     [mode, toast],
@@ -229,14 +229,9 @@ export function useSocket({
     });
     socket.on("connect_error", (err) => {
       console.error("Socket connect error:", err.message);
-      if (
-        mode === "dashboard" &&
-        Date.now() - lastConnectionToastRef.current > 8000
-      ) {
+      if (mode === "dashboard" && Date.now() - lastConnectionToastRef.current > 8000) {
         lastConnectionToastRef.current = Date.now();
-        toast.error(
-          `Could not connect to the dashboard server: ${err.message}`,
-        );
+        toast.error(`Could not connect to the dashboard server: ${err.message}`);
       }
     });
     socket.on("overlay:status", ({ connected: online, count }) => {
@@ -249,9 +244,7 @@ export function useSocket({
       scaleX: el.scaleX < 0 ? -1 : 1,
       scaleY: el.scaleY < 0 ? -1 : 1,
     });
-    socket.on("state:sync", (state) =>
-      setElements(state.elements.map(normalizeScale)),
-    );
+    socket.on("state:sync", (state) => setElements(state.elements.map(normalizeScale)));
     socket.on("element:added", ({ element }) =>
       setElements((p) => {
         const normalized = normalizeScale(element);
@@ -262,9 +255,7 @@ export function useSocket({
         return [...p, normalized];
       }),
     );
-    socket.on("element:removed", ({ id }) =>
-      setElements((p) => p.filter((el) => el.id !== id)),
-    );
+    socket.on("element:removed", ({ id }) => setElements((p) => p.filter((el) => el.id !== id)));
 
     // Batch position updates via rAF
     socket.on("element:updated", ({ id, changes }) => {
@@ -282,9 +273,7 @@ export function useSocket({
         ...normalizedChanges,
       });
     });
-    socket.on("media:control", (payload) =>
-      onMediaControlRef.current?.(payload),
-    );
+    socket.on("media:control", (payload) => onMediaControlRef.current?.(payload));
 
     socket.on("cursor:move", (payload) => {
       pendingCursors.current.set(payload.userId, payload);
@@ -305,10 +294,7 @@ export function useSocket({
     });
     socket.on("users:list", (users) => setActiveUsers(users));
     socket.on("user:joined", (user) =>
-      setActiveUsers((p) => [
-        ...p.filter((u) => u.userId !== user.userId),
-        user,
-      ]),
+      setActiveUsers((p) => [...p.filter((u) => u.userId !== user.userId), user]),
     );
     socket.on("user:left", ({ userId }) => {
       const timer = cursorExpiryTimers.current.get(userId);
@@ -337,9 +323,7 @@ export function useSocket({
     });
 
     socket.on("draw:sync", (s) => setStrokes(s));
-    socket.on("draw:stroke", (stroke) =>
-      setStrokes((prev) => [...prev, stroke]),
-    );
+    socket.on("draw:stroke", (stroke) => setStrokes((prev) => [...prev, stroke]));
     socket.on("draw:clear", () => {
       setStrokes([]);
       setLiveStrokes(new Map());
@@ -364,9 +348,7 @@ export function useSocket({
     socket.on("chat:channel", ({ channel }) => {
       const normalized = channel.trim().toLowerCase();
       setChatChannelState(
-        TWITCH_CHANNELS.includes(normalized)
-          ? normalized
-          : DEFAULT_TWITCH_CHANNEL,
+        TWITCH_CHANNELS.includes(normalized) ? normalized : DEFAULT_TWITCH_CHANNEL,
       );
     });
     socket.on("sound:play", (item) => {
@@ -482,29 +464,25 @@ export function useSocket({
     setElements((prev) => [...prev, element]);
     socketRef.current?.emit("element:add", { element });
   };
-  const updateElement = useCallback(
-    (id: string, changes: Partial<CanvasElement>) => {
-      // Socket payloads are runtime data even though this function is typed.
-      // Ignore invalid callers instead of allowing `in`/spread operations on
-      // null to take down the entire dashboard.
-      if (!changes || typeof changes !== "object") return;
-      setElements((prev) =>
-        prev.map((el) => {
-          if (el.id !== id) return el;
-          const merged = { ...el, ...changes };
-          if ("groupId" in changes && changes.groupId === null) {
-            delete merged.groupId;
-            delete merged.groupName;
-          }
-          return merged;
-        }),
-      );
-      socketRef.current?.emit("element:update", { id, changes });
-    },
-    [],
-  );
-  const removeElement = (id: string) =>
-    socketRef.current?.emit("element:remove", { id });
+  const updateElement = useCallback((id: string, changes: Partial<CanvasElement>) => {
+    // Socket payloads are runtime data even though this function is typed.
+    // Ignore invalid callers instead of allowing `in`/spread operations on
+    // null to take down the entire dashboard.
+    if (!changes || typeof changes !== "object") return;
+    setElements((prev) =>
+      prev.map((el) => {
+        if (el.id !== id) return el;
+        const merged = { ...el, ...changes };
+        if ("groupId" in changes && changes.groupId === null) {
+          delete merged.groupId;
+          delete merged.groupName;
+        }
+        return merged;
+      }),
+    );
+    socketRef.current?.emit("element:update", { id, changes });
+  }, []);
+  const removeElement = (id: string) => socketRef.current?.emit("element:remove", { id });
   const setShowCursorOnOverlay = useCallback((visible: boolean) => {
     localStorage.setItem("show_cursor_on_overlay", String(visible));
     setShowCursorOnOverlayState(visible);
@@ -519,18 +497,14 @@ export function useSocket({
     [showCursorOnOverlay],
   );
   const emitMediaControl = useCallback(
-    (payload: MediaControlPayload) =>
-      socketRef.current?.emit("media:control", payload),
+    (payload: MediaControlPayload) => socketRef.current?.emit("media:control", payload),
     [],
   );
   const notifyMediaEnded = useCallback(
     (id: string) => socketRef.current?.emit("media:ended", { id }),
     [],
   );
-  const refreshOverlay = useCallback(
-    () => socketRef.current?.emit("overlay:refresh"),
-    [],
-  );
+  const refreshOverlay = useCallback(() => socketRef.current?.emit("overlay:refresh"), []);
   const addStroke = useCallback((stroke: DrawStroke) => {
     setStrokes((prev) => [...prev, stroke]);
     socketRef.current?.emit("draw:stroke", stroke);
@@ -550,13 +524,10 @@ export function useSocket({
   const sendLiveStroke = useCallback((data: Omit<LiveDrawStroke, "userId">) => {
     socketRef.current?.volatile.emit("draw:live", data);
   }, []);
-  const setDvdCelebrationSettings = useCallback(
-    (settings: DvdCelebrationSettings) => {
-      setDvdCelebrationSettingsState(settings);
-      socketRef.current?.emit("dvd:settings", settings);
-    },
-    [],
-  );
+  const setDvdCelebrationSettings = useCallback((settings: DvdCelebrationSettings) => {
+    setDvdCelebrationSettingsState(settings);
+    socketRef.current?.emit("dvd:settings", settings);
+  }, []);
   const setChatEmoteSettings = useCallback((settings: ChatEmoteSettings) => {
     setChatEmoteSettingsState(settings);
     socketRef.current?.emit("chat-emote:settings", settings);
@@ -565,14 +536,10 @@ export function useSocket({
   const undo = useCallback(() => socketRef.current?.emit("history:undo"), []);
   const redo = useCallback(() => socketRef.current?.emit("history:redo"), []);
   const saveScene = useCallback(
-    (id: string, name: string) =>
-      socketRef.current?.emit("scene:save", { id, name }),
+    (id: string, name: string) => socketRef.current?.emit("scene:save", { id, name }),
     [],
   );
-  const loadScene = useCallback(
-    (id: string) => socketRef.current?.emit("scene:load", { id }),
-    [],
-  );
+  const loadScene = useCallback((id: string) => socketRef.current?.emit("scene:load", { id }), []);
   const deleteScene = useCallback(
     (id: string) => socketRef.current?.emit("scene:delete", { id }),
     [],
@@ -590,15 +557,12 @@ export function useSocket({
     (id: string) => socketRef.current?.emit("preset:delete", { id }),
     [],
   );
-  const saveSound = useCallback(
-    (item: SoundboardItem) => {
-      previewAudioBySoundRef.current.get(item.id)?.forEach((audio) => {
-        audio.volume = item.volume;
-      });
-      socketRef.current?.emit("sound:save", item);
-    },
-    [],
-  );
+  const saveSound = useCallback((item: SoundboardItem) => {
+    previewAudioBySoundRef.current.get(item.id)?.forEach((audio) => {
+      audio.volume = item.volume;
+    });
+    socketRef.current?.emit("sound:save", item);
+  }, []);
   const deleteSound = useCallback(
     (id: string) => socketRef.current?.emit("sound:delete", { id }),
     [],
@@ -657,8 +621,7 @@ export function useSocket({
     [overlayConnected, studio.sounds, toast],
   );
   const saveTrigger = useCallback(
-    (trigger: OverlayTrigger) =>
-      socketRef.current?.emit("trigger:save", trigger),
+    (trigger: OverlayTrigger) => socketRef.current?.emit("trigger:save", trigger),
     [],
   );
   const deleteTrigger = useCallback(
@@ -694,8 +657,7 @@ export function useSocket({
     [],
   );
   const setChatChannel = useCallback(
-    (channel: string) =>
-      socketRef.current?.emit("chat:channel:set", { channel }),
+    (channel: string) => socketRef.current?.emit("chat:channel:set", { channel }),
     [],
   );
 

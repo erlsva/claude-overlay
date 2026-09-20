@@ -3,9 +3,36 @@ import test from "node:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { activeSoundDuration, renderAudio, run, SOUND_ONLY_TARGET_LUFS, SPEECH_TARGET_LUFS } from "./audio.js";
-import { channelFilter, characterPitch, effectTail, muffle, screamTone, integratedLoudness, layerUnderSpeech, normalizeLoudness, RATE, readWav, roomProfile, softLimit, tameSpikes, writeWav } from "./dsp.js";
-import { buildSoundPrompt, enrichSoundPrompt, sanitizeSoundPrompt, screamLayerPrompt, soundDecodeFilter } from "./sound.js";
+import {
+  activeSoundDuration,
+  renderAudio,
+  run,
+  SOUND_ONLY_TARGET_LUFS,
+  SPEECH_TARGET_LUFS,
+} from "./audio.js";
+import {
+  channelFilter,
+  characterPitch,
+  effectTail,
+  muffle,
+  screamTone,
+  integratedLoudness,
+  layerUnderSpeech,
+  normalizeLoudness,
+  RATE,
+  readWav,
+  roomProfile,
+  softLimit,
+  tameSpikes,
+  writeWav,
+} from "./dsp.js";
+import {
+  buildSoundPrompt,
+  enrichSoundPrompt,
+  sanitizeSoundPrompt,
+  screamLayerPrompt,
+  soundDecodeFilter,
+} from "./sound.js";
 import { detectEffect, detectMuffled, detectRoom, isExtreme, parsePrompt } from "./shared/scene.js";
 import { speechRequest } from "./casting.js";
 import { stripRoomPhrases } from "./sound.js";
@@ -13,7 +40,8 @@ import type { Scene } from "./shared/scene.js";
 
 const tone = (frequency: number, seconds: number, amplitude: number) => {
   const samples = new Float32Array(Math.round(seconds * RATE));
-  for (let i = 0; i < samples.length; i++) samples[i] = amplitude * Math.sin((2 * Math.PI * frequency * i) / RATE);
+  for (let i = 0; i < samples.length; i++)
+    samples[i] = amplitude * Math.sin((2 * Math.PI * frequency * i) / RATE);
   return samples;
 };
 const scene = (overrides: Partial<Scene> = {}): Scene => ({
@@ -43,7 +71,10 @@ test("a clip shorter than one measurement block is still measured", () => {
 test("normalizing lands on the target regardless of the starting level", () => {
   for (const amplitude of [0.02, 0.1, 0.4]) {
     const result = normalizeLoudness(tone(700, 3, amplitude), -20);
-    assert.ok(Math.abs(integratedLoudness(result) - -20) < 0.3, `amplitude ${amplitude} gave ${integratedLoudness(result)}`);
+    assert.ok(
+      Math.abs(integratedLoudness(result) - -20) < 0.3,
+      `amplitude ${amplitude} gave ${integratedLoudness(result)}`,
+    );
   }
   const silence = new Float32Array(RATE);
   assert.equal(normalizeLoudness(silence, -20), silence);
@@ -55,12 +86,18 @@ test("a dense loud effect and quiet speech end up balanced instead of the effect
   speech.set(tone(300, 0.5, 0.9), RATE * 0.5);
   speech.set(tone(300, 0.5, 0.9), RATE * 2);
   const shriek = tone(2500, 3, 0.9);
-  assert.ok(integratedLoudness(shriek) - integratedLoudness(speech) > 2, "the raw effect should measure louder at the same peak");
+  assert.ok(
+    integratedLoudness(shriek) - integratedLoudness(speech) > 2,
+    "the raw effect should measure louder at the same peak",
+  );
   const balancedSpeech = integratedLoudness(normalizeLoudness(speech, SPEECH_TARGET_LUFS));
   const balancedEffect = integratedLoudness(normalizeLoudness(shriek, SOUND_ONLY_TARGET_LUFS));
   assert.ok(Math.abs(balancedSpeech - SPEECH_TARGET_LUFS) < 0.5);
   assert.ok(Math.abs(balancedEffect - SOUND_ONLY_TARGET_LUFS) < 0.5);
-  assert.ok(SPEECH_TARGET_LUFS - SOUND_ONLY_TARGET_LUFS >= 4, "standalone effects sit below speech");
+  assert.ok(
+    SPEECH_TARGET_LUFS - SOUND_ONLY_TARGET_LUFS >= 4,
+    "standalone effects sit below speech",
+  );
 });
 
 test("the soft limiter keeps peaks below the ceiling without flattening quiet audio", () => {
@@ -71,13 +108,17 @@ test("the soft limiter keeps peaks below the ceiling without flattening quiet au
 });
 
 test("sound prompts lose durations, rooms and harsh wording the user did not write", () => {
-  const messy = "varied frantic fox screams with high-pitched, intense tones ramping up for 10 seconds, overlapping and echoing nature calls";
+  const messy =
+    "varied frantic fox screams with high-pitched, intense tones ramping up for 10 seconds, overlapping and echoing nature calls";
   const clean = sanitizeSoundPrompt(messy, "foxes screaming;10 seconds");
   assert.doesNotMatch(clean, /high-pitched|seconds|echo|10/i);
   assert.match(clean, /fox screams/);
   assert.match(clean, /overlapping/);
   assert.equal(sanitizeSoundPrompt("thunder in a cave with reverb", ""), "thunder");
-  assert.equal(sanitizeSoundPrompt("one colossal wet fart through a large cathedral space", ""), "one colossal wet fart");
+  assert.equal(
+    sanitizeSoundPrompt("one colossal wet fart through a large cathedral space", ""),
+    "one colossal wet fart",
+  );
   assert.equal(sanitizeSoundPrompt("a deep boom inside a vast stone cavern", ""), "a deep boom");
   assert.match(sanitizeSoundPrompt("a shrill whistle", "a shrill whistle"), /shrill/);
   assert.doesNotMatch(sanitizeSoundPrompt("a shrill whistle", "a whistle"), /shrill/);
@@ -93,7 +134,8 @@ test("animals get a species note that steers the model away from the wrong sound
   // Unknown sources are passed through untouched apart from the dry-recording brief.
   assert.match(buildSoundPrompt("a door slam"), /^a door slam\. Realistic/);
   // A detailed planner description is not buried under a second one.
-  const detailed = "several red foxes screaming back and forth at night; raspy, hoarse, guttural human-like yowls mixed with sharp yapping barks";
+  const detailed =
+    "several red foxes screaming back and forth at night; raspy, hoarse, guttural human-like yowls mixed with sharp yapping barks";
   assert.equal(enrichSoundPrompt(detailed), detailed);
 });
 
@@ -109,11 +151,34 @@ test("the softening filter chain runs in FFmpeg and takes energy out of the hars
     const decoded = async (frequency: number, filter: string) => {
       const source = path.join(directory, `${frequency}.wav`);
       const out = path.join(directory, `${frequency}-out.wav`);
-      await run(["-f", "lavfi", "-i", `aevalsrc=0.03*sin(2*PI*${frequency}*t):s=44100:d=1`, "-ar", "44100", "-ac", "1", source]);
-      await run(["-i", source, "-af", filter, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", out]);
+      await run([
+        "-f",
+        "lavfi",
+        "-i",
+        `aevalsrc=0.03*sin(2*PI*${frequency}*t):s=44100:d=1`,
+        "-ar",
+        "44100",
+        "-ac",
+        "1",
+        source,
+      ]);
+      await run([
+        "-i",
+        source,
+        "-af",
+        filter,
+        "-ar",
+        "44100",
+        "-ac",
+        "1",
+        "-c:a",
+        "pcm_s16le",
+        out,
+      ]);
       return readWav(await readFile(out));
     };
-    const rms = (samples: Float32Array) => Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+    const rms = (samples: Float32Array) =>
+      Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
     const filter = soundDecodeFilter("foxes screaming");
     const low = rms(await decoded(500, filter));
     const harsh = rms(await decoded(3200, filter));
@@ -138,7 +203,10 @@ test("pitch shifting skips deliberately created voices and ignores a model's pro
   });
   assert.equal(characterPitch(pirate), 1);
   // A user's own short direction on a local scene still works.
-  assert.equal(characterPitch(scene({ character: "man", delivery: "deep voice", prepared: false })), 0.84);
+  assert.equal(
+    characterPitch(scene({ character: "man", delivery: "deep voice", prepared: false })),
+    0.84,
+  );
 });
 
 test("a clip of sound, speech, sound comes out balanced instead of the effects jumping out", async () => {
@@ -162,11 +230,17 @@ test("a clip of sound, speech, sound comes out balanced instead of the effects j
     assert.ok(Math.abs(duration - samples.length / RATE) < 0.01);
     const first = samples.slice(0, 3 * RATE);
     const last = samples.slice(samples.length - 3 * RATE);
-    const middle = samples.slice(3 * RATE + Math.round(0.2 * RATE), samples.length - 3 * RATE - Math.round(0.2 * RATE));
+    const middle = samples.slice(
+      3 * RATE + Math.round(0.2 * RATE),
+      samples.length - 3 * RATE - Math.round(0.2 * RATE),
+    );
     const effectLevel = (integratedLoudness(first) + integratedLoudness(last)) / 2;
     const speechLevel = integratedLoudness(middle);
     // Foxes are a sharp sound, which is deliberately set 2 LU lower than other effects.
-    assert.ok(Math.abs(effectLevel - (SOUND_ONLY_TARGET_LUFS - 2)) < 2, `effects at ${effectLevel} LUFS`);
+    assert.ok(
+      Math.abs(effectLevel - (SOUND_ONLY_TARGET_LUFS - 2)) < 2,
+      `effects at ${effectLevel} LUFS`,
+    );
     assert.ok(Math.abs(speechLevel - SPEECH_TARGET_LUFS) < 2, `speech at ${speechLevel} LUFS`);
     assert.ok(speechLevel - effectLevel > 2, "speech stays clearly above a standalone effect");
     assert.ok(samples.every((sample) => Math.abs(sample) <= 0.98));
@@ -187,7 +261,8 @@ const filterFile = async (samples: Float32Array, filter: string) => {
     await rm(directory, { recursive: true, force: true });
   }
 };
-const peakOf = (samples: Float32Array) => samples.reduce((highest, value) => Math.max(highest, Math.abs(value)), 0);
+const peakOf = (samples: Float32Array) =>
+  samples.reduce((highest, value) => Math.max(highest, Math.abs(value)), 0);
 
 test("spikes in a sharp effect are tamed so they do not jump out", async () => {
   // A quiet bed with a few loud, sharp bursts: what animal screams do.
@@ -217,7 +292,10 @@ test("a gigantic fart is described as one and is not cut to a blip", () => {
   assert.equal(scene.effectStrength, "extreme");
   scene.soundDuration = 5;
   // It is generated shorter and then slowed to 1/0.7, so what is heard is still most of the scene.
-  assert.ok(activeSoundDuration(scene, false) / 0.7 >= 3, "an oversized fart keeps most of the scene");
+  assert.ok(
+    activeSoundDuration(scene, false) / 0.7 >= 3,
+    "an oversized fart keeps most of the scene",
+  );
   // A plain fart is still a short transient.
   const plain = parsePrompt("((dry loud fart;reverb;5s))").scenes[0];
   plain.soundDuration = 5;
@@ -225,7 +303,8 @@ test("a gigantic fart is described as one and is not cut to a blip", () => {
 });
 
 test("strength and room words are recognised", () => {
-  for (const word of ["gigantic", "enormous", "colossal", "huge", "massive"]) assert.equal(isExtreme(`a ${word} boom`), true);
+  for (const word of ["gigantic", "enormous", "colossal", "huge", "massive"])
+    assert.equal(isExtreme(`a ${word} boom`), true);
   assert.equal(isExtreme("a boom"), false);
   assert.equal(detectRoom("in a cathedral"), "cathedral");
   assert.equal(detectRoom("in a church"), "cathedral");
@@ -235,15 +314,30 @@ test("strength and room words are recognised", () => {
 test("a cathedral rings far longer and louder than the general room", () => {
   const impulse = new Float32Array(Math.round(0.5 * RATE));
   impulse[100] = 0.8;
-  const cathedral = scene({ dialogue: "", sound: "clap", duration: 8, effect: "reverb", room: "cathedral" });
+  const cathedral = scene({
+    dialogue: "",
+    sound: "clap",
+    duration: 8,
+    effect: "reverb",
+    room: "cathedral",
+  });
   const general = { ...cathedral, room: undefined };
-  const tailEnergy = (output: Float32Array) => output.slice(Math.round(3 * RATE), Math.round(7 * RATE)).reduce((sum, value) => sum + value * value, 0);
+  const tailEnergy = (output: Float32Array) =>
+    output
+      .slice(Math.round(3 * RATE), Math.round(7 * RATE))
+      .reduce((sum, value) => sum + value * value, 0);
   const big = tailEnergy(effectTail(impulse, cathedral, null));
   const small = tailEnergy(effectTail(impulse, general, null));
   assert.ok(big > small * 5, `cathedral tail ${big} vs general ${small}`);
   assert.ok(roomProfile(cathedral).decay > roomProfile(general).decay * 2);
   // The general room is unchanged from before.
-  assert.deepEqual(roomProfile(general), { decay: 1.8, level: 0.32, delayScale: 1, damping: 0.35, predelay: 0.025 });
+  assert.deepEqual(roomProfile(general), {
+    decay: 1.8,
+    level: 0.32,
+    delayScale: 1,
+    damping: 0.35,
+    predelay: 0.025,
+  });
 });
 
 test("the scream layer follows the words: silent where nobody speaks, present where they do", () => {
@@ -266,12 +360,18 @@ test("the scream layer follows the words: silent where nobody speaks, present wh
 
 // Energy at one frequency (Goertzel), relative to the whole signal.
 const bandShare = (samples: Float32Array, frequency: number) => {
-  const w = (2 * Math.PI * frequency) / RATE, coefficient = 2 * Math.cos(w);
-  let s1 = 0, s2 = 0;
-  for (const sample of samples) { const s0 = sample + coefficient * s1 - s2; s2 = s1; s1 = s0; }
+  const w = (2 * Math.PI * frequency) / RATE,
+    coefficient = 2 * Math.cos(w);
+  let s1 = 0,
+    s2 = 0;
+  for (const sample of samples) {
+    const s0 = sample + coefficient * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
   const power = s1 * s1 + s2 * s2 - coefficient * s1 * s2;
   const total = samples.reduce((sum, value) => sum + value * value, 0);
-  return power / (total * samples.length / 2 || 1);
+  return power / ((total * samples.length) / 2 || 1);
 };
 
 test("the strain filter roughens a clean voice: new harmonics appear, level stays sane", async () => {
@@ -326,11 +426,17 @@ test("the comfort limiter pulls down a stabbing spike and leaves the rest alone"
   const bursts = [0.7, 1.5, 2.3];
   for (const at of bursts) signal.set(tone(3000, 0.06, 0.9), Math.round(at * RATE));
   const out = tameSpikes(signal, 3);
-  const momentary = (samples: Float32Array, at: number) => integratedLoudness(samples.slice(Math.round((at - 0.02) * RATE), Math.round((at + 0.08) * RATE)));
+  const momentary = (samples: Float32Array, at: number) =>
+    integratedLoudness(
+      samples.slice(Math.round((at - 0.02) * RATE), Math.round((at + 0.08) * RATE)),
+    );
   const bedLevel = integratedLoudness(bed);
   for (const at of bursts) {
     assert.ok(momentary(signal, at) > bedLevel + 8, "the raw burst really does stab");
-    assert.ok(momentary(out, at) <= bedLevel + 3.6, `burst at ${at}s is ${momentary(out, at) - bedLevel} LU over the bed`);
+    assert.ok(
+      momentary(out, at) <= bedLevel + 3.6,
+      `burst at ${at}s is ${momentary(out, at) - bedLevel} LU over the bed`,
+    );
   }
   // Between bursts the audio is not touched.
   const before = integratedLoudness(signal.slice(0, Math.round(0.4 * RATE)));
@@ -373,7 +479,10 @@ test("TTS_SCREAM_LAYER is a dial and is off unless you turn it on", async () => 
   } finally {
     set(undefined);
   }
-  assert.ok(SCREAM_LAYER_GAIN < 0.5 && SHOUT_LAYER_GAIN < SCREAM_LAYER_GAIN, "the layer stays well under the voice");
+  assert.ok(
+    SCREAM_LAYER_GAIN < 0.5 && SHOUT_LAYER_GAIN < SCREAM_LAYER_GAIN,
+    "the layer stays well under the voice",
+  );
 });
 
 test("the scream tone follows the shape measured on a real scream, with no distortion", () => {
@@ -384,7 +493,8 @@ test("the scream tone follows the shape measured on a real scream, with no disto
     const from = Math.round(0.5 * RATE);
     return 20 * Math.log10(rms(out.slice(from)) / rms(input.slice(from)));
   };
-  const rms = (samples: Float32Array) => Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+  const rms = (samples: Float32Array) =>
+    Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
   assert.ok(level(100) < -8, "the chest region falls away");
   assert.ok(level(300) < -2, "the low mids come down");
   assert.ok(level(900) > 0.5 && level(1500) > 0.3, "the body of the voice comes forward");
@@ -420,10 +530,13 @@ test("scream tone is on by default, scales with intensity, and is a dial", async
 
 // ---- echo and reverb together, and the prompts that use them -------------------------------------
 const energy = (samples: Float32Array, from: number, to: number) =>
-  samples.slice(Math.round(from * RATE), Math.round(to * RATE)).reduce((sum, value) => sum + value * value, 0);
+  samples
+    .slice(Math.round(from * RATE), Math.round(to * RATE))
+    .reduce((sum, value) => sum + value * value, 0);
 const burst = (seconds: number, at = 0.05) => {
   const dry = new Float32Array(Math.round(seconds * RATE));
-  for (let i = 0; i < Math.round(0.2 * RATE); i++) dry[Math.round(at * RATE) + i] = Math.sin(i * 0.11) * 0.6 * (1 - i / (0.2 * RATE));
+  for (let i = 0; i < Math.round(0.2 * RATE); i++)
+    dry[Math.round(at * RATE) + i] = Math.sin(i * 0.11) * 0.6 * (1 - i / (0.2 * RATE));
   return dry;
 };
 
@@ -458,18 +571,43 @@ test("every one of the requested fart prompts parses to the right effect, room a
 
 test("a planner cannot put the room or the echo into the sound it asks for", () => {
   const cases: Array<[string, RegExp]> = [
-    ["one long, loud, deep, resonant fart with a sustained rumbling start and gradual fade, heavy bass tones, indoor space with natural", /^one long, loud, deep, resonant fart with a sustained rumbling start and gradual fade, heavy bass tones$/],
-    ["multiple small, quick farts in succession, varied pitch and length, light and squeaky texture, indoor setting with soft", /^multiple small, quick farts in succession, varied pitch and length, light and squeaky texture$/],
-    ["one huge, explosive fart with a sharp onset and prolonged tail, deep bass-heavy and resonant, effect replicating bouncing sound", /^one huge, explosive fart with a sharp onset and prolonged tail, deep bass-heavy and resonant$/],
-    ["one huge fart sound as if coming from far down a well, with distant repetition creating a hollow, watery effect", /^one huge fart sound(?:, hollow)?(?:, watery)?$/],
-        ["multiple loud farts, each distinct with varied volume and pitch, combined and creating a spacious, layered soundscape", /^multiple loud farts, each distinct with varied volume and pitch(?:, combined)?(?:, layered)?$/],
-    ["extremely loud, powerful, deep fart sound with intense indoor acoustic effects emphasizing volume and bass impact", /^extremely loud, powerful, deep fart sound$/],
+    [
+      "one long, loud, deep, resonant fart with a sustained rumbling start and gradual fade, heavy bass tones, indoor space with natural",
+      /^one long, loud, deep, resonant fart with a sustained rumbling start and gradual fade, heavy bass tones$/,
+    ],
+    [
+      "multiple small, quick farts in succession, varied pitch and length, light and squeaky texture, indoor setting with soft",
+      /^multiple small, quick farts in succession, varied pitch and length, light and squeaky texture$/,
+    ],
+    [
+      "one huge, explosive fart with a sharp onset and prolonged tail, deep bass-heavy and resonant, effect replicating bouncing sound",
+      /^one huge, explosive fart with a sharp onset and prolonged tail, deep bass-heavy and resonant$/,
+    ],
+    [
+      "one huge fart sound as if coming from far down a well, with distant repetition creating a hollow, watery effect",
+      /^one huge fart sound(?:, hollow)?(?:, watery)?$/,
+    ],
+    [
+      "multiple loud farts, each distinct with varied volume and pitch, combined and creating a spacious, layered soundscape",
+      /^multiple loud farts, each distinct with varied volume and pitch(?:, combined)?(?:, layered)?$/,
+    ],
+    [
+      "extremely loud, powerful, deep fart sound with intense indoor acoustic effects emphasizing volume and bass impact",
+      /^extremely loud, powerful, deep fart sound$/,
+    ],
   ];
   for (const [planned, expected] of cases) {
     const clean = sanitizeSoundPrompt(planned);
     assert.match(clean, expected, planned);
-    assert.doesNotMatch(clean, /\b(?:indoor|well|echo|reverb|acoustic|space|repetition|bouncing|soundscape)\b/i);
-    assert.doesNotMatch(clean, /\b(?:with|and|as if|from|the|a|an|of)\s*$/i, "no dangling fragment");
+    assert.doesNotMatch(
+      clean,
+      /\b(?:indoor|well|echo|reverb|acoustic|space|repetition|bouncing|soundscape)\b/i,
+    );
+    assert.doesNotMatch(
+      clean,
+      /\b(?:with|and|as if|from|the|a|an|of)\s*$/i,
+      "no dangling fragment",
+    );
   }
   assert.equal(stripRoomPhrases("a wet fart, well defined"), "a wet fart, well defined");
 });
@@ -479,19 +617,26 @@ const noiseBurst = (seconds: number) => {
   let state = 12345;
   for (let i = 0; i < Math.round(0.3 * RATE); i++) {
     state = (state * 1103515245 + 12345) & 0x7fffffff;
-    samples[Math.round(0.05 * RATE) + i] = (state / 0x7fffffff - 0.5) * 0.8 * (1 - i / (0.3 * RATE));
+    samples[Math.round(0.05 * RATE) + i] =
+      (state / 0x7fffffff - 0.5) * 0.8 * (1 - i / (0.3 * RATE));
   }
   return samples;
 };
 // How closely a delayed copy of the sound appears anywhere later in the output (0 none, 1 an exact copy).
 const strongestCopy = (dry: Float32Array, out: Float32Array) => {
-  const from = Math.round(0.05 * RATE), length = Math.round(0.3 * RATE);
+  const from = Math.round(0.05 * RATE),
+    length = Math.round(0.3 * RATE);
   const source = dry.slice(from, from + length);
   const sourceEnergy = source.reduce((sum, value) => sum + value * value, 0);
   let best = 0;
   for (let lag = Math.round(0.35 * RATE); lag < Math.round(2.2 * RATE); lag += 5) {
-    let cross = 0, own = 0;
-    for (let i = 0; i < length; i += 2) { const other = out[from + lag + i]; cross += source[i] * other; own += other * other; }
+    let cross = 0,
+      own = 0;
+    for (let i = 0; i < length; i += 2) {
+      const other = out[from + lag + i];
+      cross += source[i] * other;
+      own += other * other;
+    }
     best = Math.max(best, Math.abs(cross) / Math.sqrt((own * sourceEnergy) / 2 || 1));
   }
   return best;
@@ -508,12 +653,16 @@ test("an echo on a sound effect is a smooth fade, not copies of the sound layere
   assert.ok(energy(out, 1.5, 2.5) > energy(out, 2.5, 3.5));
   assert.ok(energy(out, 1.5, 2.5) > 0);
   // ...and there is no delayed copy of the fart inside it.
-  assert.ok(strongestCopy(dry, out) < 0.35, `a repeat of the sound is present (${strongestCopy(dry, out)})`);
+  assert.ok(
+    strongestCopy(dry, out) < 0.35,
+    `a repeat of the sound is present (${strongestCopy(dry, out)})`,
+  );
   assert.ok(Math.abs(out.at(-1) ?? 1) < 1e-6);
   // Speech is different: its last word is repeated.
   const speech = new Float32Array(RATE * 2);
   const source = noiseBurst(1);
-  for (let i = 0; i < Math.round(0.4 * RATE); i++) speech[Math.round(1.4 * RATE) + i] = source[Math.round(0.05 * RATE) + i];
+  for (let i = 0; i < Math.round(0.4 * RATE); i++)
+    speech[Math.round(1.4 * RATE) + i] = source[Math.round(0.05 * RATE) + i];
   const said = { ...parsePrompt('((man saying "hello" with echo;6s))').scenes[0] };
   const heard = effectTail(speech, said, { start: 1.4, end: 1.8 });
   assert.ok(energy(heard, 2.0, 5.0) > 0);
@@ -554,7 +703,16 @@ test("indoor and well rooms are different from the general room", () => {
   assert.ok(well.damping > general.damping, "a well is dull and hollow");
   assert.ok(well.delayScale < indoor.delayScale + 0.2);
   const impulse = burst(0.5);
-  const tailOf = (room?: "indoor" | "well" | "cathedral") => energy(effectTail(impulse, scene({ dialogue: "", sound: "x", duration: 6, effect: "reverb", room }), null), 2, 5);
+  const tailOf = (room?: "indoor" | "well" | "cathedral") =>
+    energy(
+      effectTail(
+        impulse,
+        scene({ dialogue: "", sound: "x", duration: 6, effect: "reverb", room }),
+        null,
+      ),
+      2,
+      5,
+    );
   assert.ok(tailOf("indoor") < tailOf(undefined), "indoors rings for less time");
   assert.ok(tailOf("cathedral") > tailOf(undefined) * 3);
 });
@@ -565,7 +723,9 @@ test("every requested fart keeps enough of its scene to be heard, and leaves roo
   ).scenes;
   const lengths = scenes.map((item) => {
     const planned = { ...item, soundDuration: item.duration ?? 5 };
-    const heard = activeSoundDuration(planned, false) / (/\b(?:huge|gigantic|enormous|colossal|massive)\b/i.test(item.sound) ? 0.7 : 1);
+    const heard =
+      activeSoundDuration(planned, false) /
+      (/\b(?:huge|gigantic|enormous|colossal|massive)\b/i.test(item.sound) ? 0.7 : 1);
     return { heard, room: (item.duration ?? 0) - heard };
   });
   for (const [index, { heard, room }] of lengths.entries()) {
@@ -579,20 +739,45 @@ test("every requested fart keeps enough of its scene to be heard, and leaves roo
 // ---- heard through a door -------------------------------------------------------------------------------
 test("wording that puts a voice behind a door, a wall or in another room is recognised", () => {
   for (const text of [
-    "man yells from outside", "a voice behind a door", "a knock through the wall", "muffled voice", "someone shouting from another room",
-    "from the other side of the door", "man behind a thick closed door", "voice from next door", "on the other side of the wall",
-  ]) assert.equal(detectMuffled(text), true, text);
-  for (const text of ["man yelling", "a door slam", "yells at the top of his lungs", "outside voice", "the doorbell rings"]) assert.equal(detectMuffled(text), false, text);
+    "man yells from outside",
+    "a voice behind a door",
+    "a knock through the wall",
+    "muffled voice",
+    "someone shouting from another room",
+    "from the other side of the door",
+    "man behind a thick closed door",
+    "voice from next door",
+    "on the other side of the wall",
+  ])
+    assert.equal(detectMuffled(text), true, text);
+  for (const text of [
+    "man yelling",
+    "a door slam",
+    "yells at the top of his lungs",
+    "outside voice",
+    "the doorbell rings",
+  ])
+    assert.equal(detectMuffled(text), false, text);
 });
 
 test("the door example parses to plain knocks and muffled yells", () => {
-  const scenes = parsePrompt('((door knock)) ((man yells from outside: "OPEN THE DOOR")) ((door knock)) ((man yells from outside: "VICKSY! OPEN THE DOOR"))').scenes;
-  assert.deepEqual(scenes.map((item) => [item.dialogue, item.sound, item.muffled ?? false, item.intensity ?? null]), [
-    ["", "door knock", false, null],
-    ["OPEN THE DOOR", "", true, "shout"],
-    ["", "door knock", false, null],
-    ["VICKSY! OPEN THE DOOR", "", true, "shout"],
-  ]);
+  const scenes = parsePrompt(
+    '((door knock)) ((man yells from outside: "OPEN THE DOOR")) ((door knock)) ((man yells from outside: "VICKSY! OPEN THE DOOR"))',
+  ).scenes;
+  assert.deepEqual(
+    scenes.map((item) => [
+      item.dialogue,
+      item.sound,
+      item.muffled ?? false,
+      item.intensity ?? null,
+    ]),
+    [
+      ["", "door knock", false, null],
+      ["OPEN THE DOOR", "", true, "shout"],
+      ["", "door knock", false, null],
+      ["VICKSY! OPEN THE DOOR", "", true, "shout"],
+    ],
+  );
 });
 
 test("muffling removes the highs and keeps a dull, boxy body", () => {
@@ -600,7 +785,8 @@ test("muffling removes the highs and keeps a dull, boxy body", () => {
     const input = tone(frequency, 2, 0.2);
     const out = muffle(input, scale);
     const from = Math.round(0.5 * RATE);
-    const rmsOf = (samples: Float32Array) => Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
+    const rmsOf = (samples: Float32Array) =>
+      Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length);
     return 20 * Math.log10(rmsOf(out.slice(from)) / rmsOf(input.slice(from)));
   };
   assert.ok(level(300) > -1, "the low-mid body stays");
@@ -618,13 +804,15 @@ test("muffling removes the highs and keeps a dull, boxy body", () => {
 test("the place is kept out of the sound prompt and out of the voice's tags", () => {
   assert.equal(sanitizeSoundPrompt("a heavy knock behind a closed door"), "a heavy knock");
   assert.equal(sanitizeSoundPrompt("muffled music from another room"), "music");
-  const request = speechRequest(scene({
-    dialogue: "[muffled, shouting from outside] OPEN THE DOOR",
-    character: "man",
-    delivery: "yelling from outside a door",
-    intensity: "shout",
-    prepared: true,
-  }));
+  const request = speechRequest(
+    scene({
+      dialogue: "[muffled, shouting from outside] OPEN THE DOOR",
+      character: "man",
+      delivery: "yelling from outside a door",
+      intensity: "shout",
+      prepared: true,
+    }),
+  );
   assert.equal(request.text, "[shouts] OPEN THE DOOR!");
   assert.doesNotMatch(request.text, /outside|door\b.*door|muffled/i);
 });
@@ -637,13 +825,20 @@ test("a voice behind a door is quieter than the same voice in the room, and stil
     await renderAudio({
       id: "door",
       scenes: [scene({ dialogue: line }), scene({ dialogue: line, muffled: true })],
-      mode: "demo", key: "", voices: {}, dataDir, progress: () => {},
+      mode: "demo",
+      key: "",
+      voices: {},
+      dataDir,
+      progress: () => {},
     });
     const samples = readWav(await readFile(path.join(dataDir, "clips", "door.wav")));
     const half = Math.floor(samples.length / 2);
     const inRoom = integratedLoudness(samples.slice(0, half - Math.round(0.1 * RATE)));
     const behind = integratedLoudness(samples.slice(half + Math.round(0.1 * RATE)));
-    assert.ok(inRoom - behind > 2.5 && inRoom - behind < 6.5, `in room ${inRoom}, behind door ${behind}`);
+    assert.ok(
+      inRoom - behind > 2.5 && inRoom - behind < 6.5,
+      `in room ${inRoom}, behind door ${behind}`,
+    );
     assert.ok(behind > -30, "it is still clearly audible");
   } finally {
     await rm(dataDir, { recursive: true, force: true });

@@ -17,23 +17,14 @@ const sections = [
         "Rotate the selected element around its center. Hold Shift to snap to 15° increments.",
       ],
       ["Click an element", "Select it and show its editing controls."],
-      [
-        "Shift / Ctrl / Cmd + click",
-        "Add or remove an element from the selection.",
-      ],
-      [
-        "Drag empty background",
-        "Draw a selection box around multiple elements.",
-      ],
+      ["Shift / Ctrl / Cmd + click", "Add or remove an element from the selection."],
+      ["Drag empty background", "Draw a selection box around multiple elements."],
       ["Click empty background", "Clear the current selection."],
       [
         "Double-click text",
         "Open the text editor. You can also select the layer and use Edit text and style in Layers.",
       ],
-      [
-        "Ctrl / Cmd + Enter in text editor",
-        "Save the text layer without reaching for the mouse.",
-      ],
+      ["Ctrl / Cmd + Enter in text editor", "Save the text layer without reaching for the mouse."],
       ["Escape in text editor", "Close the editor without saving changes."],
       ["Delete / Backspace", "Delete selected unlocked elements."],
     ],
@@ -75,10 +66,7 @@ const sections = [
         "Drag and drop",
         "Drop one local image, GIF, video, or audio file anywhere on the dashboard. You can also drag the GIF image itself from Giphy; webpage links are rejected safely.",
       ],
-      [
-        "Flip X / Flip Y",
-        "Mirror selected visual media horizontally or vertically.",
-      ],
+      ["Flip X / Flip Y", "Mirror selected visual media horizontally or vertically."],
       ["Auto", "For video: show on play, then hide when playback ends."],
     ],
   },
@@ -89,10 +77,7 @@ const sections = [
         "Pen / Erase",
         "Draw or remove freehand strokes. The circle at the pointer previews the current brush size.",
       ],
-      [
-        "Line / Arrow",
-        "Drag between two points. Hold Shift to snap to 45° angles.",
-      ],
+      ["Line / Arrow", "Drag between two points. Hold Shift to snap to 45° angles."],
       [
         "Box / Oval",
         "Drag out a rectangle or ellipse. Hold Shift to constrain it to a square or circle.",
@@ -102,10 +87,7 @@ const sections = [
         "Fill tolerance",
         "Control how closely neighboring pixels must match; lower values stop at sharper boundaries.",
       ],
-      [
-        "Exit Draw",
-        "Exit drawing mode and return to selecting and moving overlay elements.",
-      ],
+      ["Exit Draw", "Exit drawing mode and return to selecting and moving overlay elements."],
       [
         "Clear",
         "Remove the complete drawing after confirmation. Use Undo to restore it immediately.",
@@ -144,10 +126,7 @@ const sections = [
         "Lifebuoy support button",
         "Review notifications from this browser session and copy a safe diagnostic report containing build and connection details when asking for help.",
       ],
-      [
-        "Studio",
-        "Open Sounds, commands, Twitch events, TTS scenes, and chat emotes.",
-      ],
+      ["Studio", "Open Sounds, commands, Twitch events, TTS scenes, and chat emotes."],
       [
         "Dashboard / overlay badges",
         "Dashboard only is a private local preview; Plays on overlay reaches the stream; Dashboard + overlay runs in both places.",
@@ -241,7 +220,13 @@ const sections = [
   },
 ];
 
-export function HelpGuide({ onOpenTour, onOpenSetup }: { onOpenTour?: () => void; onOpenSetup?: () => void }) {
+export function HelpGuide({
+  onOpenTour,
+  onOpenSetup,
+}: {
+  onOpenTour?: () => void;
+  onOpenSetup?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const presence = usePresence(open);
 
@@ -367,8 +352,7 @@ export function HelpGuide({ onOpenTour, onOpenSetup }: { onOpenTour?: () => void
                         key={control}
                         style={{
                           display: "grid",
-                          gridTemplateColumns:
-                            "minmax(112px, 0.72fr) minmax(0, 1.4fr)",
+                          gridTemplateColumns: "minmax(112px, 0.72fr) minmax(0, 1.4fr)",
                           gap: 10,
                           alignItems: "start",
                         }}

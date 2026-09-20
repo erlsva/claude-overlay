@@ -42,5 +42,4 @@ export function silencePage() {
 }
 
 /** True when the overlay was opened as the dashboard's silent live preview. */
-export const isMirrorMode = () =>
-  new URLSearchParams(window.location.search).get("mirror") === "1";
+export const isMirrorMode = () => new URLSearchParams(window.location.search).get("mirror") === "1";

@@ -1,21 +1,25 @@
 interface SevenTvEmote {
   id?: string;
   name?: string;
-  flags?: number | {
-    zero_width?: boolean;
-    zeroWidth?: boolean;
-    default_zero_width?: boolean;
-    defaultZeroWidth?: boolean;
-  };
+  flags?:
+    | number
+    | {
+        zero_width?: boolean;
+        zeroWidth?: boolean;
+        default_zero_width?: boolean;
+        defaultZeroWidth?: boolean;
+      };
   data?: {
     id?: string;
     name?: string;
-    flags?: number | {
-      zero_width?: boolean;
-      zeroWidth?: boolean;
-      default_zero_width?: boolean;
-      defaultZeroWidth?: boolean;
-    };
+    flags?:
+      | number
+      | {
+          zero_width?: boolean;
+          zeroWidth?: boolean;
+          default_zero_width?: boolean;
+          defaultZeroWidth?: boolean;
+        };
   };
 }
 
@@ -90,7 +94,9 @@ function describeFailure(error: unknown) {
 function recordRetryFailure(scope: string, previous?: RetryState): RetryState {
   const failures = (previous?.failures ?? 0) + 1;
   const delay = retryDelay(failures);
-  console.warn(`7TV ${scope} unavailable; keeping cached emotes and retrying in ${Math.ceil(delay / 1000)}s`);
+  console.warn(
+    `7TV ${scope} unavailable; keeping cached emotes and retrying in ${Math.ceil(delay / 1000)}s`,
+  );
   return { failures, nextAttemptAt: Date.now() + delay };
 }
 
@@ -151,10 +157,15 @@ async function loadGlobalEmoteSet() {
       globalRetryState = undefined;
       return emotes;
     } catch (error) {
-      globalRetryState = recordRetryFailure(`global emote set (${describeFailure(error)})`, globalRetryState);
+      globalRetryState = recordRetryFailure(
+        `global emote set (${describeFailure(error)})`,
+        globalRetryState,
+      );
       return staleEmotes ?? new Map<string, ResolvedSevenTvEmote>();
     }
-  })().finally(() => { pendingGlobalLoad = undefined; });
+  })().finally(() => {
+    pendingGlobalLoad = undefined;
+  });
 
   // Stale-while-revalidate: chat rendering never waits on 7TV when a previous
   // successful copy is available.
@@ -196,7 +207,10 @@ async function loadEmoteSet(twitchUserId: string) {
     .catch((error) => {
       retryStates.set(
         twitchUserId,
-        recordRetryFailure(`channel set ${twitchUserId} (${describeFailure(error)})`, retryStates.get(twitchUserId)),
+        recordRetryFailure(
+          `channel set ${twitchUserId} (${describeFailure(error)})`,
+          retryStates.get(twitchUserId),
+        ),
       );
       return cached?.emotes ?? new Map<string, ResolvedSevenTvEmote>();
     })

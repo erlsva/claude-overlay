@@ -11,7 +11,15 @@ interface SliderFieldProps {
 }
 
 /** A slider with an editable number beside it, so a value can be dragged or typed. */
-export function SliderField({ label, value, min, max, step, unit = "", onChange }: SliderFieldProps) {
+export function SliderField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit = "",
+  onChange,
+}: SliderFieldProps) {
   // Keep what is being typed separate, so half-typed numbers are not clamped mid-keystroke.
   const [draft, setDraft] = useState<string | null>(null);
 

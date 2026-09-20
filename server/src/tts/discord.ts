@@ -28,7 +28,9 @@ async function request(suffix: string, init?: RequestInit): Promise<any> {
     throw new Error("Discord request failed. Check the webhook configuration and connection.");
   }
   if (!response.ok) {
-    throw new Error(`Discord returned ${response.status}. Check webhook access or try again later.`);
+    throw new Error(
+      `Discord returned ${response.status}. Check webhook access or try again later.`,
+    );
   }
   return response.json();
 }
@@ -48,10 +50,13 @@ export async function uploadClip(
   }
 
   const form = new FormData();
-  form.append("payload_json", JSON.stringify({
-    content: formatDiscordClipMessage(clip.token, clip.sender, clip.prompt),
-    allowed_mentions: { parse: [] },
-  }));
+  form.append(
+    "payload_json",
+    JSON.stringify({
+      content: formatDiscordClipMessage(clip.token, clip.sender, clip.prompt),
+      allowed_mentions: { parse: [] },
+    }),
+  );
   form.append(
     "files[0]",
     new Blob([new Uint8Array(bytes)], { type: "audio/mpeg" }),

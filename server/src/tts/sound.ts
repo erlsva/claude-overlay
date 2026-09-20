@@ -7,15 +7,22 @@
  * handled locally, so they must never reach the provider.
  */
 
-const durationPhrase = /\b(?:for|lasting|over|about|around)?\s*\d+(?:[.,]\d+)?\s*(?:seconds?|secs?|s)\b/gi;
-const roomWords = /\b(?:(?:with\s+)?(?:extreme\s+)?(?:echo(?:es|ing|ed)?|reverb(?:erat\w*)?)|(?:from\s+)?(?:far\s+)?(?:down|in|inside)\s+(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well|(?:in|inside|through|within|across|under)\s+(?:a|an|the)?\s*(?:(?:large|huge|vast|big|grand|empty|echoing|stone|ancient)\s+)*(?:cave|cavern|church|cathedral|chapel|basilica)(?:\s+(?:space|interior|hall|chamber))?|cavernous)\b/gi;
-const muffleWords = /\b(?:muffled|(?:from\s+)?(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door))\b/gi;
-const harshWords = /\b(?:high[- ]pitched|ear[- ]?piercing|ear[- ]?splitting|piercing|shrill|deafening)\b/gi;
+const durationPhrase =
+  /\b(?:for|lasting|over|about|around)?\s*\d+(?:[.,]\d+)?\s*(?:seconds?|secs?|s)\b/gi;
+const roomWords =
+  /\b(?:(?:with\s+)?(?:extreme\s+)?(?:echo(?:es|ing|ed)?|reverb(?:erat\w*)?)|(?:from\s+)?(?:far\s+)?(?:down|in|inside)\s+(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well|(?:in|inside|through|within|across|under)\s+(?:a|an|the)?\s*(?:(?:large|huge|vast|big|grand|empty|echoing|stone|ancient)\s+)*(?:cave|cavern|church|cathedral|chapel|basilica)(?:\s+(?:space|interior|hall|chamber))?|cavernous)\b/gi;
+const muffleWords =
+  /\b(?:muffled|(?:from\s+)?(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door))\b/gi;
+const harshWords =
+  /\b(?:high[- ]pitched|ear[- ]?piercing|ear[- ]?splitting|piercing|shrill|deafening)\b/gi;
 
 // Words that describe the place or the effect rather than the sound itself.
-const placeToken = /\b(?:echo\w*|reverb\w*|indoors?|acoustic\w*|repetition|repeating|bouncing|reflect\w*|spacious|soundscape|room|hall|space|cavern\w*|cave|cathedral|church|chapel|basilica|tunnel|effects?)\b|\b(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well\b/i;
-const connector = /\b(?:as if|coming from|from|in|inside|through|within|across|down|with|under|creating|replicating|emphasi[sz]ing|giving|producing|resulting in)\b/gi;
-const danglingEnd = /\s+(?:as if|coming|from|far|in|inside|through|within|across|down|with|under|creating|and|of|the|a|an)\s*$/i;
+const placeToken =
+  /\b(?:echo\w*|reverb\w*|indoors?|acoustic\w*|repetition|repeating|bouncing|reflect\w*|spacious|soundscape|room|hall|space|cavern\w*|cave|cathedral|church|chapel|basilica|tunnel|effects?)\b|\b(?:a|the)\s+(?:(?:deep|dark|old|dry|stone)\s+)*well\b/i;
+const connector =
+  /\b(?:as if|coming from|from|in|inside|through|within|across|down|with|under|creating|replicating|emphasi[sz]ing|giving|producing|resulting in)\b/gi;
+const danglingEnd =
+  /\s+(?:as if|coming|from|far|in|inside|through|within|across|down|with|under|creating|and|of|the|a|an)\s*$/i;
 function cleanEnd(value: string): string {
   let out = value.trim();
   while (danglingEnd.test(out)) out = out.replace(danglingEnd, "").trim();
@@ -33,10 +40,14 @@ export function stripRoomPhrases(text: string): string {
   const kept: string[] = [];
   for (const clause of text.split(/[,;]/)) {
     const at = clause.search(placeToken);
-    if (at < 0) { kept.push(cleanEnd(clause)); continue; }
+    if (at < 0) {
+      kept.push(cleanEnd(clause));
+      continue;
+    }
     // Cut from the last connector before the room word ("down a well", "with … indoor").
     let cut = at;
-    for (const match of clause.matchAll(connector)) if ((match.index ?? 0) <= at) cut = match.index ?? at;
+    for (const match of clause.matchAll(connector))
+      if ((match.index ?? 0) <= at) cut = match.index ?? at;
     const head = cleanEnd(clause.slice(0, cut));
     if (head) kept.push(head);
   }
@@ -57,8 +68,14 @@ function tidy(text: string): string {
  * themselves. `authored` is the user's own text for this scene, when known.
  */
 export function sanitizeSoundPrompt(sound: string, authored = ""): string {
-  let clean = stripRoomPhrases(sound.replace(durationPhrase, " ").replace(roomWords, " ").replace(muffleWords, " "));
-  clean = clean.replace(harshWords, (word) => (authored && new RegExp(`\\b${word.replace(/[-\s]/g, "[- ]?")}\\b`, "i").test(authored) ? word : " "));
+  let clean = stripRoomPhrases(
+    sound.replace(durationPhrase, " ").replace(roomWords, " ").replace(muffleWords, " "),
+  );
+  clean = clean.replace(harshWords, (word) =>
+    authored && new RegExp(`\\b${word.replace(/[-\s]/g, "[- ]?")}\\b`, "i").test(authored)
+      ? word
+      : " ",
+  );
   return tidy(clean);
 }
 
@@ -138,8 +155,14 @@ export const isHugeSound = (sound: string) => hugeWords.test(sound);
 
 /** How an oversized version of a common sound is described; the plain name produces an ordinary one. */
 const hugeNotes: Array<{ source: RegExp; note: string }> = [
-  { source: /\bfarts?\b/i, note: "a comically colossal fart: very deep, bass-heavy, long and drawn-out, rumbling and wobbling in pitch like a giant trumpet" },
-  { source: /\b(?:burps?|belch\w*)\b/i, note: "a colossal, deep, rumbling burp that goes on and on" },
+  {
+    source: /\bfarts?\b/i,
+    note: "a comically colossal fart: very deep, bass-heavy, long and drawn-out, rumbling and wobbling in pitch like a giant trumpet",
+  },
+  {
+    source: /\b(?:burps?|belch\w*)\b/i,
+    note: "a colossal, deep, rumbling burp that goes on and on",
+  },
 ];
 
 /** Adds a species note when the description names an animal and does not already explain its call. */
@@ -165,7 +188,8 @@ export function buildSoundPrompt(sound: string): string {
 }
 
 /** Sounds that are naturally sharp in the 3-8 kHz range, where they feel painful when loud. */
-const sharpSounds = /\b(?:scream\w*|shriek\w*|screech\w*|squeal\w*|whistl\w*|siren|alarm|bird|eagle|hawk|fox(?:es)?|cats?|kettle|feedback|squeak\w*|yowl\w*)\b/i;
+const sharpSounds =
+  /\b(?:scream\w*|shriek\w*|screech\w*|squeal\w*|whistl\w*|siren|alarm|bird|eagle|hawk|fox(?:es)?|cats?|kettle|feedback|squeak\w*|yowl\w*)\b/i;
 export const isSharpSound = (sound: string) => sharpSounds.test(sound);
 
 /**
@@ -196,7 +220,10 @@ export function soundDecodeFilter(sound: string): string {
  * make a real scream, but the sound model can, so the two are combined: the
  * words stay intelligible and the layer supplies the raw strain.
  */
-export function screamLayerPrompt(character: string | undefined, intensity: "shout" | "scream"): string {
+export function screamLayerPrompt(
+  character: string | undefined,
+  intensity: "shout" | "scream",
+): string {
   const text = (character || "").toLowerCase();
   if (/\b(?:troll|ogre|monster|demon|orc|beast)\b/.test(text))
     return "a monster roaring and screaming with rage, raw and guttural, wordless, close recording";

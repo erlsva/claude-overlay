@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 interface TooltipState {
@@ -96,7 +90,9 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       activeTarget.current?.removeAttribute("aria-describedby");
       activeTarget.current = null;
       clearExit();
-      setTooltip((current) => (current && !current.closing ? { ...current, closing: true } : current));
+      setTooltip((current) =>
+        current && !current.closing ? { ...current, closing: true } : current,
+      );
       exitTimer.current = window.setTimeout(() => setTooltip(null), 90);
     };
     const show = (target: Element, delayed: boolean) => {
@@ -109,9 +105,8 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
         target.setAttribute("aria-describedby", TOOLTIP_ID);
         const rect = target.getBoundingClientRect();
         const placement = rect.top > 90 ? "above" : "below";
-        const accentBorder = getComputedStyle(target)
-          .getPropertyValue("--accent-border")
-          .trim() || "#f97316";
+        const accentBorder =
+          getComputedStyle(target).getPropertyValue("--accent-border").trim() || "#f97316";
         clearExit();
         setTooltip({
           closing: false,
@@ -126,9 +121,7 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       else display();
     };
     const tooltipTarget = (event: Event) =>
-      event.target instanceof Element
-        ? event.target.closest("[data-app-tooltip]")
-        : null;
+      event.target instanceof Element ? event.target.closest("[data-app-tooltip]") : null;
     const onPointerOver = (event: PointerEvent) => {
       const target = tooltipTarget(event);
       if (target && target !== activeTarget.current) show(target, true);

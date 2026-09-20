@@ -31,17 +31,20 @@ export function useTwitchEvents(active: boolean) {
   const confirm = useConfirm();
   const [status, setStatus] = useState<TwitchEventStatus | null>(null);
 
-  const refresh = useCallback(async (showError = false) => {
-    try {
-      const response = await fetch(`${SERVER_URL}/events/status`, {
-        headers: authHeaders(),
-      });
-      if (!response.ok) throw new Error();
-      setStatus(await response.json());
-    } catch {
-      if (showError) toast.error("Could not refresh Twitch Events status");
-    }
-  }, [toast]);
+  const refresh = useCallback(
+    async (showError = false) => {
+      try {
+        const response = await fetch(`${SERVER_URL}/events/status`, {
+          headers: authHeaders(),
+        });
+        if (!response.ok) throw new Error();
+        setStatus(await response.json());
+      } catch {
+        if (showError) toast.error("Could not refresh Twitch Events status");
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -57,21 +60,24 @@ export function useTwitchEvents(active: boolean) {
     };
   }, [active, refresh]);
 
-  const connect = useCallback(async (channel: string) => {
-    try {
-      const response = await fetch(`${SERVER_URL}/auth/events/start/${channel}`, {
-        headers: authHeaders(),
-      });
-      const data = (await response.json()) as { url?: string; error?: string };
-      if (!response.ok || !data.url) {
-        toast.error(data.error ?? "Could not start Twitch authorization");
-        return;
+  const connect = useCallback(
+    async (channel: string) => {
+      try {
+        const response = await fetch(`${SERVER_URL}/auth/events/start/${channel}`, {
+          headers: authHeaders(),
+        });
+        const data = (await response.json()) as { url?: string; error?: string };
+        if (!response.ok || !data.url) {
+          toast.error(data.error ?? "Could not start Twitch authorization");
+          return;
+        }
+        window.location.href = data.url;
+      } catch {
+        toast.error("Could not reach the server to start Twitch authorization");
       }
-      window.location.href = data.url;
-    } catch {
-      toast.error("Could not reach the server to start Twitch authorization");
-    }
-  }, [toast]);
+    },
+    [toast],
+  );
 
   const connectChatbot = useCallback(async () => {
     try {
@@ -88,14 +94,20 @@ export function useTwitchEvents(active: boolean) {
   }, [toast]);
 
   const disconnectChatbot = useCallback(async () => {
-    if (!await confirm({
-      title: "Disconnect the chatbot?",
-      message: "Automated chat messages will stop until the chatbot is authorized again.",
-      confirmLabel: "Disconnect",
-      danger: true,
-    })) return;
+    if (
+      !(await confirm({
+        title: "Disconnect the chatbot?",
+        message: "Automated chat messages will stop until the chatbot is authorized again.",
+        confirmLabel: "Disconnect",
+        danger: true,
+      }))
+    )
+      return;
     try {
-      const response = await fetch(`${SERVER_URL}/events/chatbot`, { method: "DELETE", headers: authHeaders() });
+      const response = await fetch(`${SERVER_URL}/events/chatbot`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
       if (!response.ok) throw new Error();
       toast.success("Chatbot disconnected");
       void refresh();
@@ -104,40 +116,50 @@ export function useTwitchEvents(active: boolean) {
     }
   }, [confirm, refresh, toast]);
 
-  const disconnect = useCallback(async (channel: string) => {
-    if (!await confirm({
-      title: `Disconnect ${channel}?`,
-      message: "Twitch events and configured chat messages for this broadcaster will stop until it is authorized again.",
-      confirmLabel: "Disconnect",
-      danger: true,
-    })) return;
-    try {
-      const response = await fetch(`${SERVER_URL}/events/${channel}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      });
-      if (!response.ok) throw new Error();
-      toast.success(`${channel} event access disconnected`);
-      void refresh();
-    } catch {
-      toast.error(`Could not disconnect ${channel} event access`);
-    }
-  }, [confirm, refresh, toast]);
+  const disconnect = useCallback(
+    async (channel: string) => {
+      if (
+        !(await confirm({
+          title: `Disconnect ${channel}?`,
+          message:
+            "Twitch events and configured chat messages for this broadcaster will stop until it is authorized again.",
+          confirmLabel: "Disconnect",
+          danger: true,
+        }))
+      )
+        return;
+      try {
+        const response = await fetch(`${SERVER_URL}/events/${channel}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
+        if (!response.ok) throw new Error();
+        toast.success(`${channel} event access disconnected`);
+        void refresh();
+      } catch {
+        toast.error(`Could not disconnect ${channel} event access`);
+      }
+    },
+    [confirm, refresh, toast],
+  );
 
-  const test = useCallback(async (channel: string, type: TestableEvent) => {
-    try {
-      const response = await fetch(`${SERVER_URL}/events/${channel}/test`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ type }),
-      });
-      response.ok
-        ? toast.success(`Simulated ${type} event sent`)
-        : toast.error(`Could not simulate the ${type} event`);
-    } catch {
-      toast.error(`Could not reach the server to test the ${type} event`);
-    }
-  }, [toast]);
+  const test = useCallback(
+    async (channel: string, type: TestableEvent) => {
+      try {
+        const response = await fetch(`${SERVER_URL}/events/${channel}/test`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ type }),
+        });
+        response.ok
+          ? toast.success(`Simulated ${type} event sent`)
+          : toast.error(`Could not simulate the ${type} event`);
+      } catch {
+        toast.error(`Could not reach the server to test the ${type} event`);
+      }
+    },
+    [toast],
+  );
 
   return { status, connect, connectChatbot, disconnect, disconnectChatbot, test };
 }

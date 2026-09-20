@@ -1,18 +1,11 @@
 import { lazy, Suspense, useState, useCallback, useRef, useEffect } from "react";
-import {
-  CanvasStage,
-  ElementPanel,
-} from "../components/CanvasStage";
+import { CanvasStage, ElementPanel } from "../components/CanvasStage";
 import { SPAWN_X, SPAWN_Y, WORKSPACE_H, WORKSPACE_W } from "../canvas/config";
 import { DrawingCanvas, renderAction } from "../components/DrawingCanvas";
 import type { DrawToolMode } from "../components/DrawingCanvas";
 import { Toolbar } from "../components/Toolbar";
 import { WhitelistPanel } from "../components/WhitelistPanel";
-import {
-  TextDialog,
-  encodeTextSrc,
-  decodeTextSrc,
-} from "../components/TextDialog";
+import { TextDialog, encodeTextSrc, decodeTextSrc } from "../components/TextDialog";
 import type { TextConfig } from "../canvas/config";
 import { DEFAULT_TEXT_CONFIG } from "../canvas/config";
 import { useSocket } from "../hooks/useSocket";
@@ -20,11 +13,7 @@ import { usePresence } from "../hooks/usePresence";
 import { randomUUID } from "../utils";
 import type { AuthUser } from "../hooks/useAuth";
 import { authHeaders } from "../hooks/useAuth";
-import type {
-  CanvasElement,
-  FlyDirection,
-  MediaControlPayload,
-} from "../types";
+import type { CanvasElement, FlyDirection, MediaControlPayload } from "../types";
 import {
   Activity,
   Eye,
@@ -70,18 +59,20 @@ const APP_VERSION = import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VE
 const UI_SCALE_STORAGE_KEY = "overlay_dashboard_ui_scale";
 const UI_SCALE_OPTIONS = [100, 110, 125] as const;
 type DashboardUiScale = (typeof UI_SCALE_OPTIONS)[number];
-const StudioPanel = lazy(() => import("../components/StudioPanel").then((module) => ({ default: module.StudioPanel })));
+const StudioPanel = lazy(() =>
+  import("../components/StudioPanel").then((module) => ({ default: module.StudioPanel })),
+);
 
 function loadDashboardUiScale(): DashboardUiScale {
   const stored = Number(localStorage.getItem(UI_SCALE_STORAGE_KEY));
-  return UI_SCALE_OPTIONS.includes(stored as DashboardUiScale)
-    ? (stored as DashboardUiScale)
-    : 100;
+  return UI_SCALE_OPTIONS.includes(stored as DashboardUiScale) ? (stored as DashboardUiScale) : 100;
 }
 
 function isEditingTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement &&
-    (target.matches("input, textarea, select") || target.isContentEditable);
+  return (
+    target instanceof HTMLElement &&
+    (target.matches("input, textarea, select") || target.isContentEditable)
+  );
 }
 
 function validClipboardElement(value: unknown): value is CanvasElement {
@@ -105,23 +96,16 @@ interface DashboardProps {
   onRoleUpdated: () => void;
 }
 
-export function Dashboard({
-  user,
-  onLogout,
-  onSessionRevoked,
-  onRoleUpdated,
-}: DashboardProps) {
+export function Dashboard({ user, onLogout, onSessionRevoked, onRoleUpdated }: DashboardProps) {
   const toast = useToast();
   const confirm = useConfirm();
   const handleFillRejected = useCallback(() => {
     toast.info("Fill only works inside a fully enclosed shape");
   }, [toast]);
-  const dashboardControlRef = useRef<
-    ((payload: MediaControlPayload) => void) | null
-  >(null);
-  const directUpdateRef = useRef<
-    ((id: string, changes: Partial<CanvasElement>) => void) | null
-  >(null);
+  const dashboardControlRef = useRef<((payload: MediaControlPayload) => void) | null>(null);
+  const directUpdateRef = useRef<((id: string, changes: Partial<CanvasElement>) => void) | null>(
+    null,
+  );
   const previewFlyRef = useRef<
     | ((
         id: string,
@@ -132,12 +116,9 @@ export function Dashboard({
     | null
   >(null);
 
-  const handleIncomingMediaControl = useCallback(
-    (payload: MediaControlPayload) => {
-      dashboardControlRef.current?.(payload);
-    },
-    [],
-  );
+  const handleIncomingMediaControl = useCallback((payload: MediaControlPayload) => {
+    dashboardControlRef.current?.(payload);
+  }, []);
 
   const {
     elements,
@@ -197,9 +178,7 @@ export function Dashboard({
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedElement =
-    selectedIds.size === 1
-      ? elements.find((element) => selectedIds.has(element.id))
-      : undefined;
+    selectedIds.size === 1 ? elements.find((element) => selectedIds.has(element.id)) : undefined;
   const copiedElementsRef = useRef<CanvasElement[]>([]);
   const mediaUploadRef = useRef<((file: File) => Promise<void>) | null>(null);
   const [showWhitelist, setShowWhitelist] = useState(false);
@@ -263,25 +242,30 @@ export function Dashboard({
     localStorage.setItem(UI_SCALE_STORAGE_KEY, String(uiScale));
   }, [uiScale]);
 
-  const setFeatureEnabled = useCallback(async (key: "tts" | "scenes", enabled: boolean) => {
-    setFeatureSaving(true);
-    try {
-      const response = await fetch(`${SERVER_URL}/features`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        // Send only the flag being changed so the server never resets another one.
-        body: JSON.stringify({ [key]: enabled }),
-      });
-      const body = await response.json().catch(() => ({})) as { error?: string };
-      if (!response.ok) throw new Error(body.error || "Could not update feature flags");
-      toast.success(`${key === "tts" ? "TTS Studio" : "Scenes"} ${enabled ? "enabled" : "disabled"}`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update feature flags");
-    } finally {
-      setFeatureSaving(false);
-    }
-  }, [toast]);
+  const setFeatureEnabled = useCallback(
+    async (key: "tts" | "scenes", enabled: boolean) => {
+      setFeatureSaving(true);
+      try {
+        const response = await fetch(`${SERVER_URL}/features`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          // Send only the flag being changed so the server never resets another one.
+          body: JSON.stringify({ [key]: enabled }),
+        });
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) throw new Error(body.error || "Could not update feature flags");
+        toast.success(
+          `${key === "tts" ? "TTS Studio" : "Scenes"} ${enabled ? "enabled" : "disabled"}`,
+        );
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not update feature flags");
+      } finally {
+        setFeatureSaving(false);
+      }
+    },
+    [toast],
+  );
 
   const handleDvdSoundUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,9 +290,7 @@ export function Dashboard({
         toast.success(`${file.name} is now the DVD corner sound`);
       } catch (error) {
         console.error("DVD celebration sound upload failed", error);
-        toast.error(
-          "DVD sound upload failed. Use an MP3, WAV, OGG, or WebM audio file.",
-        );
+        toast.error("DVD sound upload failed. Use an MP3, WAV, OGG, or WebM audio file.");
       } finally {
         setDvdSoundUploading(false);
         event.target.value = "";
@@ -345,10 +327,7 @@ export function Dashboard({
     [elements],
   );
 
-  const handleSelectMany = useCallback(
-    (ids: string[]) => setSelectedIds(new Set(ids)),
-    [],
-  );
+  const handleSelectMany = useCallback((ids: string[]) => setSelectedIds(new Set(ids)), []);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -396,17 +375,14 @@ export function Dashboard({
       copies.forEach(addElement);
       copiedElementsRef.current = copies.map((element) => ({ ...element }));
       setSelectedIds(new Set(copies.map((element) => element.id)));
-      toast.success(
-        `Pasted ${copies.length} element${copies.length === 1 ? "" : "s"}`,
-      );
+      toast.success(`Pasted ${copies.length} element${copies.length === 1 ? "" : "s"}`);
     },
     [addElement, elements, toast],
   );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || isEditingTarget(event.target))
-        return;
+      if (!(event.ctrlKey || event.metaKey) || isEditingTarget(event.target)) return;
 
       if (event.key.toLowerCase() === "z") {
         event.preventDefault();
@@ -418,7 +394,6 @@ export function Dashboard({
         redo();
         return;
       }
-
     };
     const onCopy = (event: ClipboardEvent) => {
       if (isEditingTarget(event.target)) return;
@@ -430,9 +405,7 @@ export function Dashboard({
         JSON.stringify(copiedElementsRef.current),
       );
       event.preventDefault();
-      toast.success(
-        `Copied ${selected.length} element${selected.length === 1 ? "" : "s"}`,
-      );
+      toast.success(`Copied ${selected.length} element${selected.length === 1 ? "" : "s"}`);
     };
     const onPaste = (event: ClipboardEvent) => {
       if (isEditingTarget(event.target) || !event.clipboardData) return;
@@ -441,9 +414,7 @@ export function Dashboard({
       if (internal) {
         try {
           const parsed = JSON.parse(internal) as unknown;
-          const source = Array.isArray(parsed)
-            ? parsed.filter(validClipboardElement)
-            : [];
+          const source = Array.isArray(parsed) ? parsed.filter(validClipboardElement) : [];
           if (source.length) {
             event.preventDefault();
             pasteElementCopies(source);
@@ -473,10 +444,9 @@ export function Dashboard({
       if (!text.trim()) return;
       event.preventDefault();
       const safeText = text.slice(0, 9_500);
-      const estimatedLines = safeText.split("\n").reduce(
-        (count, line) => count + Math.max(1, Math.ceil(line.length / 22)),
-        0,
-      );
+      const estimatedLines = safeText
+        .split("\n")
+        .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 22)), 0);
       const element: CanvasElement = {
         id: randomUUID(),
         type: "text",
@@ -544,11 +514,7 @@ export function Dashboard({
   );
 
   const handleMediaControl = useCallback(
-    (
-      id: string,
-      action: MediaControlPayload["action"],
-      currentTime: number,
-    ) => {
+    (id: string, action: MediaControlPayload["action"], currentTime: number) => {
       emitMediaControl({ id, action, currentTime });
       // Persist playback position so refreshing users resume at the right spot
       const timeUpdate: Partial<import("../types").CanvasElement> = {
@@ -572,12 +538,7 @@ export function Dashboard({
       const sourceCtx = source.getContext("2d", { willReadFrequently: true })!;
       for (const action of strokes) renderAction(sourceCtx, action);
 
-      const pixels = sourceCtx.getImageData(
-        0,
-        0,
-        WORKSPACE_W,
-        WORKSPACE_H,
-      ).data;
+      const pixels = sourceCtx.getImageData(0, 0, WORKSPACE_W, WORKSPACE_H).data;
       let minX = WORKSPACE_W,
         minY = WORKSPACE_H,
         maxX = -1,
@@ -598,16 +559,11 @@ export function Dashboard({
       const cropped = document.createElement("canvas");
       cropped.width = width;
       cropped.height = height;
-      cropped
-        .getContext("2d")!
-        .drawImage(source, minX, minY, width, height, 0, 0, width, height);
+      cropped.getContext("2d")!.drawImage(source, minX, minY, width, height, 0, 0, width, height);
 
       const blob = await new Promise<Blob>((resolve, reject) =>
         cropped.toBlob(
-          (result) =>
-            result
-              ? resolve(result)
-              : reject(new Error("PNG conversion failed")),
+          (result) => (result ? resolve(result) : reject(new Error("PNG conversion failed"))),
           "image/png",
         ),
       );
@@ -618,8 +574,7 @@ export function Dashboard({
         body,
         headers: authHeaders(),
       });
-      if (!response.ok)
-        throw new Error(`Drawing upload failed (${response.status})`);
+      if (!response.ok) throw new Error(`Drawing upload failed (${response.status})`);
       const { url } = await response.json();
 
       addElement({
@@ -640,21 +595,15 @@ export function Dashboard({
       toast.success("Drawing saved as a canvas element");
     } catch (error) {
       console.error("Could not convert drawing to an element:", error);
-      toast.error(
-        "Could not save the drawing as an element. Your drawing was kept.",
-      );
+      toast.error("Could not save the drawing as an element. Your drawing was kept.");
       // Keep the strokes intact so a temporary upload failure never destroys work.
     }
   }, [strokes, addElement, clearStrokes, toast]);
 
   const isAdmin = user.isOwner || user.isAdmin;
 
-  const editingTextEl = editingTextId
-    ? elements.find((e) => e.id === editingTextId)
-    : null;
-  const editingTextConfig = editingTextEl
-    ? decodeTextSrc(editingTextEl.src)
-    : undefined;
+  const editingTextEl = editingTextId ? elements.find((e) => e.id === editingTextId) : null;
+  const editingTextConfig = editingTextEl ? decodeTextSrc(editingTextEl.src) : undefined;
 
   return (
     <div
@@ -684,15 +633,17 @@ export function Dashboard({
           <div className="topbar-group" role="group" aria-label="Twitch preview">
             <span className="topbar-group__label">
               Preview
-              <strong>
-                {twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}
-              </strong>
+              <strong>{twitchChannel.charAt(0).toUpperCase() + twitchChannel.slice(1)}</strong>
             </span>
             <button
               className={`ui-icon-button topbar-group__button${showTwitchEmbed ? " is-active" : ""}`}
               onClick={() => setShowTwitchEmbed((v) => !v)}
               aria-pressed={showTwitchEmbed}
-              aria-label={showTwitchEmbed ? "Hide the Twitch stream preview" : "Show the Twitch stream preview"}
+              aria-label={
+                showTwitchEmbed
+                  ? "Hide the Twitch stream preview"
+                  : "Show the Twitch stream preview"
+              }
               title={
                 showTwitchEmbed
                   ? "Hide the Twitch stream preview"
@@ -722,9 +673,7 @@ export function Dashboard({
                   const currentIndex = TWITCH_CHANNELS.indexOf(twitchChannel);
                   const nextChannel = TWITCH_CHANNELS[(currentIndex + 1) % TWITCH_CHANNELS.length];
                   setTwitchChannel(nextChannel);
-                  toast.info(
-                    `Switching preview and chat listener to ${nextChannel}`,
-                  );
+                  toast.info(`Switching preview and chat listener to ${nextChannel}`);
                 }}
                 aria-label="Switch Twitch preview channel"
                 title={`Switch preview from ${twitchChannel} to ${TWITCH_CHANNELS[(TWITCH_CHANNELS.indexOf(twitchChannel) + 1) % TWITCH_CHANNELS.length]} (This will change the preview/layout for everyone)`}
@@ -740,8 +689,14 @@ export function Dashboard({
               className={`ui-icon-button topbar-group__button${showMirror ? " is-active" : ""}`}
               onClick={toggleMirror}
               aria-pressed={showMirror}
-              aria-label={showMirror ? "Hide the live overlay preview" : "Show the live overlay preview"}
-              title={showMirror ? "Hide the live overlay preview" : "Show a live, silent copy of what the overlay is showing, including emotes"}
+              aria-label={
+                showMirror ? "Hide the live overlay preview" : "Show the live overlay preview"
+              }
+              title={
+                showMirror
+                  ? "Hide the live overlay preview"
+                  : "Show a live, silent copy of what the overlay is showing, including emotes"
+              }
             >
               <MonitorPlay size={15} />
             </button>
@@ -811,12 +766,16 @@ export function Dashboard({
         toolMode={toolMode}
         onToolModeChange={setToolMode}
         onDrawClear={async () => {
-          if (!await confirm({
-            title: "Clear the drawing?",
-            message: "This removes every stroke, shape, and fill. You can restore it immediately with Undo.",
-            confirmLabel: "Clear drawing",
-            danger: true,
-          })) return;
+          if (
+            !(await confirm({
+              title: "Clear the drawing?",
+              message:
+                "This removes every stroke, shape, and fill. You can restore it immediately with Undo.",
+              confirmLabel: "Clear drawing",
+              danger: true,
+            }))
+          )
+            return;
           clearStrokes();
           toast.success("Drawing cleared");
         }}
@@ -832,26 +791,26 @@ export function Dashboard({
         trailing={
           (chatEmoteSettings.enabled || ttsPlayback.enabled) && (
             <>
-            {chatEmoteSettings.enabled && (
-              <span
-                className="chat-emote-active-indicator"
-                title="Chat emote mode is active on the overlay. Live chat emotes are intentionally not mirrored on the dashboard; use Studio → Emotes for a local preview."
-              >
-                <span className="chat-emote-active-indicator__dot" />
-                <MessageCircle size={13} />
-                Chat emotes active
-              </span>
-            )}
-            {ttsPlayback.enabled && (
-              <span
-                className="chat-emote-active-indicator"
-                title="TTS playback is enabled for the overlay. Open Studio → TTS to generate clips or turn TTS off."
-              >
-                <span className="chat-emote-active-indicator__dot" />
-                <Volume2 size={13} />
-                TTS active
-              </span>
-            )}
+              {chatEmoteSettings.enabled && (
+                <span
+                  className="chat-emote-active-indicator"
+                  title="Chat emote mode is active on the overlay. Live chat emotes are intentionally not mirrored on the dashboard; use Studio → Emotes for a local preview."
+                >
+                  <span className="chat-emote-active-indicator__dot" />
+                  <MessageCircle size={13} />
+                  Chat emotes active
+                </span>
+              )}
+              {ttsPlayback.enabled && (
+                <span
+                  className="chat-emote-active-indicator"
+                  title="TTS playback is enabled for the overlay. Open Studio → TTS to generate clips or turn TTS off."
+                >
+                  <span className="chat-emote-active-indicator__dot" />
+                  <Volume2 size={13} />
+                  TTS active
+                </span>
+              )}
             </>
           )
         }
@@ -910,18 +869,14 @@ export function Dashboard({
                     padding: "0 7px",
                     border: `1px solid ${activityMenuOpen ? "var(--accent-border)" : "var(--line)"}`,
                     borderRadius: 5,
-                    background: activityMenuOpen
-                      ? "var(--accent-surface)"
-                      : "var(--bg-raised)",
+                    background: activityMenuOpen ? "var(--accent-surface)" : "var(--bg-raised)",
                     color: "var(--text-secondary)",
                     cursor: "pointer",
                     textAlign: "left",
                   }}
                 >
                   <Activity size={13} color="var(--accent-text)" />
-                  <span style={{ fontSize: 11, fontWeight: 700 }}>
-                    Activity
-                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>Activity</span>
                   <span style={{ flex: 1 }} />
                   <span style={{ color: "var(--text-muted)", fontSize: 11 }}>
                     {studio.activity.length} {activityMenuOpen ? "▲" : "▼"}
@@ -950,9 +905,7 @@ export function Dashboard({
                       >
                         <strong>{item.user}</strong> {item.action}
                       </div>
-                      <div
-                        style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 1 }}
-                      >
+                      <div style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 1 }}>
                         {new Date(item.at).toLocaleString()}
                       </div>
                     </div>
@@ -980,8 +933,7 @@ export function Dashboard({
                     position: "fixed",
                     left: "calc(var(--sidebar-width) + 10px)",
                     bottom: 16,
-                    width:
-                      "min(300px, calc(100vw - var(--sidebar-width) - 26px))",
+                    width: "min(300px, calc(100vw - var(--sidebar-width) - 26px))",
                     maxHeight: "min(440px, calc(100vh - 32px))",
                     overflowY: "auto",
                     padding: 7,
@@ -1059,9 +1011,7 @@ export function Dashboard({
                     </div>
                   ))}
                   {studio.activity.length === 0 && (
-                    <div
-                      style={{ padding: 10, color: "var(--text-muted)", fontSize: 11 }}
-                    >
+                    <div style={{ padding: 10, color: "var(--text-muted)", fontSize: 11 }}>
                       No activity yet
                     </div>
                   )}
@@ -1075,8 +1025,7 @@ export function Dashboard({
                     position: "fixed",
                     left: "calc(var(--sidebar-width) + 10px)",
                     bottom: 16,
-                    width:
-                      "min(320px, calc(100vw - var(--sidebar-width) - 26px))",
+                    width: "min(320px, calc(100vw - var(--sidebar-width) - 26px))",
                     maxHeight: "min(440px, calc(100vh - 32px))",
                     overflowY: "auto",
                     padding: 9,
@@ -1127,9 +1076,7 @@ export function Dashboard({
                       color: "var(--text-secondary)",
                     }}
                   >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 7 }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span
                         style={{
                           width: 7,
@@ -1141,9 +1088,7 @@ export function Dashboard({
                       Overlay: {overlayConnected ? "online" : "offline"}
                       {overlayCount > 1 ? ` (${overlayCount} sources)` : ""}
                     </div>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 7 }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span
                         style={{
                           width: 7,
@@ -1152,20 +1097,15 @@ export function Dashboard({
                           background: connected ? "#4ade80" : "#f87171",
                         }}
                       />
-                      Dashboard server:{" "}
-                      {connected ? "connected" : "disconnected"}
+                      Dashboard server: {connected ? "connected" : "disconnected"}
                     </div>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 7 }}
-                    >
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                       <span
                         style={{
                           width: 7,
                           height: 7,
                           borderRadius: "50%",
-                          background: studio.twitchConnected
-                            ? "#4ade80"
-                            : "#f59e0b",
+                          background: studio.twitchConnected ? "#4ade80" : "#f59e0b",
                         }}
                       />
                       Chat listener:{" "}
@@ -1263,9 +1203,7 @@ export function Dashboard({
                     height: 8,
                     borderRadius: "50%",
                     background: overlayConnected ? "#4ade80" : "#f87171",
-                    boxShadow: overlayConnected
-                      ? "0 0 6px rgba(74,222,128,0.55)"
-                      : "none",
+                    boxShadow: overlayConnected ? "0 0 6px rgba(74,222,128,0.55)" : "none",
                     flexShrink: 0,
                   }}
                 />
@@ -1305,7 +1243,12 @@ export function Dashboard({
                 </span>
               </button>
               {profilePresence.mounted && (
-                <div className="account-menu motion-popover" data-state={profilePresence.state} role="menu" aria-label="Account and settings">
+                <div
+                  className="account-menu motion-popover"
+                  data-state={profilePresence.state}
+                  role="menu"
+                  aria-label="Account and settings"
+                >
                   <button
                     type="button"
                     className="account-menu__link"
@@ -1357,7 +1300,10 @@ export function Dashboard({
                         setUiScale(option);
                         toast.success(`Dashboard interface set to ${option}%`);
                       }}
-                      options={UI_SCALE_OPTIONS.map((option) => ({ value: option, label: `${option}%` }))}
+                      options={UI_SCALE_OPTIONS.map((option) => ({
+                        value: option,
+                        label: `${option}%`,
+                      }))}
                     />
                     <p className="account-menu__hint">
                       Canvas size and overlay coordinates stay unchanged.
@@ -1408,7 +1354,11 @@ export function Dashboard({
                           aria-checked={featureFlags.tts}
                           aria-label="TTS Studio"
                           disabled={featureSaving}
-                          title={featureFlags.tts ? "Turn TTS Studio off for everyone" : "Turn TTS Studio on for everyone"}
+                          title={
+                            featureFlags.tts
+                              ? "Turn TTS Studio off for everyone"
+                              : "Turn TTS Studio on for everyone"
+                          }
                           onClick={() => void setFeatureEnabled("tts", !featureFlags.tts)}
                         />
                       </div>
@@ -1424,18 +1374,18 @@ export function Dashboard({
                           aria-checked={featureFlags.scenes}
                           aria-label="Scenes"
                           disabled={featureSaving}
-                          title={featureFlags.scenes ? "Turn Scenes off for everyone" : "Turn Scenes on for everyone"}
+                          title={
+                            featureFlags.scenes
+                              ? "Turn Scenes off for everyone"
+                              : "Turn Scenes on for everyone"
+                          }
                           onClick={() => void setFeatureEnabled("scenes", !featureFlags.scenes)}
                         />
                       </div>
                     </section>
                   )}
 
-                  <button
-                    type="button"
-                    className="account-menu__logout"
-                    onClick={onLogout}
-                  >
+                  <button type="button" className="account-menu__logout" onClick={onLogout}>
                     <LogOut size={14} /> Log out
                   </button>
                 </div>
@@ -1447,11 +1397,7 @@ export function Dashboard({
                   setActivityMenuOpen(false);
                 }}
                 aria-expanded={profileMenuOpen}
-                title={
-                  profileMenuOpen
-                    ? "Close account menu"
-                    : "Open account menu and settings"
-                }
+                title={profileMenuOpen ? "Close account menu" : "Open account menu and settings"}
                 style={{
                   width: "100%",
                   display: "flex",
@@ -1498,8 +1444,12 @@ export function Dashboard({
           }
         />
         {/* Own stacking layer: canvas layers and the floating preview stay below dialogs, and dialogs stay above Studio. */}
-        <div style={{ flex: 1, position: "relative", minHeight: 0, isolation: "isolate", zIndex: 3 }}>
-          {mirrorPresence.mounted && <OverlayMirror state={mirrorPresence.state} onClose={toggleMirror} />}
+        <div
+          style={{ flex: 1, position: "relative", minHeight: 0, isolation: "isolate", zIndex: 3 }}
+        >
+          {mirrorPresence.mounted && (
+            <OverlayMirror state={mirrorPresence.state} onClose={toggleMirror} />
+          )}
           <CanvasStage
             elements={elements}
             cursors={cursors}
@@ -1540,25 +1490,35 @@ export function Dashboard({
             <div className="drawing-presence" role="status">
               <span />
               {[...liveStrokes.keys()]
-                .map((userId) => activeUsers.find((activeUser) => activeUser.userId === userId)?.displayName ?? "Another editor")
+                .map(
+                  (userId) =>
+                    activeUsers.find((activeUser) => activeUser.userId === userId)?.displayName ??
+                    "Another editor",
+                )
                 .slice(0, 2)
-                .join(", ")}{liveStrokes.size > 2 ? ` +${liveStrokes.size - 2}` : ""} drawing
+                .join(", ")}
+              {liveStrokes.size > 2 ? ` +${liveStrokes.size - 2}` : ""} drawing
             </div>
           )}
-          <HelpGuide onOpenTour={() => setShowOnboarding(true)} onOpenSetup={() => setShowSetup(true)} />
-          <SupportDiagnostics snapshot={{
-            version: APP_VERSION,
-            user: user.displayName,
-            channel: twitchChannel,
-            theme,
-            dashboardConnected: connected,
-            overlayConnected,
-            overlayCount,
-            chatConnected: studio.twitchConnected,
-            elementCount: elements.length,
-            soundCount: studio.sounds.length,
-            commandCount: studio.triggers.length,
-          }} />
+          <HelpGuide
+            onOpenTour={() => setShowOnboarding(true)}
+            onOpenSetup={() => setShowSetup(true)}
+          />
+          <SupportDiagnostics
+            snapshot={{
+              version: APP_VERSION,
+              user: user.displayName,
+              channel: twitchChannel,
+              theme,
+              dashboardConnected: connected,
+              overlayConnected,
+              overlayCount,
+              chatConnected: studio.twitchConnected,
+              elementCount: elements.length,
+              soundCount: studio.sounds.length,
+              commandCount: studio.triggers.length,
+            }}
+          />
           <SelectionHint elements={elements} selectedIds={selectedIds} />
         </div>
         <div
@@ -1567,34 +1527,34 @@ export function Dashboard({
         >
           <Suspense fallback={<div className="studio-panel-loading">Loading Studio…</div>}>
             <StudioPanel
-            studio={studio}
-            elements={elements}
-            selectedIds={selectedIds}
-            isOwner={user.isOwner}
-            overlayConnected={overlayConnected}
-            ttsPlayback={ttsPlayback}
-            featureFlags={featureFlags}
-            onClose={() => setShowStudio(false)}
-            onSaveScene={saveScene}
-            onLoadScene={loadScene}
-            onDeleteScene={deleteScene}
-            onSavePreset={savePreset}
-            onLoadPreset={loadPreset}
-            onDeletePreset={deletePreset}
-            onSaveSound={saveSound}
-            onDeleteSound={deleteSound}
-            onPreviewSound={previewSound}
-            previewingSoundIds={previewingSoundIds}
-            onStopPreviewSound={stopPreviewSound}
-            onPlaySound={playSound}
-            onStopSound={stopSound}
-            onSaveTrigger={saveTrigger}
-            onDeleteTrigger={deleteTrigger}
-            onPreviewFly={(id, direction, durationSeconds, onDone) =>
-              previewFlyRef.current?.(id, direction, durationSeconds, onDone) ?? null
-            }
-            chatEmoteSettings={chatEmoteSettings}
-            onChatEmoteSettingsChange={setChatEmoteSettings}
+              studio={studio}
+              elements={elements}
+              selectedIds={selectedIds}
+              isOwner={user.isOwner}
+              overlayConnected={overlayConnected}
+              ttsPlayback={ttsPlayback}
+              featureFlags={featureFlags}
+              onClose={() => setShowStudio(false)}
+              onSaveScene={saveScene}
+              onLoadScene={loadScene}
+              onDeleteScene={deleteScene}
+              onSavePreset={savePreset}
+              onLoadPreset={loadPreset}
+              onDeletePreset={deletePreset}
+              onSaveSound={saveSound}
+              onDeleteSound={deleteSound}
+              onPreviewSound={previewSound}
+              previewingSoundIds={previewingSoundIds}
+              onStopPreviewSound={stopPreviewSound}
+              onPlaySound={playSound}
+              onStopSound={stopSound}
+              onSaveTrigger={saveTrigger}
+              onDeleteTrigger={deleteTrigger}
+              onPreviewFly={(id, direction, durationSeconds, onDone) =>
+                previewFlyRef.current?.(id, direction, durationSeconds, onDone) ?? null
+              }
+              chatEmoteSettings={chatEmoteSettings}
+              onChatEmoteSettingsChange={setChatEmoteSettings}
             />
           </Suspense>
         </div>
@@ -1623,7 +1583,15 @@ export function Dashboard({
         roles={user.roles}
         overlayConnected={overlayConnected}
         onTestAudio={testOverlayAudio}
-        onOpenReadiness={() => window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')?.click(), 0)}
+        onOpenReadiness={() =>
+          window.setTimeout(
+            () =>
+              document
+                .querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')
+                ?.click(),
+            0,
+          )
+        }
       />
       <OnboardingTour
         open={showOnboarding}
@@ -1633,7 +1601,13 @@ export function Dashboard({
         overlayConnected={overlayConnected}
         onStartText={() => {
           closeOnboarding();
-          window.setTimeout(() => document.querySelector<HTMLButtonElement>('[data-onboarding-action="add-text"]')?.click(), 0);
+          window.setTimeout(
+            () =>
+              document
+                .querySelector<HTMLButtonElement>('[data-onboarding-action="add-text"]')
+                ?.click(),
+            0,
+          );
         }}
         onOpenSetup={() => {
           closeOnboarding();

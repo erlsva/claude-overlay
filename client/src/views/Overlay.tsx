@@ -1,9 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Pause, Volume2 } from "lucide-react";
-import {
-  OverlayStage,
-  type OverlayStageHandle,
-} from "../components/CanvasStage";
+import { OverlayStage, type OverlayStageHandle } from "../components/CanvasStage";
 import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
@@ -23,7 +20,18 @@ export function Overlay() {
     stageRef.current?.applyControl(payload);
   }, []);
 
-  const { elements, cursors, dvdCelebrationSettings, chatEmoteSettings, chatEmoteSpawn, strokes, liveStrokes, notifyMediaEnded, chatChannel, ttsPlayback } = useSocket({
+  const {
+    elements,
+    cursors,
+    dvdCelebrationSettings,
+    chatEmoteSettings,
+    chatEmoteSpawn,
+    strokes,
+    liveStrokes,
+    notifyMediaEnded,
+    chatChannel,
+    ttsPlayback,
+  } = useSocket({
     mode: IS_MIRROR ? "mirror" : "overlay",
     onMediaControl: handleMediaControl,
   });
@@ -50,26 +58,38 @@ export function Overlay() {
 
   useEffect(() => {
     if (IS_MIRROR) return;
-    const id = setInterval(
-      () => fetch(`${SERVER_URL}/ping`).catch(() => {}),
-      10 * 60 * 1000,
-    );
+    const id = setInterval(() => fetch(`${SERVER_URL}/ping`).catch(() => {}), 10 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
   return (
     <>
       <TileController channel={chatChannel} />
-      <OverlayStage ref={stageRef} elements={elements} cursors={cursors} dvdCelebrationSettings={dvdCelebrationSettings} strokes={strokes} liveStrokes={liveStrokes} onMediaEnded={IS_MIRROR ? undefined : notifyMediaEnded} />
+      <OverlayStage
+        ref={stageRef}
+        elements={elements}
+        cursors={cursors}
+        dvdCelebrationSettings={dvdCelebrationSettings}
+        strokes={strokes}
+        liveStrokes={liveStrokes}
+        onMediaEnded={IS_MIRROR ? undefined : notifyMediaEnded}
+      />
       <ChatEmoteLayer spawn={chatEmoteSpawn} settings={chatEmoteSettings} />
       {displayedTts.active && (
-        <div className={`overlay-tts-status ${displayedTts.paused ? "overlay-tts-status--paused" : ""}${ttsLeaving ? " overlay-tts-status--leaving" : ""}`} role="status" aria-live="polite">
+        <div
+          className={`overlay-tts-status ${displayedTts.paused ? "overlay-tts-status--paused" : ""}${ttsLeaving ? " overlay-tts-status--leaving" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
           <span className="overlay-tts-status__icon">
             {displayedTts.paused ? <Pause size={22} /> : <Volume2 size={22} />}
           </span>
           <span>
             <strong>{displayedTts.paused ? "TTS PAUSED" : "TTS PLAYING"}</strong>
-            <small>{displayedTts.sender ? `${displayedTts.sender} · ` : ""}{displayedTts.prompt}</small>
+            <small>
+              {displayedTts.sender ? `${displayedTts.sender} · ` : ""}
+              {displayedTts.prompt}
+            </small>
           </span>
         </div>
       )}

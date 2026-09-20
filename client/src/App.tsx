@@ -56,14 +56,19 @@ function DashboardApp() {
     if (eventError) {
       const message = eventError.startsWith("expected_")
         ? `Authorize the ${eventError.slice(9)} Twitch account, not ${actualAccount ?? "the currently signed-in account"}`
-        : ({
-            twitch_denied: "Twitch Events authorization was cancelled or denied",
-            authorization: "The Twitch authorization response was invalid or expired",
-            token_exchange: "Twitch could not exchange the authorization code. Check the server log and redirect URL",
-            account_lookup: "Twitch authorized the token but the account could not be read",
-            database_save: "Twitch authorization succeeded, but saving the encrypted token failed",
-            eventsub_registration: "Authorization was saved, but Twitch could not register the event subscriptions. Check the server log",
-          } as Record<string, string>)[eventError] ?? "Twitch Events authorization failed";
+        : ((
+            {
+              twitch_denied: "Twitch Events authorization was cancelled or denied",
+              authorization: "The Twitch authorization response was invalid or expired",
+              token_exchange:
+                "Twitch could not exchange the authorization code. Check the server log and redirect URL",
+              account_lookup: "Twitch authorized the token but the account could not be read",
+              database_save:
+                "Twitch authorization succeeded, but saving the encrypted token failed",
+              eventsub_registration:
+                "Authorization was saved, but Twitch could not register the event subscriptions. Check the server log",
+            } as Record<string, string>
+          )[eventError] ?? "Twitch Events authorization failed");
       toast.error(message);
     }
     if (connected || chatbotConnected || eventError) {
@@ -82,7 +87,15 @@ function DashboardApp() {
 
   if (loading || previewLoading) return themedScreen(<LoadingScreen />);
 
-  if (!user) return themedScreen(<LoginPage onLogin={login} error={error} connectionError={connectionError} onRetry={retryConnection} />);
+  if (!user)
+    return themedScreen(
+      <LoginPage
+        onLogin={login}
+        error={error}
+        connectionError={connectionError}
+        onRetry={retryConnection}
+      />,
+    );
 
   return (
     <>
@@ -105,7 +118,9 @@ function LoadingScreen() {
           <h1>Loading Vicksy’s overlay…</h1>
           <p>Waking the server and checking your access. This can take a moment.</p>
         </div>
-        <div className="loading-screen__progress"><span /></div>
+        <div className="loading-screen__progress">
+          <span />
+        </div>
       </div>
     </main>
   );

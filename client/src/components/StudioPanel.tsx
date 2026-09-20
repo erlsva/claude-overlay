@@ -47,13 +47,7 @@ import { ActionScopeBadge } from "./ActionScopeBadge";
 import { TtsPanel } from "./TtsPanel";
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
-type Tab =
-  | "scenes"
-  | "presets"
-  | "sounds"
-  | "triggers"
-  | "emotes"
-  | "tts";
+type Tab = "scenes" | "presets" | "sounds" | "triggers" | "emotes" | "tts";
 
 interface StudioPanelProps {
   studio: StudioState;
@@ -70,12 +64,7 @@ interface StudioPanelProps {
   onSavePreset: (id: string, name: string, elementIds: string[]) => void;
   onLoadPreset: (id: string) => void;
   onDeletePreset: (id: string) => void;
-  onSaveSound: (item: {
-    id: string;
-    name: string;
-    url: string;
-    volume: number;
-  }) => void;
+  onSaveSound: (item: { id: string; name: string; url: string; volume: number }) => void;
   onDeleteSound: (id: string) => void;
   onPreviewSound: (id: string) => void;
   previewingSoundIds: string[];
@@ -141,11 +130,9 @@ const TRIGGER_EVENT_LABELS: Partial<Record<OverlayTrigger["event"], string>> = {
 };
 
 const triggerActionLabel = (action: OverlayTrigger["action"]) =>
-  triggerActionOptions.find((option) => option.value === action)?.label ??
-  action;
+  triggerActionOptions.find((option) => option.value === action)?.label ?? action;
 const triggerTimingLabel = (step: TriggerStep, index: number) => {
-  if (index === 0 || !step.timing || step.timing === "immediate")
-    return "same time";
+  if (index === 0 || !step.timing || step.timing === "immediate") return "same time";
   if (step.timing === "after-previous") return "after previous";
   return `after ${step.delaySeconds ?? 1}s`;
 };
@@ -156,13 +143,14 @@ export function StudioPanel(props: StudioPanelProps) {
   const [selectedTab, setTab] = useState<Tab>("sounds");
   const ttsEnabled = props.featureFlags.tts;
   const scenesEnabled = props.featureFlags.scenes;
-  const visibleTabs = tabs.filter(([id]) => (id !== "tts" || ttsEnabled) && (id !== "scenes" || scenesEnabled));
+  const visibleTabs = tabs.filter(
+    ([id]) => (id !== "tts" || ttsEnabled) && (id !== "scenes" || scenesEnabled),
+  );
   // The owner can switch TTS off while this tab is open.
   const tab: Tab = visibleTabs.some(([id]) => id === selectedTab) ? selectedTab : "sounds";
   const [name, setName] = useState("");
   const [soundUrl, setSoundUrl] = useState("");
-  const [triggerAction, setTriggerAction] =
-    useState<OverlayTrigger["action"]>("show-element");
+  const [triggerAction, setTriggerAction] = useState<OverlayTrigger["action"]>("show-element");
   const [triggerMatch, setTriggerMatch] = useState("");
   const [triggerEvent, setTriggerEvent] =
     useState<Exclude<TriggerEventType, "chat-command">>("follow");
@@ -172,20 +160,14 @@ export function StudioPanel(props: StudioPanelProps) {
   const [ttsErrorMessage, setTtsErrorMessage] = useState("");
   const [targetId, setTargetId] = useState("");
   const [cooldown, setCooldown] = useState(5);
-  const [triggerPlacement, setTriggerPlacement] =
-    useState<TriggerPlacement>("current");
-  const [flyDirection, setFlyDirection] = useState<FlyDirection>(
-    "left-to-right-bottom",
-  );
+  const [triggerPlacement, setTriggerPlacement] = useState<TriggerPlacement>("current");
+  const [flyDirection, setFlyDirection] = useState<FlyDirection>("left-to-right-bottom");
   const [duration, setDuration] = useState(5);
   const [permission, setPermission] = useState<ChatPermission>("everyone");
   const [editingTriggerId, setEditingTriggerId] = useState<string | null>(null);
   const [chainedSteps, setChainedSteps] = useState<TriggerStep[]>([]);
-  const [editingChainIndex, setEditingChainIndex] = useState<number | null>(
-    null,
-  );
-  const [stepTiming, setStepTiming] =
-    useState<NonNullable<TriggerStep["timing"]>>("immediate");
+  const [editingChainIndex, setEditingChainIndex] = useState<number | null>(null);
+  const [stepTiming, setStepTiming] = useState<NonNullable<TriggerStep["timing"]>>("immediate");
   const [stepDelay, setStepDelay] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [emotePreview, setEmotePreview] = useState<ChatEmoteSpawn | null>(null);
@@ -207,16 +189,13 @@ export function StudioPanel(props: StudioPanelProps) {
   const twitchEvents = useTwitchEvents(tab === "triggers");
   const eventStatus = twitchEvents.status;
   const chatbotHasWriteAccess = !!(
-    eventStatus?.chatbot?.connected &&
-    eventStatus.chatbot.scopes.includes("user:write:chat")
+    eventStatus?.chatbot?.connected && eventStatus.chatbot.scopes.includes("user:write:chat")
   );
   const unavailableChatChannels =
     eventStatus?.channels.filter((channel) => !channel.connected) ?? [];
-  const chatConnectionWarning = !!eventStatus && (
-    !eventStatus.configured ||
-    !chatbotHasWriteAccess ||
-    unavailableChatChannels.length > 0
-  );
+  const chatConnectionWarning =
+    !!eventStatus &&
+    (!eventStatus.configured || !chatbotHasWriteAccess || unavailableChatChannels.length > 0);
 
   // The builder stays out of the way once commands exist: the saved list comes
   // first, and the form opens on demand, while editing, or on first use.
@@ -246,7 +225,8 @@ export function StudioPanel(props: StudioPanelProps) {
     timing: stepTiming,
     delaySeconds: stepTiming === "delay" ? stepDelay : undefined,
     chatMessage: ["send-chat", "tts"].includes(triggerAction) ? chatMessage.trim() : undefined,
-    ttsErrorMessage: triggerAction === "tts" && ttsErrorMessage.trim() ? ttsErrorMessage.trim() : undefined,
+    ttsErrorMessage:
+      triggerAction === "tts" && ttsErrorMessage.trim() ? ttsErrorMessage.trim() : undefined,
   });
 
   const resetTriggerStep = () => {
@@ -327,11 +307,7 @@ export function StudioPanel(props: StudioPanelProps) {
         setName("");
         setSoundUrl("");
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not add Myinstants sound",
-        );
+        toast.error(error instanceof Error ? error.message : "Could not add Myinstants sound");
       } finally {
         setUploading(false);
       }
@@ -353,9 +329,7 @@ export function StudioPanel(props: StudioPanelProps) {
         const data = (await response.json().catch(() => ({}))) as {
           error?: string;
         };
-        throw new Error(
-          data.error ?? `Sound upload failed (${response.status})`,
-        );
+        throw new Error(data.error ?? `Sound upload failed (${response.status})`);
       }
       const data = (await response.json()) as { url: string };
       props.onSaveSound({
@@ -368,9 +342,7 @@ export function StudioPanel(props: StudioPanelProps) {
       setSoundUrl("");
       toast.success(`${file.name} added to the soundboard`);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Sound upload failed",
-      );
+      toast.error(error instanceof Error ? error.message : "Sound upload failed");
     } finally {
       setUploading(false);
     }
@@ -382,8 +354,7 @@ export function StudioPanel(props: StudioPanelProps) {
     }
     if (
       !name.trim() ||
-      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
-        !targetId) ||
+      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) && !targetId) ||
       (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
     )
       return;
@@ -392,18 +363,14 @@ export function StudioPanel(props: StudioPanelProps) {
       id: editingTriggerId ?? randomUUID(),
       name: name.trim(),
       enabled: editingTriggerId
-        ? (props.studio.triggers.find(
-            (trigger) => trigger.id === editingTriggerId,
-          )?.enabled ?? true)
+        ? (props.studio.triggers.find((trigger) => trigger.id === editingTriggerId)?.enabled ??
+          true)
         : true,
       event: isEvent ? triggerEvent : "chat-command",
       match:
-        isEvent && triggerEvent !== "channel-points"
-          ? undefined
-          : triggerMatch.trim() || undefined,
+        isEvent && triggerEvent !== "channel-points" ? undefined : triggerMatch.trim() || undefined,
       minimum:
-        isEvent &&
-        ["subscribe", "gift-subscribe", "raid", "bits"].includes(triggerEvent)
+        isEvent && ["subscribe", "gift-subscribe", "raid", "bits"].includes(triggerEvent)
           ? triggerMinimum
           : undefined,
       channel: isEvent ? triggerChannel || undefined : undefined,
@@ -453,12 +420,17 @@ export function StudioPanel(props: StudioPanelProps) {
       const effects = [
         sendsChat && "post a message in Twitch chat",
         usesTts && "generate paid TTS audio",
-      ].filter(Boolean).join(" and ");
-      if (!await confirm({
-        title: `Run “${item.name}” as a test?`,
-        message: `This will really ${effects}. Cooldowns and permissions are ignored.`,
-        confirmLabel: "Run test",
-      })) return;
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      if (
+        !(await confirm({
+          title: `Run “${item.name}” as a test?`,
+          message: `This will really ${effects}. Cooldowns and permissions are ignored.`,
+          confirmLabel: "Run test",
+        }))
+      )
+        return;
     }
     if (!props.overlayConnected) {
       toast.info("The overlay is offline, so nothing will show or play there.");
@@ -484,8 +456,7 @@ export function StudioPanel(props: StudioPanelProps) {
 
   const addChainedStep = () => {
     if (
-      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
-        !targetId) ||
+      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) && !targetId) ||
       (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
     ) {
       toast.error(
@@ -503,9 +474,7 @@ export function StudioPanel(props: StudioPanelProps) {
     }
     if (editingChainIndex !== null) {
       setChainedSteps((steps) =>
-        steps.map((step, index) =>
-          index === editingChainIndex ? currentTriggerStep() : step,
-        ),
+        steps.map((step, index) => (index === editingChainIndex ? currentTriggerStep() : step)),
       );
       toast.success("Command action updated");
       const pendingStep = pendingStepBeforeChainEdit.current;
@@ -521,15 +490,13 @@ export function StudioPanel(props: StudioPanelProps) {
   };
 
   const editChainedStep = (step: TriggerStep, index: number) => {
-    if (editingChainIndex === null)
-      pendingStepBeforeChainEdit.current = currentTriggerStep();
+    if (editingChainIndex === null) pendingStepBeforeChainEdit.current = currentTriggerStep();
     setEditingChainIndex(index);
     loadTriggerStep(step);
   };
 
   const currentStepIsFirst =
-    editingChainIndex === 0 ||
-    (editingChainIndex === null && chainedSteps.length === 0);
+    editingChainIndex === 0 || (editingChainIndex === null && chainedSteps.length === 0);
   const selectedTargetElement = props.elements.find((element) => element.id === targetId);
   const selectedTargetSound = props.studio.sounds.find((sound) => sound.id === targetId);
 
@@ -540,11 +507,7 @@ export function StudioPanel(props: StudioPanelProps) {
           <strong>Studio</strong>
           <span>Production tools</span>
         </div>
-        <button
-          className="ui-icon-button"
-          onClick={props.onClose}
-          title="Close Studio panel"
-        >
+        <button className="ui-icon-button" onClick={props.onClose} title="Close Studio panel">
           <X size={16} />
         </button>
       </div>
@@ -574,12 +537,11 @@ export function StudioPanel(props: StudioPanelProps) {
         />
       </div>
       <div className="studio-panel__body">
-        {tab === "tts" && ttsEnabled && <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />}
+        {tab === "tts" && ttsEnabled && (
+          <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />
+        )}
         {tab === "scenes" && (
-          <Section
-            title="Scenes"
-            description="Save or restore the complete canvas and drawing."
-          >
+          <Section title="Scenes" description="Save or restore the complete canvas and drawing.">
             <CreateRow
               name={name}
               setName={setName}
@@ -590,7 +552,10 @@ export function StudioPanel(props: StudioPanelProps) {
             {props.studio.scenes.length === 0 && (
               <div className="studio-empty-state">
                 <strong>No saved scenes yet</strong>
-                <span>Arrange your layers, name the layout above and save it. Loading a scene replaces the current canvas, and Undo brings it back.</span>
+                <span>
+                  Arrange your layers, name the layout above and save it. Loading a scene replaces
+                  the current canvas, and Undo brings it back.
+                </span>
               </div>
             )}
             {props.studio.scenes.map((item) => (
@@ -599,23 +564,28 @@ export function StudioPanel(props: StudioPanelProps) {
                 name={item.name}
                 detail={new Date(item.updatedAt).toLocaleString()}
                 onPrimary={async () => {
-                  if (await confirm({
-                    title: `Load “${item.name}”?`,
-                    message: "This replaces the current canvas and drawing. You can restore the previous state with Undo.",
-                    confirmLabel: "Load scene",
-                  })) {
+                  if (
+                    await confirm({
+                      title: `Load “${item.name}”?`,
+                      message:
+                        "This replaces the current canvas and drawing. You can restore the previous state with Undo.",
+                      confirmLabel: "Load scene",
+                    })
+                  ) {
                     props.onLoadScene(item.id);
                     toast.success(`Scene “${item.name}” loaded`);
                   }
                 }}
                 primary="Load"
                 onDelete={async () => {
-                  if (await confirm({
-                    title: `Delete “${item.name}”?`,
-                    message: "This permanently removes the saved scene.",
-                    confirmLabel: "Delete scene",
-                    danger: true,
-                  })) {
+                  if (
+                    await confirm({
+                      title: `Delete “${item.name}”?`,
+                      message: "This permanently removes the saved scene.",
+                      confirmLabel: "Delete scene",
+                      danger: true,
+                    })
+                  ) {
                     props.onDeleteScene(item.id);
                     toast.success(`Scene “${item.name}” deleted`);
                   }
@@ -625,10 +595,7 @@ export function StudioPanel(props: StudioPanelProps) {
           </Section>
         )}
         {tab === "presets" && (
-          <Section
-            title="Presets"
-            description="Save the currently selected elements for reuse."
-          >
+          <Section title="Presets" description="Save the currently selected elements for reuse.">
             <CreateRow
               name={name}
               setName={setName}
@@ -693,10 +660,7 @@ export function StudioPanel(props: StudioPanelProps) {
               >
                 <Plus size={14} /> Add Myinstants
               </button>
-              <label
-                className="ui-button"
-                style={{ cursor: uploading ? "wait" : "pointer" }}
-              >
+              <label className="ui-button" style={{ cursor: uploading ? "wait" : "pointer" }}>
                 {uploading ? "Uploading…" : "Upload file"}
                 <input
                   type="file"
@@ -724,92 +688,98 @@ export function StudioPanel(props: StudioPanelProps) {
             {props.studio.sounds.length === 0 && (
               <div className="studio-empty-state">
                 <strong>No sounds yet</strong>
-                <span>Add a Myinstants link or upload an audio file to create your Soundboard.</span>
+                <span>
+                  Add a Myinstants link or upload an audio file to create your Soundboard.
+                </span>
               </div>
             )}
             {props.studio.sounds
               .filter((item) => item.name.toLowerCase().includes(listSearch.trim().toLowerCase()))
               .map((item) => (
-              <div key={item.id} className="soundboard-item">
-                <div className="soundboard-item__head">
-                  <span className="soundboard-item__icon" aria-hidden="true">
-                    <AudioLines size={15} />
-                  </span>
-                  <strong>{item.name}</strong>
-                  <button
-                    className="ui-icon-button ui-button--compact ui-icon-button--ghost"
-                    onClick={async () => {
-                      if (!await confirm({
-                        title: `Delete “${item.name}”?`,
-                        message: "Commands using this sound will keep a missing target until they are edited.",
-                        confirmLabel: "Delete sound",
-                        danger: true,
-                      })) return;
-                      props.onDeleteSound(item.id);
-                      toast.success(`Sound “${item.name}” deleted`);
-                    }}
-                    title={`Delete ${item.name}`}
-                    aria-label={`Delete ${item.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div key={item.id} className="soundboard-item">
+                  <div className="soundboard-item__head">
+                    <span className="soundboard-item__icon" aria-hidden="true">
+                      <AudioLines size={15} />
+                    </span>
+                    <strong>{item.name}</strong>
+                    <button
+                      className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+                      onClick={async () => {
+                        if (
+                          !(await confirm({
+                            title: `Delete “${item.name}”?`,
+                            message:
+                              "Commands using this sound will keep a missing target until they are edited.",
+                            confirmLabel: "Delete sound",
+                            danger: true,
+                          }))
+                        )
+                          return;
+                        props.onDeleteSound(item.id);
+                        toast.success(`Sound “${item.name}” deleted`);
+                      }}
+                      title={`Delete ${item.name}`}
+                      aria-label={`Delete ${item.name}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <label className="soundboard-item__volume">
+                    <span>Volume</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={item.volume}
+                      onChange={(event) =>
+                        props.onSaveSound({
+                          ...item,
+                          volume: Number(event.target.value),
+                        })
+                      }
+                    />
+                    <output>{Math.round(item.volume * 100)}%</output>
+                  </label>
+                  <div className="soundboard-item__actions">
+                    <button
+                      className="ui-button ui-button--compact"
+                      onClick={() =>
+                        props.previewingSoundIds.includes(item.id)
+                          ? props.onStopPreviewSound(item.id)
+                          : props.onPreviewSound(item.id)
+                      }
+                    >
+                      {props.previewingSoundIds.includes(item.id) ? (
+                        <>
+                          <Square size={11} fill="currentColor" />
+                          Stop preview
+                        </>
+                      ) : (
+                        <>
+                          <Headphones size={13} />
+                          Preview
+                        </>
+                      )}
+                    </button>
+                    <button
+                      className="ui-button ui-button--compact soundboard-action--obs"
+                      onClick={() => props.onPlaySound(item.id)}
+                    >
+                      <Play size={12} fill="currentColor" />
+                      Play on overlay
+                    </button>
+                    <button
+                      className="ui-button ui-button--compact"
+                      onClick={() => props.onStopSound(item.id)}
+                      title={`Immediately stop every instance of ${item.name} currently playing on the overlay`}
+                    >
+                      <Square size={11} fill="currentColor" />
+                      Stop
+                    </button>
+                  </div>
                 </div>
-                <label className="soundboard-item__volume">
-                  <span>Volume</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={item.volume}
-                    onChange={(event) =>
-                      props.onSaveSound({
-                        ...item,
-                        volume: Number(event.target.value),
-                      })
-                    }
-                  />
-                  <output>{Math.round(item.volume * 100)}%</output>
-                </label>
-                <div className="soundboard-item__actions">
-                  <button
-                    className="ui-button ui-button--compact"
-                    onClick={() =>
-                      props.previewingSoundIds.includes(item.id)
-                        ? props.onStopPreviewSound(item.id)
-                        : props.onPreviewSound(item.id)
-                    }
-                  >
-                    {props.previewingSoundIds.includes(item.id) ? (
-                      <>
-                        <Square size={11} fill="currentColor" />
-                        Stop preview
-                      </>
-                    ) : (
-                      <>
-                        <Headphones size={13} />
-                        Preview
-                      </>
-                    )}
-                  </button>
-                  <button
-                    className="ui-button ui-button--compact soundboard-action--obs"
-                    onClick={() => props.onPlaySound(item.id)}
-                  >
-                    <Play size={12} fill="currentColor" />
-                    Play on overlay
-                  </button>
-                  <button
-                    className="ui-button ui-button--compact"
-                    onClick={() => props.onStopSound(item.id)}
-                    title={`Immediately stop every instance of ${item.name} currently playing on the overlay`}
-                  >
-                    <Square size={11} fill="currentColor" />
-                    Stop
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
           </Section>
         )}
         {tab === "triggers" && (
@@ -830,7 +800,11 @@ export function StudioPanel(props: StudioPanelProps) {
                   <span
                     key={item.channel}
                     className={`status-pill ${item.connected ? "status-pill--ok" : "status-pill--bad"}`}
-                    title={item.connected ? "Twitch events connected" : "Not connected. Twitch events from this channel will not arrive."}
+                    title={
+                      item.connected
+                        ? "Twitch events connected"
+                        : "Not connected. Twitch events from this channel will not arrive."
+                    }
                   >
                     <i aria-hidden="true" />
                     <span style={{ textTransform: "capitalize" }}>{item.channel}</span>
@@ -853,151 +827,165 @@ export function StudioPanel(props: StudioPanelProps) {
                 onClick={() => setConnectionsOpen((open) => !open)}
               >
                 <Link2 size={12} />{" "}
-                {connectionsOpen ? "Hide" : chatConnectionWarning ? "Fix connections" : "Connections"}
+                {connectionsOpen
+                  ? "Hide"
+                  : chatConnectionWarning
+                    ? "Fix connections"
+                    : "Connections"}
               </button>
             </div>
             {chatConnectionWarning && !connectionsOpen && (
               <p className="connection-strip__hint">
-                <AlertTriangle size={13} aria-hidden="true" /> Chat-message actions are not fully connected yet.
+                <AlertTriangle size={13} aria-hidden="true" /> Chat-message actions are not fully
+                connected yet.
               </p>
             )}
             {connectionsOpen && (
               <div className="connection-panel">
                 <p className="connection-panel__intro">
-                  Broadcasters provide event access; the separate chatbot account sends automated messages.
+                  Broadcasters provide event access; the separate chatbot account sends automated
+                  messages.
                 </p>
-            {!eventStatus?.configured && (
-              <div className="connection-card connection-card--error">
-                Event storage is unavailable. Check the server database
-                configuration.
-              </div>
-            )}
-            {eventStatus?.configured && (
-              <div className="connection-card">
-                <div className="connection-card__head">
-                  <span className="connection-card__name">
-                    <strong>Chatbot</strong>
-                    {eventStatus.chatbot?.connected && (
-                      <small>as {eventStatus.chatbot.displayName}</small>
-                    )}
-                  </span>
-                  <span className={`status-pill ${eventStatus.chatbot?.connected ? "status-pill--ok" : "status-pill--bad"}`}>
-                    <i aria-hidden="true" />
-                    {eventStatus.chatbot?.connected ? "Connected" : "Not connected"}
-                  </span>
-                </div>
-                <p className="connection-card__hint">
-                  Outgoing automation messages are sent by this account. Broadcaster tokens are never used to write chat.
-                </p>
-                <div className="connection-card__actions">
-                  <button
-                    className={`ui-button ui-button--compact${eventStatus.chatbot?.connected ? "" : " studio-primary"}`}
-                    disabled={!props.isOwner}
-                    onClick={() => void twitchEvents.connectChatbot()}
-                    title={props.isOwner ? `Authorize ${eventStatus.chatbot?.login ?? "the chatbot"} to send automated messages` : "Only the overlay owner can manage the chatbot connection"}
-                  >
-                    <Link2 size={13} /> {eventStatus.chatbot?.connected ? "Reconnect" : "Connect chatbot"}
-                  </button>
-                  {eventStatus.chatbot?.connected && props.isOwner && (
-                    <button
-                      className="ui-button ui-button--compact ui-button--quiet-danger"
-                      onClick={() => void twitchEvents.disconnectChatbot()}
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            {(eventStatus?.channels ?? []).map((status) => {
-              const channel = status.channel;
-              const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
-              const hasBanAccess = status.scopes.includes("channel:moderate");
-              const hasPredictionAccess = status.scopes.includes("channel:read:predictions");
-              return (
-                <div key={channel} className="connection-card">
-                  <div className="connection-card__head">
-                    <span className="connection-card__name">
-                      <strong style={{ textTransform: "capitalize" }}>{channel}</strong>
-                      {status?.connected &&
-                        status.displayName &&
-                        status.displayName.toLowerCase() !== channel.toLowerCase() && (
-                          <small>as {status.displayName}</small>
+                {!eventStatus?.configured && (
+                  <div className="connection-card connection-card--error">
+                    Event storage is unavailable. Check the server database configuration.
+                  </div>
+                )}
+                {eventStatus?.configured && (
+                  <div className="connection-card">
+                    <div className="connection-card__head">
+                      <span className="connection-card__name">
+                        <strong>Chatbot</strong>
+                        {eventStatus.chatbot?.connected && (
+                          <small>as {eventStatus.chatbot.displayName}</small>
                         )}
-                    </span>
-                    <span className={`status-pill ${status?.connected ? "status-pill--ok" : "status-pill--bad"}`}>
-                      <i aria-hidden="true" />
-                      {status?.connected ? "Connected" : "Not connected"}
-                    </span>
-                  </div>
-                  <p className="connection-card__hint">
-                    Event access for follows, subscriptions, Bits, channel
-                    points, Hype Trains, bans, timeouts, and predictions.
-                  </p>
-                  {status.connected && hasLegacyChatAccess && (
-                    <p className="connection-card__note">
-                      This connection still has the old chat-writing permission.
-                      Reconnect it to replace that token with event-only access.
-                    </p>
-                  )}
-                  {status.connected && !hasBanAccess && (
-                    <p className="connection-card__note">
-                      Reconnect this broadcaster once to enable ban and timeout events.
-                    </p>
-                  )}
-                  {status.connected && hasBanAccess && !hasPredictionAccess && (
-                    <p className="connection-card__note">
-                      Reconnect this broadcaster once to enable prediction events.
-                    </p>
-                  )}
-                  <div className="connection-card__actions">
-                    <button
-                      className={`ui-button ui-button--compact${status?.connected ? "" : " studio-primary"}`}
-                      onClick={() => void twitchEvents.connect(channel)}
-                    >
-                      <Link2 size={13} />{" "}
-                      {status?.connected ? "Reconnect" : "Connect"}
-                    </button>
-                    {status?.connected && (
-                      <button
-                        className="ui-button ui-button--compact ui-button--quiet-danger"
-                        onClick={() => void twitchEvents.disconnect(channel)}
+                      </span>
+                      <span
+                        className={`status-pill ${eventStatus.chatbot?.connected ? "status-pill--ok" : "status-pill--bad"}`}
                       >
-                        Disconnect
-                      </button>
-                    )}
-                  </div>
-                  <details className="connection-card__tests">
-                    <summary>Send a test event</summary>
-                    <div className="connection-card__chips">
-                      {(
-                        [
-                          "follow",
-                          "subscribe",
-                          "gift-subscribe",
-                          "bits",
-                          "raid",
-                          "channel-points",
-                          "ban",
-                          "timeout",
-                          "prediction",
-                        ] as const
-                      ).map((type) => (
-                        <button
-                          key={type}
-                          className="ui-button ui-button--compact"
-                          disabled={!status?.connected}
-                          title={`Run a local simulated ${type} event`}
-                          onClick={() => void twitchEvents.test(channel, type)}
-                        >
-                          {type}
-                        </button>
-                      ))}
+                        <i aria-hidden="true" />
+                        {eventStatus.chatbot?.connected ? "Connected" : "Not connected"}
+                      </span>
                     </div>
-                  </details>
-                </div>
-              );
-            })}
+                    <p className="connection-card__hint">
+                      Outgoing automation messages are sent by this account. Broadcaster tokens are
+                      never used to write chat.
+                    </p>
+                    <div className="connection-card__actions">
+                      <button
+                        className={`ui-button ui-button--compact${eventStatus.chatbot?.connected ? "" : " studio-primary"}`}
+                        disabled={!props.isOwner}
+                        onClick={() => void twitchEvents.connectChatbot()}
+                        title={
+                          props.isOwner
+                            ? `Authorize ${eventStatus.chatbot?.login ?? "the chatbot"} to send automated messages`
+                            : "Only the overlay owner can manage the chatbot connection"
+                        }
+                      >
+                        <Link2 size={13} />{" "}
+                        {eventStatus.chatbot?.connected ? "Reconnect" : "Connect chatbot"}
+                      </button>
+                      {eventStatus.chatbot?.connected && props.isOwner && (
+                        <button
+                          className="ui-button ui-button--compact ui-button--quiet-danger"
+                          onClick={() => void twitchEvents.disconnectChatbot()}
+                        >
+                          Disconnect
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {(eventStatus?.channels ?? []).map((status) => {
+                  const channel = status.channel;
+                  const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
+                  const hasBanAccess = status.scopes.includes("channel:moderate");
+                  const hasPredictionAccess = status.scopes.includes("channel:read:predictions");
+                  return (
+                    <div key={channel} className="connection-card">
+                      <div className="connection-card__head">
+                        <span className="connection-card__name">
+                          <strong style={{ textTransform: "capitalize" }}>{channel}</strong>
+                          {status?.connected &&
+                            status.displayName &&
+                            status.displayName.toLowerCase() !== channel.toLowerCase() && (
+                              <small>as {status.displayName}</small>
+                            )}
+                        </span>
+                        <span
+                          className={`status-pill ${status?.connected ? "status-pill--ok" : "status-pill--bad"}`}
+                        >
+                          <i aria-hidden="true" />
+                          {status?.connected ? "Connected" : "Not connected"}
+                        </span>
+                      </div>
+                      <p className="connection-card__hint">
+                        Event access for follows, subscriptions, Bits, channel points, Hype Trains,
+                        bans, timeouts, and predictions.
+                      </p>
+                      {status.connected && hasLegacyChatAccess && (
+                        <p className="connection-card__note">
+                          This connection still has the old chat-writing permission. Reconnect it to
+                          replace that token with event-only access.
+                        </p>
+                      )}
+                      {status.connected && !hasBanAccess && (
+                        <p className="connection-card__note">
+                          Reconnect this broadcaster once to enable ban and timeout events.
+                        </p>
+                      )}
+                      {status.connected && hasBanAccess && !hasPredictionAccess && (
+                        <p className="connection-card__note">
+                          Reconnect this broadcaster once to enable prediction events.
+                        </p>
+                      )}
+                      <div className="connection-card__actions">
+                        <button
+                          className={`ui-button ui-button--compact${status?.connected ? "" : " studio-primary"}`}
+                          onClick={() => void twitchEvents.connect(channel)}
+                        >
+                          <Link2 size={13} /> {status?.connected ? "Reconnect" : "Connect"}
+                        </button>
+                        {status?.connected && (
+                          <button
+                            className="ui-button ui-button--compact ui-button--quiet-danger"
+                            onClick={() => void twitchEvents.disconnect(channel)}
+                          >
+                            Disconnect
+                          </button>
+                        )}
+                      </div>
+                      <details className="connection-card__tests">
+                        <summary>Send a test event</summary>
+                        <div className="connection-card__chips">
+                          {(
+                            [
+                              "follow",
+                              "subscribe",
+                              "gift-subscribe",
+                              "bits",
+                              "raid",
+                              "channel-points",
+                              "ban",
+                              "timeout",
+                              "prediction",
+                            ] as const
+                          ).map((type) => (
+                            <button
+                              key={type}
+                              className="ui-button ui-button--compact"
+                              disabled={!status?.connected}
+                              title={`Run a local simulated ${type} event`}
+                              onClick={() => void twitchEvents.test(channel, type)}
+                            >
+                              {type}
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {!builderVisible && (
@@ -1014,675 +1002,637 @@ export function StudioPanel(props: StudioPanelProps) {
               </button>
             )}
             {builderVisible && (
-            <div className="command-builder">
-            <div className="command-builder__bar">
-              <strong>
-                {editingTriggerId ? "Edit automation" : "New automation"}
-              </strong>
-              {hasTriggersForTab && (
-                <button
-                  type="button"
-                  className="ui-icon-button ui-button--compact ui-icon-button--ghost"
-                  onClick={closeBuilder}
-                  title="Close the builder and discard this draft"
-                  aria-label="Close builder"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <p className="command-builder__summary" aria-label="Automation workflow">
-              <b>When</b>{" "}
-              {isEvent
-                ? "a Twitch event"
-                : triggerMatch.trim() || "a chat command"}
-              {" "}<ArrowRight size={12} aria-hidden="true" /> <b>do</b>{" "}
-              {triggerActionLabel(triggerAction).toLowerCase()}
-              {chainedSteps.length > 0 && ` + ${chainedSteps.length} more`}
-            </p>
-            <div className="command-builder-card">
-              <header>
-                <b>1</b>
-                <span>
-                  <strong>When this happens</strong>
-                  <small>
-                    {isEvent
-                      ? "Choose the Twitch event that starts the workflow."
-                      : "Choose the public chat command that starts the workflow."}
-                  </small>
-                </span>
-              </header>
-            <Segmented
-              label="What starts this automation"
-              value={kind}
-              onChange={setKind}
-              options={[
-                { value: "chat", label: "Chat command" },
-                { value: "event", label: "Twitch event" },
-              ]}
-            />
-            <input
-              style={fieldStyle}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={
-                isEvent ? "Event action name" : "Command name"
-              }
-              maxLength={60}
-            />
-            {isEvent && (
-              <>
-                <select
-                  style={fieldStyle}
-                  value={triggerEvent}
-                  onChange={(e) =>
-                    setTriggerEvent(
-                      e.target.value as Exclude<
-                        TriggerEventType,
-                        "chat-command"
-                      >,
-                    )
-                  }
-                >
-                  <option value="follow">New follow</option>
-                  <option value="subscribe">
-                    Subscription or resubscription
-                  </option>
-                  <option value="gift-subscribe">Gift subscriptions</option>
-                  <option value="raid">Incoming raid</option>
-                  <option value="bits">Bits cheered</option>
-                  <option value="channel-points">
-                    Channel point redemption
-                  </option>
-                  <option value="ban">Permanent ban</option>
-                  <option value="timeout">Timeout</option>
-                  <option value="prediction">New prediction started</option>
-                </select>
-                <select
-                  style={fieldStyle}
-                  value={triggerChannel}
-                  onChange={(e) => setTriggerChannel(e.target.value)}
-                  title="Limit this trigger to one connected broadcaster"
-                >
-                  <option value="">Any connected channel</option>
-                  {(eventStatus?.channels ?? []).map((item) => (
-                    <option key={item.channel} value={item.channel}>
-                      {item.displayName ?? item.channel}
-                    </option>
-                  ))}
-                </select>
-                {triggerEvent === "channel-points" && (
+              <div className="command-builder">
+                <div className="command-builder__bar">
+                  <strong>{editingTriggerId ? "Edit automation" : "New automation"}</strong>
+                  {hasTriggersForTab && (
+                    <button
+                      type="button"
+                      className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+                      onClick={closeBuilder}
+                      title="Close the builder and discard this draft"
+                      aria-label="Close builder"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <p className="command-builder__summary" aria-label="Automation workflow">
+                  <b>When</b> {isEvent ? "a Twitch event" : triggerMatch.trim() || "a chat command"}{" "}
+                  <ArrowRight size={12} aria-hidden="true" /> <b>do</b>{" "}
+                  {triggerActionLabel(triggerAction).toLowerCase()}
+                  {chainedSteps.length > 0 && ` + ${chainedSteps.length} more`}
+                </p>
+                <div className="command-builder-card">
+                  <header>
+                    <b>1</b>
+                    <span>
+                      <strong>When this happens</strong>
+                      <small>
+                        {isEvent
+                          ? "Choose the Twitch event that starts the workflow."
+                          : "Choose the public chat command that starts the workflow."}
+                      </small>
+                    </span>
+                  </header>
+                  <Segmented
+                    label="What starts this automation"
+                    value={kind}
+                    onChange={setKind}
+                    options={[
+                      { value: "chat", label: "Chat command" },
+                      { value: "event", label: "Twitch event" },
+                    ]}
+                  />
                   <input
                     style={fieldStyle}
-                    value={triggerMatch}
-                    onChange={(e) => setTriggerMatch(e.target.value)}
-                    placeholder="Reward title (leave empty for any reward)"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={isEvent ? "Event action name" : "Command name"}
+                    maxLength={60}
                   />
-                )}
-                {["subscribe", "gift-subscribe", "raid", "bits"].includes(
-                  triggerEvent,
-                ) && (
-                  <label className="command-timing">
+                  {isEvent && (
+                    <>
+                      <select
+                        style={fieldStyle}
+                        value={triggerEvent}
+                        onChange={(e) =>
+                          setTriggerEvent(
+                            e.target.value as Exclude<TriggerEventType, "chat-command">,
+                          )
+                        }
+                      >
+                        <option value="follow">New follow</option>
+                        <option value="subscribe">Subscription or resubscription</option>
+                        <option value="gift-subscribe">Gift subscriptions</option>
+                        <option value="raid">Incoming raid</option>
+                        <option value="bits">Bits cheered</option>
+                        <option value="channel-points">Channel point redemption</option>
+                        <option value="ban">Permanent ban</option>
+                        <option value="timeout">Timeout</option>
+                        <option value="prediction">New prediction started</option>
+                      </select>
+                      <select
+                        style={fieldStyle}
+                        value={triggerChannel}
+                        onChange={(e) => setTriggerChannel(e.target.value)}
+                        title="Limit this trigger to one connected broadcaster"
+                      >
+                        <option value="">Any connected channel</option>
+                        {(eventStatus?.channels ?? []).map((item) => (
+                          <option key={item.channel} value={item.channel}>
+                            {item.displayName ?? item.channel}
+                          </option>
+                        ))}
+                      </select>
+                      {triggerEvent === "channel-points" && (
+                        <input
+                          style={fieldStyle}
+                          value={triggerMatch}
+                          onChange={(e) => setTriggerMatch(e.target.value)}
+                          placeholder="Reward title (leave empty for any reward)"
+                        />
+                      )}
+                      {["subscribe", "gift-subscribe", "raid", "bits"].includes(triggerEvent) && (
+                        <label className="command-timing">
+                          <span>
+                            {triggerEvent === "subscribe"
+                              ? "Minimum months"
+                              : triggerEvent === "gift-subscribe"
+                                ? "Minimum gifts"
+                                : triggerEvent === "raid"
+                                  ? "Minimum raiders"
+                                  : "Minimum Bits"}
+                          </span>
+                          <input
+                            style={fieldStyle}
+                            type="number"
+                            min="1"
+                            value={triggerMinimum}
+                            onChange={(e) => setTriggerMinimum(Math.max(1, Number(e.target.value)))}
+                          />
+                        </label>
+                      )}
+                    </>
+                  )}
+                  {!isEvent && (
+                    <input
+                      style={fieldStyle}
+                      value={triggerMatch}
+                      onChange={(e) => setTriggerMatch(e.target.value)}
+                      placeholder="Chat command, for example <fox"
+                    />
+                  )}
+                </div>
+                <div className="command-builder-connector" aria-hidden="true">
+                  <span />
+                  <ArrowRight size={12} />
+                </div>
+                <div className="command-builder-card">
+                  <header>
+                    <b>2</b>
                     <span>
-                      {triggerEvent === "subscribe"
-                        ? "Minimum months"
-                        : triggerEvent === "gift-subscribe"
-                          ? "Minimum gifts"
-                          : triggerEvent === "raid"
-                            ? "Minimum raiders"
-                            : "Minimum Bits"}
+                      <strong>Do this</strong>
+                      <small>Choose one action, then optionally chain more.</small>
                     </span>
+                  </header>
+                  <select
+                    style={fieldStyle}
+                    value={triggerAction}
+                    onChange={(e) => {
+                      setTriggerAction(e.target.value as OverlayTrigger["action"]);
+                      setTargetId("");
+                    }}
+                  >
+                    {triggerActionOptions
+                      .filter(
+                        (option) => ttsEnabled || option.value !== "tts" || triggerAction === "tts",
+                      )
+                      .map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                  </select>
+                  {!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) && (
+                    <select
+                      style={fieldStyle}
+                      value={targetId}
+                      onChange={(e) => setTargetId(e.target.value)}
+                    >
+                      <option value="">Choose target…</option>
+                      {(triggerAction === "play-sound"
+                        ? props.studio.sounds
+                        : triggerAction === "play-media"
+                          ? props.elements.filter(
+                              (element) => element.type === "video" || element.type === "audio",
+                            )
+                          : ["show-temporary", "fly-across"].includes(triggerAction)
+                            ? props.elements.filter((element) =>
+                                ["image", "gif", "video"].includes(element.type),
+                              )
+                            : props.elements
+                      ).map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {"name" in item
+                            ? item.name
+                            : item.type === "text"
+                              ? `Text · ${item.id.slice(0, 6)}`
+                              : `${item.displayName || getFileLabel(item.src) || item.type} · ${item.type}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {targetId && (selectedTargetElement || selectedTargetSound) && (
+                    <div className="trigger-target-summary">
+                      {selectedTargetElement &&
+                      ["image", "gif"].includes(selectedTargetElement.type) ? (
+                        <img src={selectedTargetElement.src} alt="" />
+                      ) : (
+                        <span className="trigger-target-summary__icon">
+                          {selectedTargetSound ? <AudioLines size={15} /> : <Play size={15} />}
+                        </span>
+                      )}
+                      <div>
+                        <strong>
+                          {selectedTargetSound?.name ||
+                            selectedTargetElement?.displayName ||
+                            (selectedTargetElement
+                              ? getFileLabel(selectedTargetElement.src)
+                              : "Selected target")}
+                        </strong>
+                        <span>
+                          {selectedTargetSound
+                            ? "Soundboard clip"
+                            : `${selectedTargetElement?.type} layer · ${selectedTargetElement?.visible ? "visible" : "hidden on overlay"}`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {["send-chat", "tts"].includes(triggerAction) && (
+                    <div className="chat-message-editor">
+                      <label>
+                        <span>
+                          {triggerAction === "tts"
+                            ? "TTS prompt or token · {message} inserts viewer input"
+                            : "Chat message"}
+                        </span>
+                        <textarea
+                          style={{
+                            ...fieldStyle,
+                            height: 72,
+                            paddingTop: 8,
+                            resize: "vertical",
+                          }}
+                          maxLength={triggerAction === "tts" ? 6000 : 500}
+                          value={chatMessage}
+                          onChange={(e) => setChatMessage(e.target.value)}
+                          placeholder={
+                            triggerAction === "tts"
+                              ? '((a warm voice says "{message}" with echo;6s))'
+                              : "Thanks {user} for the {bits} Bits!"
+                          }
+                          title="Message sent by the connected chatbot account. Event variables in braces are replaced automatically."
+                        />
+                      </label>
+                      <div
+                        className="chat-variable-guide"
+                        aria-label="Available chat message variables"
+                      >
+                        <strong>Variables</strong>
+                        {triggerAction === "tts" && (
+                          <code title="Viewer text after the chat command">{"{message}"}</code>
+                        )}
+                        <code title="Viewer or broadcaster who caused the event">{"{user}"}</code>
+                        <code title="Total subscription months">{"{months}"}</code>
+                        <code title="Number of incoming raid viewers">{"{viewers}"}</code>
+                        <code title="Number of Bits cheered">{"{bits}"}</code>
+                        <code title="Channel point reward title">{"{reward}"}</code>
+                        <code title="Channel receiving the event">{"{channel}"}</code>
+                        <code title="Moderator who issued the ban or timeout">{"{moderator}"}</code>
+                        <code title="Moderation reason">{"{reason}"}</code>
+                        <code title="Permanent or timeout duration">{"{duration}"}</code>
+                        <code title="Either ban or timeout">{"{banType}"}</code>
+                        <code title="Title of the prediction that started">{"{title}"}</code>
+                      </div>
+                      {triggerAction === "tts" && (
+                        <>
+                          <label>
+                            <span>Chat message if TTS fails (optional)</span>
+                            <textarea
+                              style={{
+                                ...fieldStyle,
+                                height: 58,
+                                paddingTop: 8,
+                                resize: "vertical",
+                              }}
+                              maxLength={500}
+                              value={ttsErrorMessage}
+                              onChange={(event) => setTtsErrorMessage(event.target.value)}
+                              placeholder="Sorry {user}, that TTS could not be played."
+                            />
+                          </label>
+                          <p className="command-cost-warning">
+                            New prompts spend OpenAI and ElevenLabs credits. Saved (TTS:…) tokens
+                            replay without generation cost; restrict dynamic chat TTS to trusted
+                            roles and a meaningful cooldown. Failed TTS can notify chat through the
+                            connected chatbot.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {["play-media", "show-temporary"].includes(triggerAction) && (
+                    <label
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 190px",
+                        alignItems: "center",
+                        gap: 8,
+                        color: "var(--text-secondary)",
+                        fontSize: 11,
+                      }}
+                    >
+                      Position while active
+                      <select
+                        style={fieldStyle}
+                        value={triggerPlacement}
+                        onChange={(event) =>
+                          setTriggerPlacement(event.target.value as TriggerPlacement)
+                        }
+                      >
+                        <option value="current">Keep position</option>
+                        <option value="random">Random position</option>
+                        <option value="fit">Fit inside stream</option>
+                        <option value="fill">Fill stream</option>
+                        <option value="top-left">Top left</option>
+                        <option value="top-center">Top center</option>
+                        <option value="top-right">Top right</option>
+                        <option value="center-left">Center left</option>
+                        <option value="center">Center</option>
+                        <option value="center-right">Center right</option>
+                        <option value="bottom-left">Bottom left</option>
+                        <option value="bottom-center">Bottom center</option>
+                        <option value="bottom-right">Bottom right</option>
+                      </select>
+                    </label>
+                  )}
+                  {triggerAction === "fly-across" && (
+                    <label
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 190px",
+                        alignItems: "center",
+                        gap: 8,
+                        color: "var(--text-secondary)",
+                        fontSize: 11,
+                      }}
+                    >
+                      Flight path
+                      <select
+                        style={fieldStyle}
+                        value={flyDirection}
+                        onChange={(event) => setFlyDirection(event.target.value as FlyDirection)}
+                      >
+                        <option value="left-to-right-top">Left → right · top</option>
+                        <option value="left-to-right-center">Left → right · center</option>
+                        <option value="left-to-right-bottom">Left → right · bottom</option>
+                        <option value="right-to-left-top">Right → left · top</option>
+                        <option value="right-to-left-center">Right → left · center</option>
+                        <option value="right-to-left-bottom">Right → left · bottom</option>
+                        <option value="top-to-bottom-left">Top → bottom · left</option>
+                        <option value="top-to-bottom-center">Top → bottom · center</option>
+                        <option value="top-to-bottom-right">Top → bottom · right</option>
+                        <option value="bottom-to-top-left">Bottom → top · left</option>
+                        <option value="bottom-to-top-center">Bottom → top · center</option>
+                        <option value="bottom-to-top-right">Bottom → top · right</option>
+                      </select>
+                    </label>
+                  )}
+                  {["show-temporary", "fly-across"].includes(triggerAction) && (
+                    <label
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 90px",
+                        alignItems: "center",
+                        gap: 8,
+                        color: "var(--text-secondary)",
+                        fontSize: 11,
+                      }}
+                    >
+                      {triggerAction === "fly-across"
+                        ? "Flight duration (seconds)"
+                        : "Visible duration (seconds)"}
+                      <input
+                        style={fieldStyle}
+                        type="number"
+                        min="1"
+                        max="3600"
+                        value={duration}
+                        onChange={(event) =>
+                          setDuration(Math.min(3600, Math.max(1, Number(event.target.value))))
+                        }
+                      />
+                    </label>
+                  )}
+                  {triggerAction === "fly-across" && (
+                    <button
+                      type="button"
+                      className="ui-button ui-button--compact"
+                      disabled={!targetId && !flyRunning}
+                      onClick={() => {
+                        if (flyRunning) {
+                          // Do not wait for the browser's cancel event; the button should flip right away.
+                          const stopFlight = flyStopRef.current;
+                          flyStopRef.current = null;
+                          setFlyRunning(false);
+                          stopFlight?.();
+                          return;
+                        }
+                        const stop = targetId
+                          ? props.onPreviewFly(targetId, flyDirection, duration, () => {
+                              if (flyStopRef.current !== stop) return;
+                              flyStopRef.current = null;
+                              setFlyRunning(false);
+                            })
+                          : null;
+                        if (!stop) {
+                          toast.error("Choose an available media element to preview");
+                          return;
+                        }
+                        flyStopRef.current = stop;
+                        setFlyRunning(true);
+                        toast.info("Playing dashboard-only flight preview");
+                      }}
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--line-strong)",
+                        background: "var(--bg-control)",
+                        color: "var(--text-primary)",
+                        cursor: targetId ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {flyRunning ? <Square size={11} fill="currentColor" /> : <Play size={12} />}
+                      {flyRunning ? "Stop preview" : "Preview flight"}
+                      <ActionScopeBadge scope="dashboard" />
+                    </button>
+                  )}
+                  {!currentStepIsFirst && (
+                    <label className="command-timing">
+                      <span>Start this action</span>
+                      <select
+                        style={fieldStyle}
+                        value={stepTiming}
+                        onChange={(event) =>
+                          setStepTiming(event.target.value as NonNullable<TriggerStep["timing"]>)
+                        }
+                      >
+                        <option value="immediate">At the same time</option>
+                        <option value="delay">After a delay</option>
+                        <option value="after-previous">After previous finishes</option>
+                      </select>
+                    </label>
+                  )}
+                  {!currentStepIsFirst && stepTiming === "delay" && (
+                    <label className="command-timing">
+                      <span>Delay (seconds)</span>
+                      <input
+                        style={fieldStyle}
+                        type="number"
+                        min="0"
+                        max="3600"
+                        step="0.5"
+                        value={stepDelay}
+                        onChange={(event) =>
+                          setStepDelay(Math.min(3600, Math.max(0, Number(event.target.value))))
+                        }
+                      />
+                    </label>
+                  )}
+                  {chainedSteps.length > 0 && (
+                    <div className="command-chain" aria-label="Command action chain">
+                      <strong>Action chain</strong>
+                      {chainedSteps.map((step, index) => (
+                        <div className="command-chain__step" key={`${index}-${step.action}`}>
+                          <span className="command-chain__description">
+                            <b>{index + 1}</b>
+                            <span>
+                              <strong>{triggerActionLabel(step.action)}</strong>
+                              <small>
+                                {triggerTimingLabel(step, index)}
+                                {step.targetId
+                                  ? ` · ${props.studio.sounds.find((sound) => sound.id === step.targetId)?.name || props.elements.find((element) => element.id === step.targetId)?.displayName || "media target"}`
+                                  : ""}
+                              </small>
+                            </span>
+                          </span>
+                          <div className="command-chain__actions">
+                            <button
+                              type="button"
+                              className="ui-icon-button"
+                              onClick={() => editChainedStep(step, index)}
+                              title={`Edit action ${index + 1}`}
+                              aria-label={`Edit action ${index + 1}`}
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="ui-icon-button command-chain__delete"
+                              onClick={() => {
+                                setChainedSteps((steps) =>
+                                  steps.filter((_, stepIndex) => stepIndex !== index),
+                                );
+                                if (editingChainIndex === index) {
+                                  const pendingStep = pendingStepBeforeChainEdit.current;
+                                  pendingStepBeforeChainEdit.current = null;
+                                  if (pendingStep) loadTriggerStep(pendingStep);
+                                  else resetTriggerStep();
+                                  setEditingChainIndex(null);
+                                } else if (editingChainIndex !== null && editingChainIndex > index)
+                                  setEditingChainIndex(editingChainIndex - 1);
+                                toast.success("Action removed from command chain");
+                              }}
+                              title={`Remove action ${index + 1} from this command`}
+                              aria-label={`Remove action ${index + 1}`}
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <span className="command-chain__pending">
+                        {editingChainIndex !== null
+                          ? `Editing action ${editingChainIndex + 1}`
+                          : `${chainedSteps.length + 1}. ${triggerActionLabel(triggerAction)} (current)`}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="ui-button ui-button--compact command-chain__add"
+                    onClick={addChainedStep}
+                    disabled={
+                      (chainedSteps.length >= 9 && editingChainIndex === null) ||
+                      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
+                        !targetId) ||
+                      (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
+                    }
+                  >
+                    {editingChainIndex !== null ? <Save size={13} /> : <Plus size={13} />}
+                    {editingChainIndex !== null ? "Update action" : "Add another action"}
+                  </button>
+                </div>
+                <div className="command-builder-connector" aria-hidden="true">
+                  <span />
+                  <ArrowRight size={12} />
+                </div>
+                <div className="command-builder-card">
+                  <header>
+                    <b>3</b>
+                    <span>
+                      <strong>Control & save</strong>
+                      <small>Set access and cooldown, then make the workflow available.</small>
+                    </span>
+                  </header>
+                  {!isEvent && (
+                    <label
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 190px",
+                        alignItems: "center",
+                        gap: 8,
+                        color: "var(--text-secondary)",
+                        fontSize: 11,
+                      }}
+                    >
+                      Who can use it
+                      <select
+                        style={fieldStyle}
+                        value={permission}
+                        onChange={(event) => setPermission(event.target.value as ChatPermission)}
+                      >
+                        <option value="everyone">Everyone</option>
+                        <option value="vip">VIPs, moderators & streamer</option>
+                        <option value="moderator">Moderators & streamer</option>
+                        <option value="streamer">Streamer only</option>
+                      </select>
+                    </label>
+                  )}
+                  {!isEvent &&
+                    permission === "everyone" &&
+                    (triggerAction === "tts" ||
+                      chainedSteps.some((step) => step.action === "tts")) && (
+                      <p className="command-cost-warning">
+                        Everyone can run this paid TTS action. Prefer a saved (TTS:…) token, or
+                        restrict access and add a cooldown before saving.
+                      </p>
+                    )}
+                  <label
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 90px",
+                      alignItems: "center",
+                      gap: 8,
+                      color: "var(--text-secondary)",
+                      fontSize: 11,
+                    }}
+                  >
+                    Cooldown (seconds)
                     <input
                       style={fieldStyle}
                       type="number"
-                      min="1"
-                      value={triggerMinimum}
-                      onChange={(e) =>
-                        setTriggerMinimum(Math.max(1, Number(e.target.value)))
-                      }
+                      min="0"
+                      max="86400"
+                      value={cooldown}
+                      onChange={(e) => setCooldown(Math.max(0, Number(e.target.value)))}
                     />
                   </label>
-                )}
-              </>
-            )}
-            {!isEvent && (
-              <input
-                style={fieldStyle}
-                value={triggerMatch}
-                onChange={(e) => setTriggerMatch(e.target.value)}
-                placeholder="Chat command, for example <fox"
-              />
-            )}
-            </div>
-            <div className="command-builder-connector" aria-hidden="true">
-              <span />
-              <ArrowRight size={12} />
-            </div>
-            <div className="command-builder-card">
-              <header>
-                <b>2</b>
-                <span>
-                  <strong>Do this</strong>
-                  <small>Choose one action, then optionally chain more.</small>
-                </span>
-              </header>
-            <select
-              style={fieldStyle}
-              value={triggerAction}
-              onChange={(e) => {
-                setTriggerAction(e.target.value as OverlayTrigger["action"]);
-                setTargetId("");
-              }}
-            >
-              {triggerActionOptions
-                .filter((option) => ttsEnabled || option.value !== "tts" || triggerAction === "tts")
-                .map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) && (
-              <select
-                style={fieldStyle}
-                value={targetId}
-                onChange={(e) => setTargetId(e.target.value)}
-              >
-                <option value="">Choose target…</option>
-                {(triggerAction === "play-sound"
-                  ? props.studio.sounds
-                  : triggerAction === "play-media"
-                    ? props.elements.filter(
-                        (element) =>
-                          element.type === "video" || element.type === "audio",
-                      )
-                    : ["show-temporary", "fly-across"].includes(triggerAction)
-                      ? props.elements.filter((element) =>
-                          ["image", "gif", "video"].includes(element.type),
-                        )
-                      : props.elements
-                ).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {"name" in item
-                      ? item.name
-                      : item.type === "text"
-                        ? `Text · ${item.id.slice(0, 6)}`
-                        : `${item.displayName || getFileLabel(item.src) || item.type} · ${item.type}`}
-                  </option>
-                ))}
-              </select>
-            )}
-            {targetId && (selectedTargetElement || selectedTargetSound) && (
-              <div className="trigger-target-summary">
-                {selectedTargetElement && ["image", "gif"].includes(selectedTargetElement.type) ? (
-                  <img src={selectedTargetElement.src} alt="" />
-                ) : (
-                  <span className="trigger-target-summary__icon">
-                    {selectedTargetSound ? <AudioLines size={15} /> : <Play size={15} />}
-                  </span>
-                )}
-                <div>
-                  <strong>
-                    {selectedTargetSound?.name || selectedTargetElement?.displayName ||
-                      (selectedTargetElement ? getFileLabel(selectedTargetElement.src) : "Selected target")}
-                  </strong>
-                  <span>
-                    {selectedTargetSound
-                      ? "Soundboard clip"
-                      : `${selectedTargetElement?.type} layer · ${selectedTargetElement?.visible ? "visible" : "hidden on overlay"}`}
-                  </span>
-                </div>
-              </div>
-            )}
-            {["send-chat", "tts"].includes(triggerAction) && (
-              <div className="chat-message-editor">
-                <label>
-                  <span>{triggerAction === "tts" ? "TTS prompt or token · {message} inserts viewer input" : "Chat message"}</span>
-                  <textarea
-                    style={{
-                      ...fieldStyle,
-                      height: 72,
-                      paddingTop: 8,
-                      resize: "vertical",
-                    }}
-                    maxLength={triggerAction === "tts" ? 6000 : 500}
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder={triggerAction === "tts" ? '((a warm voice says "{message}" with echo;6s))' : "Thanks {user} for the {bits} Bits!"}
-                    title="Message sent by the connected chatbot account. Event variables in braces are replaced automatically."
-                  />
-                </label>
-                <div
-                  className="chat-variable-guide"
-                  aria-label="Available chat message variables"
-                >
-                  <strong>Variables</strong>
-                  {triggerAction === "tts" && <code title="Viewer text after the chat command">{"{message}"}</code>}
-                  <code title="Viewer or broadcaster who caused the event">
-                    {"{user}"}
-                  </code>
-                  <code title="Total subscription months">{"{months}"}</code>
-                  <code title="Number of incoming raid viewers">
-                    {"{viewers}"}
-                  </code>
-                  <code title="Number of Bits cheered">{"{bits}"}</code>
-                  <code title="Channel point reward title">{"{reward}"}</code>
-                  <code title="Channel receiving the event">{"{channel}"}</code>
-                  <code title="Moderator who issued the ban or timeout">{"{moderator}"}</code>
-                  <code title="Moderation reason">{"{reason}"}</code>
-                  <code title="Permanent or timeout duration">{"{duration}"}</code>
-                  <code title="Either ban or timeout">{"{banType}"}</code>
-                  <code title="Title of the prediction that started">{"{title}"}</code>
-                </div>
-                {triggerAction === "tts" && (
-                  <>
-                    <label>
-                      <span>Chat message if TTS fails (optional)</span>
-                      <textarea
-                        style={{ ...fieldStyle, height: 58, paddingTop: 8, resize: "vertical" }}
-                        maxLength={500}
-                        value={ttsErrorMessage}
-                        onChange={(event) => setTtsErrorMessage(event.target.value)}
-                        placeholder="Sorry {user}, that TTS could not be played."
-                      />
-                    </label>
-                    <p className="command-cost-warning">
-                      New prompts spend OpenAI and ElevenLabs credits. Saved (TTS:…) tokens replay without generation cost; restrict dynamic chat TTS to trusted roles and a meaningful cooldown. Failed TTS can notify chat through the connected chatbot.
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-            {["play-media", "show-temporary"].includes(triggerAction) && (
-              <label
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 190px",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "var(--text-secondary)",
-                  fontSize: 11,
-                }}
-              >
-                Position while active
-                <select
-                  style={fieldStyle}
-                  value={triggerPlacement}
-                  onChange={(event) =>
-                    setTriggerPlacement(event.target.value as TriggerPlacement)
-                  }
-                >
-                  <option value="current">Keep position</option>
-                  <option value="random">Random position</option>
-                  <option value="fit">Fit inside stream</option>
-                  <option value="fill">Fill stream</option>
-                  <option value="top-left">Top left</option>
-                  <option value="top-center">Top center</option>
-                  <option value="top-right">Top right</option>
-                  <option value="center-left">Center left</option>
-                  <option value="center">Center</option>
-                  <option value="center-right">Center right</option>
-                  <option value="bottom-left">Bottom left</option>
-                  <option value="bottom-center">Bottom center</option>
-                  <option value="bottom-right">Bottom right</option>
-                </select>
-              </label>
-            )}
-            {triggerAction === "fly-across" && (
-              <label
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 190px",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "var(--text-secondary)",
-                  fontSize: 11,
-                }}
-              >
-                Flight path
-                <select
-                  style={fieldStyle}
-                  value={flyDirection}
-                  onChange={(event) =>
-                    setFlyDirection(event.target.value as FlyDirection)
-                  }
-                >
-                  <option value="left-to-right-top">Left → right · top</option>
-                  <option value="left-to-right-center">
-                    Left → right · center
-                  </option>
-                  <option value="left-to-right-bottom">
-                    Left → right · bottom
-                  </option>
-                  <option value="right-to-left-top">Right → left · top</option>
-                  <option value="right-to-left-center">
-                    Right → left · center
-                  </option>
-                  <option value="right-to-left-bottom">
-                    Right → left · bottom
-                  </option>
-                  <option value="top-to-bottom-left">
-                    Top → bottom · left
-                  </option>
-                  <option value="top-to-bottom-center">
-                    Top → bottom · center
-                  </option>
-                  <option value="top-to-bottom-right">
-                    Top → bottom · right
-                  </option>
-                  <option value="bottom-to-top-left">
-                    Bottom → top · left
-                  </option>
-                  <option value="bottom-to-top-center">
-                    Bottom → top · center
-                  </option>
-                  <option value="bottom-to-top-right">
-                    Bottom → top · right
-                  </option>
-                </select>
-              </label>
-            )}
-            {["show-temporary", "fly-across"].includes(triggerAction) && (
-              <label
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 90px",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "var(--text-secondary)",
-                  fontSize: 11,
-                }}
-              >
-                {triggerAction === "fly-across"
-                  ? "Flight duration (seconds)"
-                  : "Visible duration (seconds)"}
-                <input
-                  style={fieldStyle}
-                  type="number"
-                  min="1"
-                  max="3600"
-                  value={duration}
-                  onChange={(event) =>
-                    setDuration(
-                      Math.min(3600, Math.max(1, Number(event.target.value))),
-                    )
-                  }
-                />
-              </label>
-            )}
-            {triggerAction === "fly-across" && (
-              <button
-                type="button"
-                className="ui-button ui-button--compact"
-                disabled={!targetId && !flyRunning}
-                onClick={() => {
-                  if (flyRunning) {
-                    // Do not wait for the browser's cancel event; the button should flip right away.
-                    const stopFlight = flyStopRef.current;
-                    flyStopRef.current = null;
-                    setFlyRunning(false);
-                    stopFlight?.();
-                    return;
-                  }
-                  const stop = targetId
-                    ? props.onPreviewFly(targetId, flyDirection, duration, () => {
-                        if (flyStopRef.current !== stop) return;
-                        flyStopRef.current = null;
-                        setFlyRunning(false);
-                      })
-                    : null;
-                  if (!stop) {
-                    toast.error("Choose an available media element to preview");
-                    return;
-                  }
-                  flyStopRef.current = stop;
-                  setFlyRunning(true);
-                  toast.info("Playing dashboard-only flight preview");
-                }}
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--line-strong)",
-                  background: "var(--bg-control)",
-                  color: "var(--text-primary)",
-                  cursor: targetId ? "pointer" : "not-allowed",
-                }}
-              >
-                {flyRunning ? <Square size={11} fill="currentColor" /> : <Play size={12} />}
-                {flyRunning ? "Stop preview" : "Preview flight"}
-                <ActionScopeBadge scope="dashboard" />
-              </button>
-            )}
-            {!currentStepIsFirst && (
-              <label className="command-timing">
-                <span>Start this action</span>
-                <select
-                  style={fieldStyle}
-                  value={stepTiming}
-                  onChange={(event) =>
-                    setStepTiming(
-                      event.target.value as NonNullable<TriggerStep["timing"]>,
-                    )
-                  }
-                >
-                  <option value="immediate">At the same time</option>
-                  <option value="delay">After a delay</option>
-                  <option value="after-previous">
-                    After previous finishes
-                  </option>
-                </select>
-              </label>
-            )}
-            {!currentStepIsFirst && stepTiming === "delay" && (
-              <label className="command-timing">
-                <span>Delay (seconds)</span>
-                <input
-                  style={fieldStyle}
-                  type="number"
-                  min="0"
-                  max="3600"
-                  step="0.5"
-                  value={stepDelay}
-                  onChange={(event) =>
-                    setStepDelay(
-                      Math.min(3600, Math.max(0, Number(event.target.value))),
-                    )
-                  }
-                />
-              </label>
-            )}
-            {chainedSteps.length > 0 && (
-              <div className="command-chain" aria-label="Command action chain">
-                <strong>Action chain</strong>
-                {chainedSteps.map((step, index) => (
-                  <div
-                    className="command-chain__step"
-                    key={`${index}-${step.action}`}
+                  <button
+                    className="ui-button studio-primary"
+                    onClick={createTrigger}
+                    disabled={
+                      !name.trim() ||
+                      editingChainIndex !== null ||
+                      (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
+                        !targetId) ||
+                      (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
+                    }
                   >
-                    <span className="command-chain__description">
-                      <b>{index + 1}</b>
-                      <span>
-                        <strong>{triggerActionLabel(step.action)}</strong>
-                        <small>
-                          {triggerTimingLabel(step, index)}
-                          {step.targetId
-                            ? ` · ${props.studio.sounds.find((sound) => sound.id === step.targetId)?.name || props.elements.find((element) => element.id === step.targetId)?.displayName || "media target"}`
-                            : ""}
-                        </small>
-                      </span>
-                    </span>
-                    <div className="command-chain__actions">
-                      <button
-                        type="button"
-                        className="ui-icon-button"
-                        onClick={() => editChainedStep(step, index)}
-                        title={`Edit action ${index + 1}`}
-                        aria-label={`Edit action ${index + 1}`}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        className="ui-icon-button command-chain__delete"
-                        onClick={() => {
-                          setChainedSteps((steps) =>
-                            steps.filter((_, stepIndex) => stepIndex !== index),
-                          );
-                          if (editingChainIndex === index) {
-                            const pendingStep =
-                              pendingStepBeforeChainEdit.current;
-                            pendingStepBeforeChainEdit.current = null;
-                            if (pendingStep) loadTriggerStep(pendingStep);
-                            else resetTriggerStep();
-                            setEditingChainIndex(null);
-                          } else if (
-                            editingChainIndex !== null &&
-                            editingChainIndex > index
-                          )
-                            setEditingChainIndex(editingChainIndex - 1);
-                          toast.success("Action removed from command chain");
-                        }}
-                        title={`Remove action ${index + 1} from this command`}
-                        aria-label={`Remove action ${index + 1}`}
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <span className="command-chain__pending">
-                  {editingChainIndex !== null
-                    ? `Editing action ${editingChainIndex + 1}`
-                    : `${chainedSteps.length + 1}. ${triggerActionLabel(triggerAction)} (current)`}
-                </span>
+                    {editingTriggerId ? <Save size={14} /> : <Plus size={14} />}{" "}
+                    {editingTriggerId
+                      ? "Save changes"
+                      : isEvent
+                        ? "Add event action"
+                        : "Add command"}
+                  </button>
+                  {editingTriggerId && (
+                    <button className="ui-button" onClick={cancelTriggerEdit}>
+                      <X size={14} /> Cancel editing
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-            <button
-              type="button"
-              className="ui-button ui-button--compact command-chain__add"
-              onClick={addChainedStep}
-              disabled={
-                (chainedSteps.length >= 9 && editingChainIndex === null) ||
-                (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
-                  !targetId) ||
-                (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
-              }
-            >
-              {editingChainIndex !== null ? (
-                <Save size={13} />
-              ) : (
-                <Plus size={13} />
-              )}
-              {editingChainIndex !== null
-                ? "Update action"
-                : "Add another action"}
-            </button>
-            </div>
-            <div className="command-builder-connector" aria-hidden="true">
-              <span />
-              <ArrowRight size={12} />
-            </div>
-            <div className="command-builder-card">
-              <header>
-                <b>3</b>
-                <span>
-                  <strong>Control & save</strong>
-                  <small>
-                    Set access and cooldown, then make the workflow available.
-                  </small>
-                </span>
-              </header>
-            {!isEvent && (
-              <label
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 190px",
-                  alignItems: "center",
-                  gap: 8,
-                  color: "var(--text-secondary)",
-                  fontSize: 11,
-                }}
-              >
-                Who can use it
-                <select
-                  style={fieldStyle}
-                  value={permission}
-                  onChange={(event) =>
-                    setPermission(event.target.value as ChatPermission)
-                  }
-                >
-                  <option value="everyone">Everyone</option>
-                  <option value="vip">VIPs, moderators & streamer</option>
-                  <option value="moderator">Moderators & streamer</option>
-                  <option value="streamer">Streamer only</option>
-                </select>
-              </label>
-            )}
-            {!isEvent &&
-              permission === "everyone" &&
-              (triggerAction === "tts" || chainedSteps.some((step) => step.action === "tts")) && (
-                <p className="command-cost-warning">
-                  Everyone can run this paid TTS action. Prefer a saved (TTS:…) token, or restrict access and add a cooldown before saving.
-                </p>
-              )}
-            <label
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 90px",
-                alignItems: "center",
-                gap: 8,
-                color: "var(--text-secondary)",
-                fontSize: 11,
-              }}
-            >
-              Cooldown (seconds)
-              <input
-                style={fieldStyle}
-                type="number"
-                min="0"
-                max="86400"
-                value={cooldown}
-                onChange={(e) =>
-                  setCooldown(Math.max(0, Number(e.target.value)))
-                }
-              />
-            </label>
-            <button
-              className="ui-button studio-primary"
-              onClick={createTrigger}
-              disabled={
-                !name.trim() ||
-                editingChainIndex !== null ||
-                (!["refresh-overlay", "send-chat", "tts"].includes(triggerAction) &&
-                  !targetId) ||
-                (["send-chat", "tts"].includes(triggerAction) && !chatMessage.trim())
-              }
-            >
-              {editingTriggerId ? <Save size={14} /> : <Plus size={14} />}{" "}
-              {editingTriggerId
-                ? "Save changes"
-                : isEvent
-                  ? "Add event action"
-                  : "Add command"}
-            </button>
-            {editingTriggerId && (
-              <button className="ui-button" onClick={cancelTriggerEdit}>
-                <X size={14} /> Cancel editing
-              </button>
-            )}
-            </div>
-            </div>
             )}
             {hasTriggersForTab && (
               <Segmented
                 label="Filter automations"
                 value={filter}
                 onChange={setFilter}
-                options={([["all", "All", props.studio.triggers.length], ["chat", "Chat", chatCount], ["event", "Twitch", eventCount]] as const).map(
-                  ([value, label, count]) => ({
-                    value,
-                    label: <>{label} <span className="segmented__count">{count}</span></>,
-                  }),
-                )}
+                options={(
+                  [
+                    ["all", "All", props.studio.triggers.length],
+                    ["chat", "Chat", chatCount],
+                    ["event", "Twitch", eventCount],
+                  ] as const
+                ).map(([value, label, count]) => ({
+                  value,
+                  label: (
+                    <>
+                      {label} <span className="segmented__count">{count}</span>
+                    </>
+                  ),
+                }))}
               />
             )}
             {hasTriggersForTab && (
@@ -1709,33 +1659,36 @@ export function StudioPanel(props: StudioPanelProps) {
               </div>
             )}
             {visibleTriggers.map((item) => (
-                <Item
-                  key={item.id}
-                  name={item.name}
-                  leading={isChatTrigger(item) ? <MessageCircle size={15} /> : <BellRing size={15} />}
-                  detail={`${isChatTrigger(item) ? (item.match ?? "chat command") : (TRIGGER_EVENT_LABELS[item.event] ?? item.event)} → ${item.steps?.length ? `${item.steps.length} actions` : triggerActionLabel(item.action)}${item.minimum ? ` · min ${item.minimum}` : ""}`}
-                  onEdit={() => editTrigger(item)}
-                  onTest={() => void testTrigger(item)}
-                  onPrimary={() => {
-                    props.onSaveTrigger({ ...item, enabled: !item.enabled });
-                    toast.success(
-                      `Automation “${item.name}” ${item.enabled ? "disabled" : "enabled"}`,
-                    );
-                  }}
-                  primary={item.enabled ? "Active" : "Disabled"}
-                  active={item.enabled}
-                  onDelete={async () => {
-                    if (!await confirm({
+              <Item
+                key={item.id}
+                name={item.name}
+                leading={isChatTrigger(item) ? <MessageCircle size={15} /> : <BellRing size={15} />}
+                detail={`${isChatTrigger(item) ? (item.match ?? "chat command") : (TRIGGER_EVENT_LABELS[item.event] ?? item.event)} → ${item.steps?.length ? `${item.steps.length} actions` : triggerActionLabel(item.action)}${item.minimum ? ` · min ${item.minimum}` : ""}`}
+                onEdit={() => editTrigger(item)}
+                onTest={() => void testTrigger(item)}
+                onPrimary={() => {
+                  props.onSaveTrigger({ ...item, enabled: !item.enabled });
+                  toast.success(
+                    `Automation “${item.name}” ${item.enabled ? "disabled" : "enabled"}`,
+                  );
+                }}
+                primary={item.enabled ? "Active" : "Disabled"}
+                active={item.enabled}
+                onDelete={async () => {
+                  if (
+                    !(await confirm({
                       title: `Delete “${item.name}”?`,
                       message: "This permanently removes the saved command or event action.",
                       confirmLabel: "Delete automation",
                       danger: true,
-                    })) return;
-                    props.onDeleteTrigger(item.id);
-                    toast.success(`Automation “${item.name}” deleted`);
-                  }}
-                />
-              ))}
+                    }))
+                  )
+                    return;
+                  props.onDeleteTrigger(item.id);
+                  toast.success(`Automation “${item.name}” deleted`);
+                }}
+              />
+            ))}
           </Section>
         )}
         {tab === "emotes" && (
@@ -1764,9 +1717,7 @@ export function StudioPanel(props: StudioPanelProps) {
                     ...props.chatEmoteSettings,
                     enabled,
                   });
-                  toast.success(
-                    `Chat emotes ${enabled ? "enabled" : "disabled"}`,
-                  );
+                  toast.success(`Chat emotes ${enabled ? "enabled" : "disabled"}`);
                 }}
                 title="Enable or disable automatic 7TV and Twitch emotes from the currently monitored chat"
               />
@@ -1817,9 +1768,7 @@ export function StudioPanel(props: StudioPanelProps) {
                       ...props.chatEmoteSettings,
                       showNames: event.target.checked,
                     });
-                    toast.success(
-                      `Sender names ${event.target.checked ? "shown" : "hidden"}`,
-                    );
+                    toast.success(`Sender names ${event.target.checked ? "shown" : "hidden"}`);
                   }}
                 />
               </label>
@@ -1879,9 +1828,12 @@ export function StudioPanel(props: StudioPanelProps) {
                     const motion = event.target.value as ChatEmoteSettings["motion"];
                     props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, motion });
                     toast.success(
-                      motion === "parade" ? "Using the bottom parade"
-                        : motion === "corners" ? "Emotes will travel around the corners"
-                          : motion === "floor" ? "Using floor bounce physics"
+                      motion === "parade"
+                        ? "Using the bottom parade"
+                        : motion === "corners"
+                          ? "Emotes will travel around the corners"
+                          : motion === "floor"
+                            ? "Using floor bounce physics"
                             : "Using wall-to-wall bounce",
                     );
                   }}
@@ -1892,7 +1844,8 @@ export function StudioPanel(props: StudioPanelProps) {
                   <option value="walls">Wall bounce</option>
                 </select>
               </label>
-              {(props.chatEmoteSettings.motion === "parade" || props.chatEmoteSettings.motion === "corners") && (
+              {(props.chatEmoteSettings.motion === "parade" ||
+                props.chatEmoteSettings.motion === "corners") && (
                 <label className="chat-emote-setting chat-emote-setting--motion">
                   <span>Direction</span>
                   <select
@@ -1903,24 +1856,28 @@ export function StudioPanel(props: StudioPanelProps) {
                       props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, direction });
                       toast.success(`Emotes will travel ${direction}`);
                     }}
-                    title={props.chatEmoteSettings.motion === "parade"
-                      ? "Choose whether the parade travels left or right"
-                      : "Start left: bottom-left → top-left → top-right → bottom-right. Start right mirrors that route."}
+                    title={
+                      props.chatEmoteSettings.motion === "parade"
+                        ? "Choose whether the parade travels left or right"
+                        : "Start left: bottom-left → top-left → top-right → bottom-right. Start right mirrors that route."
+                    }
                   >
                     <option value="left">
-                      {props.chatEmoteSettings.motion === "corners" ? "Start right" : "Right to left"}
+                      {props.chatEmoteSettings.motion === "corners"
+                        ? "Start right"
+                        : "Right to left"}
                     </option>
                     <option value="right">
-                      {props.chatEmoteSettings.motion === "corners" ? "Start left" : "Left to right"}
+                      {props.chatEmoteSettings.motion === "corners"
+                        ? "Start left"
+                        : "Left to right"}
                     </option>
                   </select>
                 </label>
               )}
             </div>
             <div className="chat-emote-card">
-              <strong className="chat-emote-card__title">
-                Motion & limits
-              </strong>
+              <strong className="chat-emote-card__title">Motion & limits</strong>
               {(
                 [
                   ["Emote size", "size", 24, 100, 2, "px"],
@@ -1931,9 +1888,7 @@ export function StudioPanel(props: StudioPanelProps) {
                 ] as const
               )
                 .filter(
-                  ([, key]) =>
-                    key !== "gravity" ||
-                    props.chatEmoteSettings.motion === "floor",
+                  ([, key]) => key !== "gravity" || props.chatEmoteSettings.motion === "floor",
                 )
                 .map(([label, key, min, max, step, suffix]) => (
                   <SliderField
@@ -1951,12 +1906,10 @@ export function StudioPanel(props: StudioPanelProps) {
                 ))}
             </div>
             <div className="chat-emote-card">
-              <strong className="chat-emote-card__title">
-                Additional emotes
-              </strong>
+              <strong className="chat-emote-card__title">Additional emotes</strong>
               <span className="chat-emote-card__description">
-                The first emote in a message always appears. Later emotes only
-                appear when their exact 7TV name is listed here.
+                The first emote in a message always appears. Later emotes only appear when their
+                exact 7TV name is listed here.
               </span>
               <div className="chat-emote-blacklist__add">
                 <input
@@ -1989,7 +1942,10 @@ export function StudioPanel(props: StudioPanelProps) {
                     }
                     props.onChatEmoteSettingsChange({
                       ...props.chatEmoteSettings,
-                      additionalEmotes: [...props.chatEmoteSettings.additionalEmotes, additionalEmoteName],
+                      additionalEmotes: [
+                        ...props.chatEmoteSettings.additionalEmotes,
+                        additionalEmoteName,
+                      ],
                     });
                     toast.success(`${additionalEmoteName} can now appear after the first emote`);
                     setAdditionalEmoteName("");
@@ -2027,58 +1983,97 @@ export function StudioPanel(props: StudioPanelProps) {
               )}
             </div>
             <div className="chat-emote-card">
-              <strong className="chat-emote-card__title">
-                Blocked emotes
-              </strong>
+              <strong className="chat-emote-card__title">Blocked emotes</strong>
               <span className="chat-emote-card__description">
-                Block Twitch subscriber/global or 7TV emotes by name. Case-insensitive; overrides additional emotes. Applies to new messages.
+                Block Twitch subscriber/global or 7TV emotes by name. Case-insensitive; overrides
+                additional emotes. Applies to new messages.
               </span>
-              <form className="chat-emote-blacklist__add" onSubmit={(event) => {
-                event.preventDefault();
-                const name = blockedEmoteName.trim();
-                const current = props.chatEmoteSettings.blockedEmotes ?? [];
-                if (!/^\S{1,64}$/.test(name) || current.length >= 100 || current.some((item) => item.toLowerCase() === name.toLowerCase())) return;
-                props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, blockedEmotes: [...current, name] });
-                setBlockedEmoteName("");
-                toast.success(`${name} blocked from chat emotes`);
-              }}>
-                <input style={fieldStyle} value={blockedEmoteName} onChange={(event) => setBlockedEmoteName(event.target.value)} maxLength={64} placeholder="Exact emote name" aria-label="Emote name to block" title="Enter a Twitch or 7TV emote name, including its channel prefix if present" />
-                <button type="submit" className="ui-button ui-button--compact" disabled={!/^\S{1,64}$/.test(blockedEmoteName.trim()) || (props.chatEmoteSettings.blockedEmotes ?? []).length >= 100 || (props.chatEmoteSettings.blockedEmotes ?? []).some((name) => name.toLowerCase() === blockedEmoteName.trim().toLowerCase())}>
+              <form
+                className="chat-emote-blacklist__add"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const name = blockedEmoteName.trim();
+                  const current = props.chatEmoteSettings.blockedEmotes ?? [];
+                  if (
+                    !/^\S{1,64}$/.test(name) ||
+                    current.length >= 100 ||
+                    current.some((item) => item.toLowerCase() === name.toLowerCase())
+                  )
+                    return;
+                  props.onChatEmoteSettingsChange({
+                    ...props.chatEmoteSettings,
+                    blockedEmotes: [...current, name],
+                  });
+                  setBlockedEmoteName("");
+                  toast.success(`${name} blocked from chat emotes`);
+                }}
+              >
+                <input
+                  style={fieldStyle}
+                  value={blockedEmoteName}
+                  onChange={(event) => setBlockedEmoteName(event.target.value)}
+                  maxLength={64}
+                  placeholder="Exact emote name"
+                  aria-label="Emote name to block"
+                  title="Enter a Twitch or 7TV emote name, including its channel prefix if present"
+                />
+                <button
+                  type="submit"
+                  className="ui-button ui-button--compact"
+                  disabled={
+                    !/^\S{1,64}$/.test(blockedEmoteName.trim()) ||
+                    (props.chatEmoteSettings.blockedEmotes ?? []).length >= 100 ||
+                    (props.chatEmoteSettings.blockedEmotes ?? []).some(
+                      (name) => name.toLowerCase() === blockedEmoteName.trim().toLowerCase(),
+                    )
+                  }
+                >
                   <Plus size={13} /> Block
                 </button>
               </form>
               <div className="chat-emote-blacklist">
                 {(props.chatEmoteSettings.blockedEmotes ?? []).map((name) => (
-                  <span key={name}>{name}<button type="button" aria-label={`Unblock ${name}`} title={`Allow ${name} again`} onClick={() => {
-                    props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, blockedEmotes: props.chatEmoteSettings.blockedEmotes.filter((item) => item !== name) });
-                    toast.success(`${name} unblocked`);
-                  }}><X size={11} /></button></span>
+                  <span key={name}>
+                    {name}
+                    <button
+                      type="button"
+                      aria-label={`Unblock ${name}`}
+                      title={`Allow ${name} again`}
+                      onClick={() => {
+                        props.onChatEmoteSettingsChange({
+                          ...props.chatEmoteSettings,
+                          blockedEmotes: props.chatEmoteSettings.blockedEmotes.filter(
+                            (item) => item !== name,
+                          ),
+                        });
+                        toast.success(`${name} unblocked`);
+                      }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </span>
                 ))}
-                {!(props.chatEmoteSettings.blockedEmotes ?? []).length && <span className="chat-emote-blacklist__empty">No blocked emotes</span>}
+                {!(props.chatEmoteSettings.blockedEmotes ?? []).length && (
+                  <span className="chat-emote-blacklist__empty">No blocked emotes</span>
+                )}
               </div>
             </div>
             <div className="chat-emote-card">
-              <strong className="chat-emote-card__title">
-                Blocked chatters
-              </strong>
+              <strong className="chat-emote-card__title">Blocked chatters</strong>
               <span className="chat-emote-card__description">
-                These Twitch usernames cannot spawn chat emotes. Commands are
-                unaffected.
+                These Twitch usernames cannot spawn chat emotes. Commands are unaffected.
               </span>
               <div className="chat-emote-blacklist__add">
                 <input
                   style={fieldStyle}
                   value={blacklistName}
                   onChange={(event) =>
-                    setBlacklistName(
-                      event.target.value.replace(/^@/, "").toLowerCase(),
-                    )
+                    setBlacklistName(event.target.value.replace(/^@/, "").toLowerCase())
                   }
                   onKeyDown={(event) => {
                     if (event.key !== "Enter") return;
                     event.preventDefault();
-                    event.currentTarget.nextElementSibling instanceof
-                      HTMLButtonElement &&
+                    event.currentTarget.nextElementSibling instanceof HTMLButtonElement &&
                       event.currentTarget.nextElementSibling.click();
                   }}
                   placeholder="username"
@@ -2099,10 +2094,7 @@ export function StudioPanel(props: StudioPanelProps) {
                     }
                     props.onChatEmoteSettingsChange({
                       ...props.chatEmoteSettings,
-                      blacklist: [
-                        ...props.chatEmoteSettings.blacklist,
-                        blacklistName,
-                      ],
+                      blacklist: [...props.chatEmoteSettings.blacklist, blacklistName],
                     });
                     toast.success(`@${blacklistName} blocked from chat emotes`);
                     setBlacklistName("");
@@ -2125,9 +2117,7 @@ export function StudioPanel(props: StudioPanelProps) {
                               (item) => item !== username,
                             ),
                           });
-                          toast.success(
-                            `@${username} removed from the blacklist`,
-                          );
+                          toast.success(`@${username} removed from the blacklist`);
                         }}
                         title={`Allow @${username} to spawn chat emotes again`}
                         aria-label={`Remove ${username} from blacklist`}
@@ -2138,15 +2128,13 @@ export function StudioPanel(props: StudioPanelProps) {
                   ))}
                 </div>
               ) : (
-                <span className="chat-emote-blacklist__empty">
-                  No blocked chatters
-                </span>
+                <span className="chat-emote-blacklist__empty">No blocked chatters</span>
               )}
             </div>
             <p className="chat-emote-note">
-              Both channel 7TV sets follow the active preview. Native Vicksy and
-              Wixels Twitch emotes are recognized from chat in either channel.
-              Images remain on their providers’ CDNs.
+              Both channel 7TV sets follow the active preview. Native Vicksy and Wixels Twitch
+              emotes are recognized from chat in either channel. Images remain on their providers’
+              CDNs.
             </p>
           </Section>
         )}
@@ -2197,11 +2185,7 @@ function CreateRow({
         placeholder={placeholder}
         maxLength={60}
       />
-      <button
-        className="ui-button studio-primary"
-        onClick={onCreate}
-        disabled={disabled}
-      >
+      <button className="ui-button studio-primary" onClick={onCreate} disabled={disabled}>
         <Plus size={14} />
         {label}
       </button>
@@ -2230,7 +2214,9 @@ function Item({
   active?: boolean;
 }) {
   return (
-    <div className={`studio-item${active === false ? " studio-item--off" : ""}${leading ? " studio-item--icon" : ""}`}>
+    <div
+      className={`studio-item${active === false ? " studio-item--off" : ""}${leading ? " studio-item--icon" : ""}`}
+    >
       {leading && (
         <span className="studio-item__icon" aria-hidden="true">
           {leading}

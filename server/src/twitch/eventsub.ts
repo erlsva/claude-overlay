@@ -1,7 +1,7 @@
-import * as tmi from 'tmi.js';
-import type { TriggerEventType } from '../types.js';
-import type { ChatPermission } from '../types.js';
-import { getConfiguredTwitchChannels, getDefaultTwitchChannel } from './channels.js';
+import * as tmi from "tmi.js";
+import type { TriggerEventType } from "../types.js";
+import type { ChatPermission } from "../types.js";
+import { getConfiguredTwitchChannels, getDefaultTwitchChannel } from "./channels.js";
 
 type ChatCommandEvent = {
   channel?: string;
@@ -33,7 +33,10 @@ export function emitTwitchEvent(type: TriggerEventType, event: ChatCommandEvent)
  * Connects to public Twitch chat anonymously. This listener can read public
  * messages and run commands, but cannot send messages or access private events.
  */
-export function configureTwitchEvents(onEvent: EventHandler, onStatus: (connected: boolean) => void) {
+export function configureTwitchEvents(
+  onEvent: EventHandler,
+  onStatus: (connected: boolean) => void,
+) {
   handler = onEvent;
   statusHandler = onStatus;
   restartTwitchEvents();
@@ -51,27 +54,30 @@ export function restartTwitchEvents() {
   });
   client = current;
 
-  current.on('connected', () => {
+  current.on("connected", () => {
     if (client === current) statusHandler?.(true);
   });
-  current.on('disconnected', () => {
+  current.on("disconnected", () => {
     if (client === current) statusHandler?.(false);
   });
-  current.on('message', (joinedChannel, tags, message, self) => {
-    if (client !== current || self || joinedChannel.replace(/^#/, '').toLowerCase() !== channel) return;
+  current.on("message", (joinedChannel, tags, message, self) => {
+    if (client !== current || self || joinedChannel.replace(/^#/, "").toLowerCase() !== channel)
+      return;
     const badges = tags.badges ?? {};
-    const login = String(tags.username ?? '').toLowerCase();
-    const chatterRole: ChatPermission = badges.broadcaster || login === channel
-      ? 'streamer'
-      : tags.mod || badges.moderator
-        ? 'moderator'
-        : badges.vip
-          ? 'vip'
-          : 'everyone';
-    const nativeEmotes: Array<{ id: string; name: string; imageUrl: string; position: number }> = [];
+    const login = String(tags.username ?? "").toLowerCase();
+    const chatterRole: ChatPermission =
+      badges.broadcaster || login === channel
+        ? "streamer"
+        : tags.mod || badges.moderator
+          ? "moderator"
+          : badges.vip
+            ? "vip"
+            : "everyone";
+    const nativeEmotes: Array<{ id: string; name: string; imageUrl: string; position: number }> =
+      [];
     for (const [id, ranges] of Object.entries(tags.emotes ?? {})) {
       for (const range of ranges ?? []) {
-        const [start, end] = range.split('-').map(Number);
+        const [start, end] = range.split("-").map(Number);
         if (!Number.isInteger(start) || !Number.isInteger(end)) continue;
         nativeEmotes.push({
           id,
@@ -82,14 +88,14 @@ export function restartTwitchEvents() {
       }
     }
     nativeEmotes.sort((a, b) => a.position - b.position);
-    emitTwitchEvent('chat-command', {
+    emitTwitchEvent("chat-command", {
       channel,
       message: { text: message },
-      chatter_user_id: tags['user-id'],
+      chatter_user_id: tags["user-id"],
       chatter_user_login: tags.username,
-      chatter_user_name: tags['display-name'],
+      chatter_user_name: tags["display-name"],
       chatter_color: tags.color,
-      room_id: tags['room-id'],
+      room_id: tags["room-id"],
       native_emotes: nativeEmotes,
       chatter_role: chatterRole,
     });
@@ -107,7 +113,7 @@ export function getTwitchChatChannel() {
 }
 
 export async function setTwitchChatChannel(value: string): Promise<boolean> {
-  const nextChannel = value.trim().replace(/^#/, '').toLowerCase();
+  const nextChannel = value.trim().replace(/^#/, "").toLowerCase();
   if (!allowedChannels.has(nextChannel)) return false;
   if (nextChannel === channel) return true;
 

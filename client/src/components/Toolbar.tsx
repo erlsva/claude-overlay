@@ -79,8 +79,7 @@ interface ToolbarProps {
   trailing?: ReactNode;
 }
 
-const ACCEPTED =
-  "image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,.gif";
+const ACCEPTED = "image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,.gif";
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const BUTTON_HEIGHT = 30;
 const ICON_SIZE = 15;
@@ -95,25 +94,22 @@ async function getVisualMediaSize(file: File) {
 
   const objectUrl = URL.createObjectURL(file);
   try {
-    const dimensions = await new Promise<{ width: number; height: number }>(
-      (resolve, reject) => {
-        if (file.type.startsWith("image/")) {
-          const image = new Image();
-          image.onload = () =>
-            resolve({ width: image.naturalWidth, height: image.naturalHeight });
-          image.onerror = () => reject(new Error("Could not read image dimensions"));
-          image.src = objectUrl;
-          return;
-        }
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      if (file.type.startsWith("image/")) {
+        const image = new Image();
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onerror = () => reject(new Error("Could not read image dimensions"));
+        image.src = objectUrl;
+        return;
+      }
 
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.onloadedmetadata = () =>
-          resolve({ width: video.videoWidth, height: video.videoHeight });
-        video.onerror = () => reject(new Error("Could not read video dimensions"));
-        video.src = objectUrl;
-      },
-    );
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () =>
+        resolve({ width: video.videoWidth, height: video.videoHeight });
+      video.onerror = () => reject(new Error("Could not read video dimensions"));
+      video.src = objectUrl;
+    });
     if (dimensions.width <= 0 || dimensions.height <= 0) return null;
     const scale = Math.min(
       1,
@@ -168,9 +164,10 @@ export function Toolbar({
 
   const fitSelected = (mode: "fit" | "fill") => {
     if (!selectedElement || selectedElement.width <= 0 || selectedElement.height <= 0) return;
-    const factor = mode === "fit"
-      ? Math.min(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height)
-      : Math.max(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height);
+    const factor =
+      mode === "fit"
+        ? Math.min(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height)
+        : Math.max(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height);
     const width = selectedElement.width * factor;
     const height = selectedElement.height * factor;
     onElementChange(selectedElement.id, {
@@ -197,9 +194,12 @@ export function Toolbar({
 
   const flipSelected = (axis: "x" | "y") => {
     if (!selectedElement || !["image", "gif", "video"].includes(selectedElement.type)) return;
-    onElementChange(selectedElement.id, axis === "x"
-      ? { scaleX: -(selectedElement.scaleX ?? 1) }
-      : { scaleY: -(selectedElement.scaleY ?? 1) });
+    onElementChange(
+      selectedElement.id,
+      axis === "x"
+        ? { scaleX: -(selectedElement.scaleX ?? 1) }
+        : { scaleY: -(selectedElement.scaleY ?? 1) },
+    );
   };
 
   const uploadMediaFile = async (file: File) => {
@@ -215,7 +215,7 @@ export function Toolbar({
         headers: authHeaders(),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? `Upload failed (${res.status})`);
       }
       const { url, mimetype } = await res.json();
@@ -244,11 +244,15 @@ export function Toolbar({
         zIndex: Date.now(),
       });
       toast.success(`${file.name} added to the canvas`);
-      if (type === "audio" && await confirm({
-        title: "Add to Soundboard?",
-        message: "Soundboard clips can play on the overlay without creating or showing a canvas layer.",
-        confirmLabel: "Add sound",
-      })) {
+      if (
+        type === "audio" &&
+        (await confirm({
+          title: "Add to Soundboard?",
+          message:
+            "Soundboard clips can play on the overlay without creating or showing a canvas layer.",
+          confirmLabel: "Add sound",
+        }))
+      ) {
         onSaveSound({
           id: randomUUID(),
           name: file.name.replace(/\.[^.]+$/, ""),
@@ -270,8 +274,7 @@ export function Toolbar({
     const uploadFromClipboard = (file: File) => uploadMediaFileRef.current(file);
     mediaUploadRef.current = uploadFromClipboard;
     return () => {
-      if (mediaUploadRef.current === uploadFromClipboard)
-        mediaUploadRef.current = null;
+      if (mediaUploadRef.current === uploadFromClipboard) mediaUploadRef.current = null;
     };
   }, [mediaUploadRef]);
 
@@ -279,7 +282,10 @@ export function Toolbar({
     try {
       const parsed = new URL(url);
       const hostname = parsed.hostname.toLowerCase();
-      if (parsed.protocol !== "https:" || (hostname !== "giphy.com" && !hostname.endsWith(".giphy.com"))) {
+      if (
+        parsed.protocol !== "https:" ||
+        (hostname !== "giphy.com" && !hostname.endsWith(".giphy.com"))
+      ) {
         throw new Error("Drop a local media file or a GIF image from Giphy");
       }
       const response = await fetch(parsed.toString(), { mode: "cors", credentials: "omit" });
@@ -289,11 +295,21 @@ export function Toolbar({
         throw new Error("That Giphy drag was a webpage, not a GIF image. Drag the GIF itself");
       }
       const blob = await response.blob();
-      if (blob.size > 25 * 1024 * 1024) throw new Error("The dropped Giphy image is larger than 25 MB");
-      const extension = contentType === "image/gif" ? "gif" : contentType === "image/webp" ? "webp" : contentType === "image/png" ? "png" : "jpg";
+      if (blob.size > 25 * 1024 * 1024)
+        throw new Error("The dropped Giphy image is larger than 25 MB");
+      const extension =
+        contentType === "image/gif"
+          ? "gif"
+          : contentType === "image/webp"
+            ? "webp"
+            : contentType === "image/png"
+              ? "png"
+              : "jpg";
       const pathName = decodeURIComponent(parsed.pathname.split("/").pop() || `giphy.${extension}`);
       const baseName = pathName.replace(/\.[a-z0-9]+$/i, "") || "giphy";
-      await uploadMediaFileRef.current(new File([blob], `${baseName}.${extension}`, { type: contentType }));
+      await uploadMediaFileRef.current(
+        new File([blob], `${baseName}.${extension}`, { type: contentType }),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not import that Giphy image");
     }
@@ -313,11 +329,17 @@ export function Toolbar({
     const draggedUrl = (transfer: DataTransfer) => {
       const html = transfer.getData("text/html");
       if (html) {
-        const imageUrl = new DOMParser().parseFromString(html, "text/html").querySelector("img")?.src;
+        const imageUrl = new DOMParser()
+          .parseFromString(html, "text/html")
+          .querySelector("img")?.src;
         if (imageUrl) return imageUrl;
       }
-      return transfer.getData("text/uri-list").split(/\r?\n/).find((line) => line && !line.startsWith("#"))
-        || transfer.getData("text/plain");
+      return (
+        transfer
+          .getData("text/uri-list")
+          .split(/\r?\n/)
+          .find((line) => line && !line.startsWith("#")) || transfer.getData("text/plain")
+      );
     };
     const dragEnter = (event: DragEvent) => {
       if (!isMediaDrag(event.dataTransfer)) return;
@@ -347,7 +369,13 @@ export function Toolbar({
       else toast.error("No supported media was found in that drop");
     };
     const dragLeave = (event: DragEvent) => {
-      if (event.relatedTarget === null && (event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight)) {
+      if (
+        event.relatedTarget === null &&
+        (event.clientX <= 0 ||
+          event.clientY <= 0 ||
+          event.clientX >= window.innerWidth ||
+          event.clientY >= window.innerHeight)
+      ) {
         setDropActive(false);
       }
     };
@@ -426,18 +454,20 @@ export function Toolbar({
       style={{
         height: BUTTON_HEIGHT,
         padding: "0 11px",
-        background: variant === "danger"
-          ? "#7f1d1d"
-          : variant === "primary" || active
-            ? "var(--accent-solid)"
-            : "var(--bg-control)",
+        background:
+          variant === "danger"
+            ? "#7f1d1d"
+            : variant === "primary" || active
+              ? "var(--accent-solid)"
+              : "var(--bg-control)",
         border: `1px solid ${variant === "danger" ? "#ef4444" : variant === "primary" || active ? "var(--accent-border)" : "var(--line-strong)"}`,
         borderRadius: 5,
-        color: variant === "danger"
-          ? "#fee2e2"
-          : variant === "primary" || active
-            ? "var(--accent-contrast)"
-            : "var(--text-secondary)",
+        color:
+          variant === "danger"
+            ? "#fee2e2"
+            : variant === "primary" || active
+              ? "var(--accent-contrast)"
+              : "var(--text-secondary)",
         fontSize: TOOLBAR_FONT_SIZE,
         cursor: "pointer",
         fontFamily: "Inter, sans-serif",
@@ -458,7 +488,9 @@ export function Toolbar({
     <>
       {dropActive && (
         <div className="media-drop-shield" aria-hidden="true">
-          <div><ImagePlus size={28} /> Drop media to upload</div>
+          <div>
+            <ImagePlus size={28} /> Drop media to upload
+          </div>
         </div>
       )}
       <div
@@ -483,8 +515,34 @@ export function Toolbar({
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <button className="ui-icon-button" onClick={onUndo} disabled={!canUndo} title="Undo the latest canvas change (Ctrl+Z)" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: canUndo ? "#d6d9df" : "#555", cursor: canUndo ? "pointer" : "not-allowed" }}><Undo2 size={ICON_SIZE}/></button>
-          <button className="ui-icon-button" onClick={onRedo} disabled={!canRedo} title="Redo the latest undone canvas change (Ctrl+Y)" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: canRedo ? "#d6d9df" : "#555", cursor: canRedo ? "pointer" : "not-allowed" }}><Redo2 size={ICON_SIZE}/></button>
+          <button
+            className="ui-icon-button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo the latest canvas change (Ctrl+Z)"
+            style={{
+              background: "var(--bg-control)",
+              border: "1px solid var(--line-strong)",
+              color: canUndo ? "#d6d9df" : "#555",
+              cursor: canUndo ? "pointer" : "not-allowed",
+            }}
+          >
+            <Undo2 size={ICON_SIZE} />
+          </button>
+          <button
+            className="ui-icon-button"
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo the latest undone canvas change (Ctrl+Y)"
+            style={{
+              background: "var(--bg-control)",
+              border: "1px solid var(--line-strong)",
+              color: canRedo ? "#d6d9df" : "#555",
+              cursor: canRedo ? "pointer" : "not-allowed",
+            }}
+          >
+            <Redo2 size={ICON_SIZE} />
+          </button>
         </div>
         <div style={{ width: 1, height: 24, background: "var(--line)", margin: "0 2px" }} />
 
@@ -563,25 +621,75 @@ export function Toolbar({
         {!drawMode && selectedElement && !selectedElement.locked && (
           <>
             <div style={{ width: 1, height: 24, background: "var(--line)", margin: "0 2px" }} />
-            <span style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>SELECTED</span>
-            {btn(<><Maximize2 size={ICON_SIZE}/> Fit</>, () => fitSelected("fit"), false, "Fit selected element inside the Twitch viewport")}
-            {btn(<><Expand size={ICON_SIZE}/> Fill</>, () => fitSelected("fill"), false, "Fill the Twitch viewport with the selected element")}
-            {selectedElement.type !== "audio" && btn(<><Disc size={ICON_SIZE}/> DVD</>, toggleDvd, Boolean(selectedElement.dvdEnabled), selectedElement.dvdEnabled ? "Stop DVD movement" : "Start DVD movement")}
+            <span style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>
+              SELECTED
+            </span>
+            {btn(
+              <>
+                <Maximize2 size={ICON_SIZE} /> Fit
+              </>,
+              () => fitSelected("fit"),
+              false,
+              "Fit selected element inside the Twitch viewport",
+            )}
+            {btn(
+              <>
+                <Expand size={ICON_SIZE} /> Fill
+              </>,
+              () => fitSelected("fill"),
+              false,
+              "Fill the Twitch viewport with the selected element",
+            )}
+            {selectedElement.type !== "audio" &&
+              btn(
+                <>
+                  <Disc size={ICON_SIZE} /> DVD
+                </>,
+                toggleDvd,
+                Boolean(selectedElement.dvdEnabled),
+                selectedElement.dvdEnabled ? "Stop DVD movement" : "Start DVD movement",
+              )}
             {["image", "gif", "video"].includes(selectedElement.type) && (
               <>
-                {btn(<><FlipHorizontal2 size={ICON_SIZE}/> Flip X</>, () => flipSelected("x"), (selectedElement.scaleX ?? 1) < 0, "Mirror selected media left to right")}
-                {btn(<><FlipVertical2 size={ICON_SIZE}/> Flip Y</>, () => flipSelected("y"), (selectedElement.scaleY ?? 1) < 0, "Mirror selected media top to bottom")}
+                {btn(
+                  <>
+                    <FlipHorizontal2 size={ICON_SIZE} /> Flip X
+                  </>,
+                  () => flipSelected("x"),
+                  (selectedElement.scaleX ?? 1) < 0,
+                  "Mirror selected media left to right",
+                )}
+                {btn(
+                  <>
+                    <FlipVertical2 size={ICON_SIZE} /> Flip Y
+                  </>,
+                  () => flipSelected("y"),
+                  (selectedElement.scaleY ?? 1) < 0,
+                  "Mirror selected media top to bottom",
+                )}
               </>
             )}
-            {selectedElement.type === "video" && (
-              btn(<>Auto</>, () => onElementChange(selectedElement.id, { autoVisibility: !selectedElement.autoVisibility }), Boolean(selectedElement.autoVisibility), selectedElement.autoVisibility ? "Disable automatic show on play and hide on end" : "Automatically show on play and hide when the video ends")
-            )}
+            {selectedElement.type === "video" &&
+              btn(
+                <>Auto</>,
+                () =>
+                  onElementChange(selectedElement.id, {
+                    autoVisibility: !selectedElement.autoVisibility,
+                  }),
+                Boolean(selectedElement.autoVisibility),
+                selectedElement.autoVisibility
+                  ? "Disable automatic show on play and hide on end"
+                  : "Automatically show on play and hide when the video ends",
+              )}
           </>
         )}
 
         {drawMode && (
           <>
-            <span className="drawing-action-count" title="Completed drawing actions; each stroke, shape, or fill can be undone separately">
+            <span
+              className="drawing-action-count"
+              title="Completed drawing actions; each stroke, shape, or fill can be undone separately"
+            >
               DRAWING · {strokeCount}
             </span>
             {/* Tool buttons */}
@@ -606,10 +714,34 @@ export function Toolbar({
               "fill",
               "Flood fill enclosed area",
             )}
-            {toolBtn(<><Minus size={ICON_SIZE} /> Line</>, "line", "Draw a straight line. Hold Shift to snap it to 45-degree angles")}
-            {toolBtn(<><ArrowRight size={ICON_SIZE} /> Arrow</>, "arrow", "Draw an arrow. Hold Shift to snap it to 45-degree angles")}
-            {toolBtn(<><Square size={ICON_SIZE} /> Box</>, "rectangle", "Draw a rectangle. Hold Shift to make a square")}
-            {toolBtn(<><Circle size={ICON_SIZE} /> Oval</>, "ellipse", "Draw an ellipse. Hold Shift to make a circle")}
+            {toolBtn(
+              <>
+                <Minus size={ICON_SIZE} /> Line
+              </>,
+              "line",
+              "Draw a straight line. Hold Shift to snap it to 45-degree angles",
+            )}
+            {toolBtn(
+              <>
+                <ArrowRight size={ICON_SIZE} /> Arrow
+              </>,
+              "arrow",
+              "Draw an arrow. Hold Shift to snap it to 45-degree angles",
+            )}
+            {toolBtn(
+              <>
+                <Square size={ICON_SIZE} /> Box
+              </>,
+              "rectangle",
+              "Draw a rectangle. Hold Shift to make a square",
+            )}
+            {toolBtn(
+              <>
+                <Circle size={ICON_SIZE} /> Oval
+              </>,
+              "ellipse",
+              "Draw an ellipse. Hold Shift to make a circle",
+            )}
 
             <div
               style={{
@@ -639,8 +771,7 @@ export function Toolbar({
                   key={c}
                   onClick={() => {
                     onDrawColorChange(c);
-                    if (toolMode === "eraser" || toolMode === "fill")
-                      onToolModeChange("pen");
+                    if (toolMode === "eraser" || toolMode === "fill") onToolModeChange("pen");
                   }}
                   title={`Use ${c} as the drawing color`}
                   aria-label={`Use drawing color ${c}`}
@@ -664,8 +795,7 @@ export function Toolbar({
                 value={drawColor}
                 onChange={(e) => {
                   onDrawColorChange(e.target.value);
-                  if (toolMode === "eraser" || toolMode === "fill")
-                    onToolModeChange("pen");
+                  if (toolMode === "eraser" || toolMode === "fill") onToolModeChange("pen");
                 }}
                 title="Choose a custom drawing color"
                 style={{
@@ -737,7 +867,10 @@ export function Toolbar({
             </div>
 
             {toolMode === "fill" && (
-              <div className="draw-setting" title="How closely pixels must match for flood fill; lower values stop at sharper boundaries">
+              <div
+                className="draw-setting"
+                title="How closely pixels must match for flood fill; lower values stop at sharper boundaries"
+              >
                 <SlidersHorizontal size={ICON_SIZE} />
                 <span>Tolerance</span>
                 <input
@@ -786,10 +919,7 @@ export function Toolbar({
       />
 
       {showTextDialog && (
-        <TextDialog
-          onConfirm={handleTextConfirm}
-          onClose={() => setShowTextDialog(false)}
-        />
+        <TextDialog onConfirm={handleTextConfirm} onClose={() => setShowTextDialog(false)} />
       )}
     </>
   );

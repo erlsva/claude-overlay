@@ -3,7 +3,16 @@ import test from "node:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { activeSoundDuration, atempoFilters, elevenErrorMessage, FINAL_SOUND_EFFECT_FILTER, FINAL_TTS_FILTER, MAX_AUTO_SPEECH_TEMPO, run, speechTempo } from "./audio.js";
+import {
+  activeSoundDuration,
+  atempoFilters,
+  elevenErrorMessage,
+  FINAL_SOUND_EFFECT_FILTER,
+  FINAL_TTS_FILTER,
+  MAX_AUTO_SPEECH_TEMPO,
+  run,
+  speechTempo,
+} from "./audio.js";
 import { parsePrompt } from "./shared/scene.js";
 import { readWav } from "./dsp.js";
 
@@ -13,8 +22,28 @@ test("final TTS encoding normalizes loud input below the true-peak ceiling", asy
     const source = path.join(directory, "loud.wav");
     const encoded = path.join(directory, "limited.mp3");
     const decoded = path.join(directory, "limited.wav");
-    await run(["-f", "lavfi", "-i", "aevalsrc=sin(2*PI*440*t):s=44100:d=1", "-ar", "44100", "-ac", "1", source]);
-    await run(["-i", source, "-af", FINAL_TTS_FILTER, "-codec:a", "libmp3lame", "-b:a", "128k", encoded]);
+    await run([
+      "-f",
+      "lavfi",
+      "-i",
+      "aevalsrc=sin(2*PI*440*t):s=44100:d=1",
+      "-ar",
+      "44100",
+      "-ac",
+      "1",
+      source,
+    ]);
+    await run([
+      "-i",
+      source,
+      "-af",
+      FINAL_TTS_FILTER,
+      "-codec:a",
+      "libmp3lame",
+      "-b:a",
+      "128k",
+      encoded,
+    ]);
     await run(["-i", encoded, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", decoded]);
     const samples = readWav(await readFile(decoded));
     const peak = samples.reduce((highest, sample) => Math.max(highest, Math.abs(sample)), 0);
@@ -37,7 +66,8 @@ test("transient sounds reserve room for reverb inside the total duration", () =>
 });
 
 test("automatic speech fitting is capped at a natural-sounding speed", () => {
-  const cave = parsePrompt('((man in cave screaming and yelling: "ABOBA" over and over;10s))').scenes[0];
+  const cave = parsePrompt('((man in cave screaming and yelling: "ABOBA" over and over;10s))')
+    .scenes[0];
   assert.equal(cave.effect, "reverb");
   assert.equal(cave.duration, 10);
   assert.equal(speechTempo(cave, 14), MAX_AUTO_SPEECH_TEMPO);
@@ -51,14 +81,18 @@ test("automatic speech fitting is capped at a natural-sounding speed", () => {
 });
 
 test("ElevenLabs permission failures remain actionable without exposing credentials", async () => {
-  const response = new Response(JSON.stringify({
-    detail: {
-      status: "missing_permissions",
-      code: "unauthorized",
-      message: "The API key you used is missing the permission text_to_speech to execute this operation.",
-      request_id: "safe-request-id",
-    },
-  }), { status: 401 });
+  const response = new Response(
+    JSON.stringify({
+      detail: {
+        status: "missing_permissions",
+        code: "unauthorized",
+        message:
+          "The API key you used is missing the permission text_to_speech to execute this operation.",
+        request_id: "safe-request-id",
+      },
+    }),
+    { status: 401 },
+  );
   const message = await elevenErrorMessage(response);
   assert.match(message, /Text to Speech permission \(text_to_speech\)/);
   assert.match(message, /safe-request-id/);

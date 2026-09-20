@@ -71,7 +71,9 @@ export function ReadinessCheck({
 }) {
   const [open, setOpen] = useState(false);
   const presence = usePresence(open);
-  const [audioTest, setAudioTest] = useState<{ running: boolean; ok?: boolean; message?: string }>({ running: false });
+  const [audioTest, setAudioTest] = useState<{ running: boolean; ok?: boolean; message?: string }>({
+    running: false,
+  });
   const runAudioTest = async () => {
     if (!onTestAudio) return;
     setAudioTest({ running: true });
@@ -105,21 +107,27 @@ export function ReadinessCheck({
   }, []);
 
   const refreshMedia = useCallback(async () => {
-    const urls = [...new Set([
-      ...elements.filter((element) => element.type !== "text").map((element) => element.src),
-      ...studio.sounds.map((sound) => sound.url),
-    ])].filter((url) => url.startsWith(SERVER_URL)).slice(0, 100);
+    const urls = [
+      ...new Set([
+        ...elements.filter((element) => element.type !== "text").map((element) => element.src),
+        ...studio.sounds.map((sound) => sound.url),
+      ]),
+    ]
+      .filter((url) => url.startsWith(SERVER_URL))
+      .slice(0, 100);
     if (urls.length === 0) {
       setMediaResult({ checked: 0, failed: 0 });
       return;
     }
-    const results = await Promise.all(urls.map(async (url) => {
-      try {
-        return (await fetch(url, { method: "HEAD", cache: "no-store" })).ok;
-      } catch {
-        return false;
-      }
-    }));
+    const results = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          return (await fetch(url, { method: "HEAD", cache: "no-store" })).ok;
+        } catch {
+          return false;
+        }
+      }),
+    );
     setMediaResult({ checked: urls.length, failed: results.filter((result) => !result).length });
   }, [elements, studio.sounds]);
 
@@ -141,13 +149,13 @@ export function ReadinessCheck({
 
   const checks = useMemo<CheckItem[]>(() => {
     const missing = missingTargets(elements, studio);
-    const offscreen = elements.filter((element) =>
-      element.visible && (
-        element.x + element.width <= STREAM_OFFSET_X ||
-        element.y + element.height <= STREAM_OFFSET_Y ||
-        element.x >= STREAM_OFFSET_X + STREAM_W ||
-        element.y >= STREAM_OFFSET_Y + STREAM_H
-      ),
+    const offscreen = elements.filter(
+      (element) =>
+        element.visible &&
+        (element.x + element.width <= STREAM_OFFSET_X ||
+          element.y + element.height <= STREAM_OFFSET_Y ||
+          element.x >= STREAM_OFFSET_X + STREAM_W ||
+          element.y >= STREAM_OFFSET_Y + STREAM_H),
     );
     const enabledDvd = elements.filter((element) => element.visible && element.dvdEnabled).length;
     const connectedEvents = events?.channels.filter((channel) => channel.connected).length ?? 0;
@@ -169,7 +177,9 @@ export function ReadinessCheck({
       {
         kind: connected ? "pass" : "warning",
         title: "Dashboard server",
-        detail: connected ? "Realtime connection is online." : "Disconnected—changes will not reach the overlay.",
+        detail: connected
+          ? "Realtime connection is online."
+          : "Disconnected—changes will not reach the overlay.",
       },
       {
         kind: overlayConnected ? "pass" : "warning",
@@ -186,11 +196,12 @@ export function ReadinessCheck({
           : `The ${twitchChannel} anonymous chat listener is reconnecting.`,
       },
       {
-        kind: events === null
-          ? "info"
-          : events.configured && connectedEvents === totalEvents && totalEvents > 0
-            ? "pass"
-            : "warning",
+        kind:
+          events === null
+            ? "info"
+            : events.configured && connectedEvents === totalEvents && totalEvents > 0
+              ? "pass"
+              : "warning",
         title: "Twitch Events",
         detail: loadingEvents
           ? "Checking broadcaster connections…"
@@ -203,9 +214,10 @@ export function ReadinessCheck({
       {
         kind: missing.length === 0 ? "pass" : "warning",
         title: "Command targets",
-        detail: missing.length === 0
-          ? "Every saved command action points to existing media or sound."
-          : `${missing.length} saved action${missing.length === 1 ? " has" : "s have"} a missing target. Edit or remove them before going live.`,
+        detail:
+          missing.length === 0
+            ? "Every saved command action points to existing media or sound."
+            : `${missing.length} saved action${missing.length === 1 ? " has" : "s have"} a missing target. Edit or remove them before going live.`,
       },
       {
         kind: tts?.configured ? "pass" : usesTts ? "warning" : "info",
@@ -219,22 +231,29 @@ export function ReadinessCheck({
               : "TTS readiness could not be checked.",
       },
       {
-        kind: mediaResult === null || mediaResult.failed === 0 ? (mediaResult === null ? "info" : "pass") : "warning",
+        kind:
+          mediaResult === null || mediaResult.failed === 0
+            ? mediaResult === null
+              ? "info"
+              : "pass"
+            : "warning",
         title: "Uploaded media",
-        detail: mediaResult === null
-          ? "Local upload URLs have not been checked yet."
-          : mediaResult.checked === 0
-            ? "No server-hosted media URLs need checking."
-            : mediaResult.failed === 0
-              ? `${mediaResult.checked} server-hosted media URL${mediaResult.checked === 1 ? " is" : "s are"} reachable.`
-              : `${mediaResult.failed}/${mediaResult.checked} server-hosted media URL${mediaResult.failed === 1 ? " is" : "s are"} unavailable.`,
+        detail:
+          mediaResult === null
+            ? "Local upload URLs have not been checked yet."
+            : mediaResult.checked === 0
+              ? "No server-hosted media URLs need checking."
+              : mediaResult.failed === 0
+                ? `${mediaResult.checked} server-hosted media URL${mediaResult.checked === 1 ? " is" : "s are"} reachable.`
+                : `${mediaResult.failed}/${mediaResult.checked} server-hosted media URL${mediaResult.failed === 1 ? " is" : "s are"} unavailable.`,
       },
       {
         kind: offscreen.length === 0 ? "pass" : "info",
         title: "Visible media placement",
-        detail: offscreen.length === 0
-          ? "All visible layers intersect the 1920×1080 stream area."
-          : `${offscreen.length} visible layer${offscreen.length === 1 ? " is" : "s are"} staged completely outside the stream area.`,
+        detail:
+          offscreen.length === 0
+            ? "All visible layers intersect the 1920×1080 stream area."
+            : `${offscreen.length} visible layer${offscreen.length === 1 ? " is" : "s are"} staged completely outside the stream area.`,
       },
       {
         kind: "info",
@@ -244,15 +263,30 @@ export function ReadinessCheck({
       {
         kind: "info",
         title: "OBS source settings",
-        detail: "Confirm the Browser Source is 1920×1080. Its dimensions cannot be read remotely from the dashboard.",
+        detail:
+          "Confirm the Browser Source is 1920×1080. Its dimensions cannot be read remotely from the dashboard.",
       },
       {
         kind: "info",
         title: "Render persistence",
-        detail: "Uploads, canvas state, and LowDB Studio data remain ephemeral without persistent storage. Neon keeps whitelist, encrypted Twitch authorization, and the TTS clip index; TTS audio currently lives in Discord webhook attachments.",
+        detail:
+          "Uploads, canvas state, and LowDB Studio data remain ephemeral without persistent storage. Neon keeps whitelist, encrypted Twitch authorization, and the TTS clip index; TTS audio currently lives in Discord webhook attachments.",
       },
     ];
-  }, [chatEmotesEnabled, connected, elements, events, loadingEvents, mediaResult, overlayConnected, overlayCount, studio, tts, twitchChannel, twitchConnected]);
+  }, [
+    chatEmotesEnabled,
+    connected,
+    elements,
+    events,
+    loadingEvents,
+    mediaResult,
+    overlayConnected,
+    overlayCount,
+    studio,
+    tts,
+    twitchChannel,
+    twitchConnected,
+  ]);
 
   const warningCount = checks.filter((check) => check.kind === "warning").length;
 
@@ -268,7 +302,11 @@ export function ReadinessCheck({
         {warningCount > 0 && <span>{warningCount}</span>}
       </button>
       {presence.mounted && (
-        <div className="readiness-backdrop motion-backdrop" data-state={presence.state} onMouseDown={() => setOpen(false)}>
+        <div
+          className="readiness-backdrop motion-backdrop"
+          data-state={presence.state}
+          onMouseDown={() => setOpen(false)}
+        >
           <section
             className="readiness-dialog motion-dialog"
             data-state={presence.state}
@@ -280,34 +318,62 @@ export function ReadinessCheck({
             <header>
               <div>
                 <h2 id="readiness-title">Stream readiness</h2>
-                <p>{warningCount ? `${warningCount} item${warningCount === 1 ? " needs" : "s need"} attention.` : "Core checks look ready."}</p>
+                <p>
+                  {warningCount
+                    ? `${warningCount} item${warningCount === 1 ? " needs" : "s need"} attention.`
+                    : "Core checks look ready."}
+                </p>
               </div>
-              <button className="ui-icon-button" onClick={() => setOpen(false)} title="Close stream readiness"><X size={16} /></button>
+              <button
+                className="ui-icon-button"
+                onClick={() => setOpen(false)}
+                title="Close stream readiness"
+              >
+                <X size={16} />
+              </button>
             </header>
             <div className="readiness-list">
               {checks.map((check) => {
-                const Icon = check.kind === "pass" ? CheckCircle2 : check.kind === "warning" ? CircleAlert : Info;
+                const Icon =
+                  check.kind === "pass"
+                    ? CheckCircle2
+                    : check.kind === "warning"
+                      ? CircleAlert
+                      : Info;
                 return (
                   <div key={check.title} className={`readiness-item readiness-item--${check.kind}`}>
                     <Icon size={17} aria-hidden="true" />
-                    <div><strong>{check.title}</strong><span>{check.detail}</span></div>
+                    <div>
+                      <strong>{check.title}</strong>
+                      <span>{check.detail}</span>
+                    </div>
                   </div>
                 );
               })}
             </div>
             <footer>
               {audioTest.message && (
-                <span className={`readiness-audio ${audioTest.ok ? "readiness-audio--ok" : "readiness-audio--bad"}`}>{audioTest.message}</span>
+                <span
+                  className={`readiness-audio ${audioTest.ok ? "readiness-audio--ok" : "readiness-audio--bad"}`}
+                >
+                  {audioTest.message}
+                </span>
               )}
               {onTestAudio && (
-                <button className="ui-button" onClick={() => void runAudioTest()} disabled={audioTest.running}>
+                <button
+                  className="ui-button"
+                  onClick={() => void runAudioTest()}
+                  disabled={audioTest.running}
+                >
                   <Volume2 size={13} /> {audioTest.running ? "Listening…" : "Test overlay audio"}
                 </button>
               )}
               <button className="ui-button" onClick={refreshChecks} disabled={loadingEvents}>
                 <RefreshCw size={13} className={loadingEvents ? "spin" : undefined} /> Recheck
               </button>
-              <button className="ui-button studio-primary" onClick={() => setOpen(false)}>Done</button>
+              <button className="ui-button studio-primary" onClick={() => setOpen(false)}>
+                Done
+              </button>
             </footer>
           </section>
         </div>

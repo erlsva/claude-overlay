@@ -11,17 +11,18 @@ interface LoginPageProps {
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
-  twitch_denied: 'You cancelled the Twitch login.',
-  invalid_state: 'Something went wrong. Please try again.',
-  not_whitelisted: "Your Twitch account hasn't been added to this overlay. Ask the owner to add you.",
-  server_error: 'A server error occurred. Please try again.',
-  session_revoked: 'Your access was revoked. Ask the owner to re-add you if this is a mistake.',
+  twitch_denied: "You cancelled the Twitch login.",
+  invalid_state: "Something went wrong. Please try again.",
+  not_whitelisted:
+    "Your Twitch account hasn't been added to this overlay. Ask the owner to add you.",
+  server_error: "A server error occurred. Please try again.",
+  session_revoked: "Your access was revoked. Ask the owner to re-add you if this is a mistake.",
 };
 
 export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPageProps) {
   const toast = useToast();
   useEffect(() => {
-    if (error) toast.error(ERROR_MESSAGES[error] ?? 'Something went wrong.');
+    if (error) toast.error(ERROR_MESSAGES[error] ?? "Something went wrong.");
   }, [error, toast]);
 
   return (
@@ -29,17 +30,28 @@ export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPag
       <div className="login-glow login-glow--one" />
       <div className="login-glow login-glow--two" />
       <section className="login-card" aria-labelledby="login-title">
-        <div className="login-card__eyebrow"><span /> PRIVATE STREAM CONTROL</div>
+        <div className="login-card__eyebrow">
+          <span /> PRIVATE STREAM CONTROL
+        </div>
         <div className="login-card__copy">
           <h1 id="login-title">Vicksy’s Stream Overlay</h1>
           <p>A cozy little control room for bringing the stream to life.</p>
         </div>
-        <img className="login-card__art" src={campfireFoxes} alt="Fox friends relaxing around a campfire" />
+        <img
+          className="login-card__art"
+          src={campfireFoxes}
+          alt="Fox friends relaxing around a campfire"
+        />
         {connectionError && (
           <div className="login-connection-error" role="alert">
             <CircleAlert size={17} />
-            <span><strong>The dashboard server did not respond</strong><small>Render may still be waking up. Wait a moment, then try again.</small></span>
-            <button className="ui-button ui-button--compact" onClick={onRetry}><RefreshCw size={12} /> Retry</button>
+            <span>
+              <strong>The dashboard server did not respond</strong>
+              <small>Render may still be waking up. Wait a moment, then try again.</small>
+            </span>
+            <button className="ui-button ui-button--compact" onClick={onRetry}>
+              <RefreshCw size={12} /> Retry
+            </button>
           </div>
         )}
         <button
@@ -50,7 +62,9 @@ export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPag
           <TwitchIcon />
           Continue with Twitch
         </button>
-        <p className="login-card__notice">Only approved Twitch accounts can access this dashboard.</p>
+        <p className="login-card__notice">
+          Only approved Twitch accounts can access this dashboard.
+        </p>
       </section>
     </main>
   );

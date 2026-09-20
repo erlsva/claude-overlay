@@ -8,7 +8,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  owner: "Runs this overlay. Can change feature flags, connect the chatbot and appoint super moderators.",
+  owner:
+    "Runs this overlay. Can change feature flags, connect the chatbot and appoint super moderators.",
   streamer: "The channel owner the overlay is for.",
   "super-moderator": "A moderator who can also add and remove people from the whitelist.",
   moderator: "Can use the whole dashboard except managing who has access.",

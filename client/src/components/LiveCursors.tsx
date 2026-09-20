@@ -14,9 +14,7 @@ function foregroundFor(color: string) {
   const [red, green, blue] = [0, 2, 4].map(
     (offset) => Number.parseInt(match[1].slice(offset, offset + 2), 16) / 255,
   );
-  return 0.2126 * red + 0.7152 * green + 0.0722 * blue > 0.62
-    ? "#111827"
-    : "#ffffff";
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue > 0.62 ? "#111827" : "#ffffff";
 }
 
 export function LiveCursors({ cursors, pan, zoom, large = false }: LiveCursorsProps) {

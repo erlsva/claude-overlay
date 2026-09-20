@@ -1,4 +1,11 @@
-import { detectAccent, detectIntensity, intensityRank, stripAccentWords, type Intensity, type Scene } from "./shared/scene.js";
+import {
+  detectAccent,
+  detectIntensity,
+  intensityRank,
+  stripAccentWords,
+  type Intensity,
+  type Scene,
+} from "./shared/scene.js";
 export type AccountVoice = {
   voice_id: string;
   name: string;
@@ -30,11 +37,43 @@ export function sceneIntensity(scene: Scene): Intensity {
 
 // Words that describe a voice rather than name it.
 const genericVoiceWords = new Set([
-  "a", "an", "the", "voice", "man", "woman", "male", "female", "boy", "girl", "narrator", "character", "custom",
-  "generated", "angry", "old", "young", "big", "small", "evil", "deep", "low", "loud", "of", "and",
+  "a",
+  "an",
+  "the",
+  "voice",
+  "man",
+  "woman",
+  "male",
+  "female",
+  "boy",
+  "girl",
+  "narrator",
+  "character",
+  "custom",
+  "generated",
+  "angry",
+  "old",
+  "young",
+  "big",
+  "small",
+  "evil",
+  "deep",
+  "low",
+  "loud",
+  "of",
+  "and",
   // How something is said is not who says it. "troll screaming" must not match a voice
   // called "Screaming man" just because of the verb.
-  "screaming", "screamer", "shouting", "shouter", "yelling", "yeller", "roaring", "screams", "shouts", "yells",
+  "screaming",
+  "screamer",
+  "shouting",
+  "shouter",
+  "yelling",
+  "yeller",
+  "roaring",
+  "screams",
+  "shouts",
+  "yells",
 ]);
 
 /**
@@ -75,13 +114,17 @@ function pinnedCharacterVoice(character: string, voices: AccountVoice[]): Accoun
 
 /** Finds voices by ID, exact name or partial name, from a comma-separated setting. */
 function voicesFromSetting(setting: string | undefined, voices: AccountVoice[]): AccountVoice[] {
-  const wanted = (setting || "").split(",").map((item) => item.trim()).filter(Boolean);
+  const wanted = (setting || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
   const found: AccountVoice[] = [];
   for (const item of wanted) {
     const key = normalizedVoiceName(item);
-    const voice = voices.find((candidate) => candidate.voice_id === item)
-      || voices.find((candidate) => normalizedVoiceName(candidate.name) === key)
-      || voices.find((candidate) => key && normalizedVoiceName(candidate.name).includes(key));
+    const voice =
+      voices.find((candidate) => candidate.voice_id === item) ||
+      voices.find((candidate) => normalizedVoiceName(candidate.name) === key) ||
+      voices.find((candidate) => key && normalizedVoiceName(candidate.name).includes(key));
     if (voice && !found.includes(voice)) found.push(voice);
   }
   return found;
@@ -92,7 +135,8 @@ function voicesFromSetting(setting: string | undefined, voices: AccountVoice[]):
  * ElevenLabs tags only work on voices that were trained for that range, so a
  * calm narrator cannot be talked into screaming.
  */
-const configuredShoutVoices = (voices: AccountVoice[]) => voicesFromSetting(process.env.TTS_SHOUT_VOICES, voices);
+const configuredShoutVoices = (voices: AccountVoice[]) =>
+  voicesFromSetting(process.env.TTS_SHOUT_VOICES, voices);
 
 /** Voices made in this account for a specific character, as opposed to ElevenLabs' general library. */
 const isCharacterVoice = (voice: AccountVoice) => !!voice.category && voice.category !== "premade";
@@ -110,9 +154,15 @@ function generalPerformanceCue(scene: Scene): string {
   cue = cue
     .replace(/"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g, "")
     .replace(/\b(?:says?|saying|speaks?|speaking)\b/gi, "")
-    .replace(/\b(?:in|inside|into|through|over)\s+(?:a\s+|an\s+|the\s+)?(?:cave|church|cathedral|mountain|mountains|void|intercom|megaphone|walkie[ -]?talkie|telephone)\b/gi, "")
+    .replace(
+      /\b(?:in|inside|into|through|over)\s+(?:a\s+|an\s+|the\s+)?(?:cave|church|cathedral|mountain|mountains|void|intercom|megaphone|walkie[ -]?talkie|telephone)\b/gi,
+      "",
+    )
     .replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi, "")
-    .replace(/\b(?:muffled|(?:from|behind|through)\s+(?:the\s+)?(?:outside|(?:a\s+|the\s+)?(?:closed\s+)?(?:door|wall)|another room|the other room|next door))\b/gi, "")
+    .replace(
+      /\b(?:muffled|(?:from|behind|through)\s+(?:the\s+)?(?:outside|(?:a\s+|the\s+)?(?:closed\s+)?(?:door|wall)|another room|the other room|next door))\b/gi,
+      "",
+    )
     .replace(/\bdesperetaley\b/gi, "desperately")
     .replace(/[;,]?\s*\d+(?:[.,]\d+)?\s*(?:s|sec(?:ond)?s?)\b/gi, "")
     .replace(/[:;,]+/g, " ")
@@ -120,12 +170,14 @@ function generalPerformanceCue(scene: Scene): string {
     .trim();
   // The accent becomes its own tag, so "angry welshman" keeps just "angry" here.
   cue = stripAccentWords(cue).replace(/\s+/g, " ").trim();
-  if (!cue || /^(?:neutral|natural|normal|default)(?: speech| delivery| voice)?$/i.test(cue)) return "";
+  if (!cue || /^(?:neutral|natural|normal|default)(?: speech| delivery| voice)?$/i.test(cue))
+    return "";
   // A long sentence is an explanation, and Eleven may read it aloud as speech.
   return cue.split(" ").length <= 4 ? cue : "";
 }
 // "welshman" and "frenchman" say the gender inside the word.
-const nationalityPrefix = "french|welsh|irish|english|scots|dutch|norse|cave|space|snow|super|bat|spider|iron";
+const nationalityPrefix =
+  "french|welsh|irish|english|scots|dutch|norse|cave|space|snow|super|bat|spider|iron";
 function gender(text: string) {
   return new RegExp(`\\b(?:woman|female|girl|(?:${nationalityPrefix})woman)\\b`).test(text)
     ? "female"
@@ -139,7 +191,9 @@ function gender(text: string) {
  * An explicit gender in the request always wins over this.
  */
 function impliedGender(text: string) {
-  return /\b(?:demon\w*|devil\w*|satan\w*|troll|ogre|orc|monster|giant|beast|zombie|guy|dude|gentleman|sir|dad|father|grandpa|king|lord)\b/.test(text)
+  return /\b(?:demon\w*|devil\w*|satan\w*|troll|ogre|orc|monster|giant|beast|zombie|guy|dude|gentleman|sir|dad|father|grandpa|king|lord)\b/.test(
+    text,
+  )
     ? "male"
     : /\b(?:witch|queen|lady|princess|mom|mother|grandma|girlfriend)\b/.test(text)
       ? "female"
@@ -163,9 +217,7 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
       throw new Error(
         "No voices are available in your ElevenLabs account. Add a voice to your account, then try again.",
       );
-    const character = (scene.character?.trim() || scene.voice)
-      .toLowerCase()
-      .replace(/\s+/g, " ");
+    const character = (scene.character?.trim() || scene.voice).toLowerCase().replace(/\s+/g, " ");
     const previous = cache.get(character);
     if (previous) {
       result.push({ ...previous, scene: index });
@@ -176,22 +228,14 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
     // Cast for the character's most demanding delivery across the whole script.
     // A neutral opening line must not lock a later scream to a relaxed narrator.
     const needsIntensity = scenes
-      .filter((s) => (s.character?.trim() || s.voice).toLowerCase().replace(/\s+/g, " ") === character)
+      .filter(
+        (s) => (s.character?.trim() || s.voice).toLowerCase().replace(/\s+/g, " ") === character,
+      )
       .some((s) => intensityRank[sceneIntensity(s)] > 0);
     const wantsOld = /\b(elderly|old|senior|aged)\b/.test(character);
     const wantsYoung = /\b(young|youthful)\b/.test(character);
     const tokens = words(character).filter(
-      (w) =>
-        ![
-          "a",
-          "the",
-          "voice",
-          "man",
-          "woman",
-          "male",
-          "female",
-          "narrator",
-        ].includes(w),
+      (w) => !["a", "the", "voice", "man", "woman", "male", "female", "narrator"].includes(w),
     );
     const related: Record<string, string[]> = {
       crazy: ["energetic", "fierce", "quirky", "excited"],
@@ -211,32 +255,64 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
       monster: ["deep", "rough", "gravelly", "creature", "powerful"],
       demon: ["deep", "rough", "gravelly", "dark", "powerful"],
     };
-    const expanded = [
-      ...new Set(tokens.flatMap((t) => [t, ...(related[t] || [])])),
-    ];
+    const expanded = [...new Set(tokens.flatMap((t) => [t, ...(related[t] || [])]))];
     const intensityWords: Record<string, number> = {
-      screaming: 90, shouting: 70, yelling: 70, fierce: 55, intense: 50, angry: 45, aggressive: 45, furious: 45,
-      rough: 30, gruff: 25, growl: 25, energetic: 25, hyped: 25, dominant: 25, powerful: 25,
+      screaming: 90,
+      shouting: 70,
+      yelling: 70,
+      fierce: 55,
+      intense: 50,
+      angry: 45,
+      aggressive: 45,
+      furious: 45,
+      rough: 30,
+      gruff: 25,
+      growl: 25,
+      energetic: 25,
+      hyped: 25,
+      dominant: 25,
+      powerful: 25,
     };
     const ranked = available
       .map((voice) => {
-        const description = [
-          voice.name,
-          voice.description,
-          ...Object.values(voice.labels || {}),
-        ]
+        const description = [voice.name, voice.description, ...Object.values(voice.labels || {})]
           .join(" ")
           .toLowerCase();
         const voiceGender = voice.labels?.gender || gender(description);
         const age = voice.labels?.age || "";
-        const ageScore = wantsOld ? (age === "old" ? 300 : age === "young" ? -50 : 0) : wantsYoung ? (age === "young" ? 60 : age === "old" ? -50 : 0) : 0;
+        const ageScore = wantsOld
+          ? age === "old"
+            ? 300
+            : age === "young"
+              ? -50
+              : 0
+          : wantsYoung
+            ? age === "young"
+              ? 60
+              : age === "old"
+                ? -50
+                : 0
+            : 0;
         const descriptionWords = new Set(words(description));
-        const intensity = Object.entries(intensityWords).reduce((score, [word, weight]) => score + (descriptionWords.has(word) ? weight : 0), 0);
-        const relaxed = /\b(relaxed|calm|soothing|gentle|chill|laid-back|reassuring)\b/.test(description);
-        const performanceScore = needsIntensity ? intensity + (voice.labels?.use_case === "characters_animation" ? 25 : 0) - (relaxed ? 80 : 0) : 0;
+        const intensity = Object.entries(intensityWords).reduce(
+          (score, [word, weight]) => score + (descriptionWords.has(word) ? weight : 0),
+          0,
+        );
+        const relaxed = /\b(relaxed|calm|soothing|gentle|chill|laid-back|reassuring)\b/.test(
+          description,
+        );
+        const performanceScore = needsIntensity
+          ? intensity +
+            (voice.labels?.use_case === "characters_animation" ? 25 : 0) -
+            (relaxed ? 80 : 0)
+          : 0;
         const matches = expanded.filter((t) => words(description).includes(t)).length;
         // A catalogue voice that already carries the accent is a better start than a neutral one.
-        const accentScore = accent && accent.labels.some((label) => (voice.labels?.accent || "").toLowerCase().includes(label)) ? 40 : 0;
+        const accentScore =
+          accent &&
+          accent.labels.some((label) => (voice.labels?.accent || "").toLowerCase().includes(label))
+            ? 40
+            : 0;
         return {
           voice,
           matches,
@@ -251,14 +327,16 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
                   ? -100
                   : 0
               : 0) +
-            matches * 10 + ageScore + performanceScore + accentScore,
+            matches * 10 +
+            ageScore +
+            performanceScore +
+            accentScore,
         };
       })
       .sort(
         (a, b) =>
           b.score - a.score ||
-          Number(used.has(a.voice.voice_id)) -
-            Number(used.has(b.voice.voice_id)) ||
+          Number(used.has(a.voice.voice_id)) - Number(used.has(b.voice.voice_id)) ||
           a.voice.voice_id.localeCompare(b.voice.voice_id),
       );
     const pinnedVoice = pinnedCharacterVoice(character, available);
@@ -272,12 +350,19 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
       const preferred = ranked.find((r) => r.voice.voice_id === scene.preferredVoiceId);
       // The planner's pick is a suggestion. For a scream it must actually suit screaming,
       // otherwise a relaxed narrator is cast because a model liked its name.
-      const preferredFits = preferred
-        && !(reserveCharacterVoices && isCharacterVoice(preferred.voice))
-        && (!needsIntensity || preferred.intensityScore > 0);
+      const preferredFits =
+        preferred &&
+        !(reserveCharacterVoices && isCharacterVoice(preferred.voice)) &&
+        (!needsIntensity || preferred.intensityScore > 0);
       best = preferredFits ? preferred : ranked[0];
       // A character with nothing to match on gets the owner's default voice, if set.
-      if (!preferredFits && defaultVoice && !requestedGender && !needsIntensity && ranked[0].matches === 0)
+      if (
+        !preferredFits &&
+        defaultVoice &&
+        !requestedGender &&
+        !needsIntensity &&
+        ranked[0].matches === 0
+      )
         best = ranked.find((r) => r.voice.voice_id === defaultVoice.voice_id) || best;
     }
     const choice = {
@@ -285,7 +370,11 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
       character,
       voiceId: best.voice.voice_id,
       voiceName: best.voice.name,
-      fallback: best.matches === 0 && best.performanceScore <= 0 && !(wantsOld && best.voice.labels?.age === "old") && !(wantsYoung && best.voice.labels?.age === "young"),
+      fallback:
+        best.matches === 0 &&
+        best.performanceScore <= 0 &&
+        !(wantsOld && best.voice.labels?.age === "old") &&
+        !(wantsYoung && best.voice.labels?.age === "young"),
       pinned: !!pinnedVoice && best.voice.voice_id === pinnedVoice.voice_id,
     };
     cache.set(character, choice);
@@ -296,18 +385,32 @@ export function castScenes(scenes: Scene[], voices: AccountVoice[]): Casting[] {
 }
 
 // One short tag per intensity. ElevenLabs reads long, invented tags aloud or ignores them.
-const intensityTag: Record<Intensity, string> = { normal: "", shout: "shouts", scream: "screaming" };
-const roomAndMetaWords = /\b(?:echo(?:es|ing|ed)?|reverb(?:erat\w*)?|cave|cavern|church|cathedral|intercom|megaphone|telephone|stability|voice id|preferred|volume|seconds?)\b/g;
+const intensityTag: Record<Intensity, string> = {
+  normal: "",
+  shout: "shouts",
+  scream: "screaming",
+};
+const roomAndMetaWords =
+  /\b(?:echo(?:es|ing|ed)?|reverb(?:erat\w*)?|cave|cavern|church|cathedral|intercom|megaphone|telephone|stability|voice id|preferred|volume|seconds?)\b/g;
 
 /** Splits a bracket's text into short, lowercase tags and drops room or engine wording. */
 function cleanTags(raw: string): string[] {
-  return raw
-    .replace(/[[\]]/g, "")
-    .split(/[,;]/)
-    // A tag that talks about the place would be read aloud or ignored; the muffling is applied later.
-    .filter((part) => !/\b(?:muffled?|outside|door|wall|behind|through|room)\b/i.test(part))
-    .map((part) => part.toLowerCase().replace(roomAndMetaWords, " ").replace(/[^\p{L}\p{N}' -]/gu, " ").replace(/\s+/g, " ").trim())
-    .filter((tag) => tag && tag.split(" ").length <= 4);
+  return (
+    raw
+      .replace(/[[\]]/g, "")
+      .split(/[,;]/)
+      // A tag that talks about the place would be read aloud or ignored; the muffling is applied later.
+      .filter((part) => !/\b(?:muffled?|outside|door|wall|behind|through|room)\b/i.test(part))
+      .map((part) =>
+        part
+          .toLowerCase()
+          .replace(roomAndMetaWords, " ")
+          .replace(/[^\p{L}\p{N}' -]/gu, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      )
+      .filter((tag) => tag && tag.split(" ").length <= 4)
+  );
 }
 
 export function speechRequest(scene: Scene) {
@@ -315,7 +418,9 @@ export function speechRequest(scene: Scene) {
   const intense = intensity !== "normal";
   const direction = `${scene.character || ""} ${scene.delivery || ""}`.toLowerCase();
   // Only the user's own short direction counts; a model's long explanation is not their wording.
-  const accent = detectAccent((scene.delivery || "").length <= 160 ? direction : scene.character || "");
+  const accent = detectAccent(
+    (scene.delivery || "").length <= 160 ? direction : scene.character || "",
+  );
 
   // Keep the planner's own tags, cleaned, and never touch them with the emphasis
   // rules below: upper-casing a tag turns it into something the model ignores.
@@ -328,7 +433,15 @@ export function speechRequest(scene: Scene) {
   }
   const rest = parts
     .slice(cursor)
-    .map((part) => (part.startsWith("[") ? cleanTags(part).map((tag) => `[${tag}]`).join(" ") : intense ? part.toUpperCase() : part))
+    .map((part) =>
+      part.startsWith("[")
+        ? cleanTags(part)
+            .map((tag) => `[${tag}]`)
+            .join(" ")
+        : intense
+          ? part.toUpperCase()
+          : part,
+    )
     .join("")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -350,11 +463,14 @@ export function speechRequest(scene: Scene) {
   // Only the user's own short direction is read; a model's explanation is not.
   const shortDirection = (scene.delivery || "").length <= 160 ? direction : "";
   const sobbing = /\b(sob|sobs|sobbing|through tears|voice breaking)\b/.test(shortDirection);
-  const crying = sobbing || /\b(sad|sadly|cry|cries|crying|tearful|upset|distressed)\b/.test(shortDirection);
+  const crying =
+    sobbing || /\b(sad|sadly|cry|cries|crying|tearful|upset|distressed)\b/.test(shortDirection);
   if (!lead.length && !hasInlineTags) {
     if (/\b(sarcastic|sarcasm)\b/.test(shortDirection)) add("sarcastic");
-    if (!intense && /\b(crazy|insane|frantic|excited|goofy|unstable)\b/.test(shortDirection)) add("excited");
-    if (!intense && /\b(whisper|whispers|whispering|quietly)\b/.test(shortDirection)) add("whispers");
+    if (!intense && /\b(crazy|insane|frantic|excited|goofy|unstable)\b/.test(shortDirection))
+      add("excited");
+    if (!intense && /\b(whisper|whispers|whispering|quietly)\b/.test(shortDirection))
+      add("whispers");
     if (crying) add("crying");
     if (sobbing) {
       add("sobbing");
@@ -362,20 +478,27 @@ export function speechRequest(scene: Scene) {
     }
     if (/\b(desperate|desperately|desperetaley)\b/.test(shortDirection)) add("desperate");
     if (!tags.length || (intense && tags.length === 1)) {
-      const cue = generalPerformanceCue({ ...scene, delivery: shortDirection ? scene.delivery : "" });
+      const cue = generalPerformanceCue({
+        ...scene,
+        delivery: shortDirection ? scene.delivery : "",
+      });
       if (cue && !/\b(?:scream|shout|yell)\w*/i.test(cue)) add(cue.toLowerCase());
     }
   }
   // The engine writes the accent tag itself, right after the intensity, from the user's words.
   if (accent) tags.splice(tags[0] && intense ? 1 : 0, 0, accent.tag);
-  const prefix = tags.slice(0, 3).map((tag) => `[${tag}]`).join(" ");
+  const prefix = tags
+    .slice(0, 3)
+    .map((tag) => `[${tag}]`)
+    .join(" ");
 
   const closed = /[.!?…]\s*(?:\[[^\]]+])?\s*$/.test(rest);
-  const expressiveText = crying && !closed
-    ? `${rest}…`
-    : intense && !/[!?]\s*(?:\[[^\]]+])?\s*$/.test(rest)
-      ? `${rest.replace(/[.…]+\s*$/, "")}!`
-      : rest;
+  const expressiveText =
+    crying && !closed
+      ? `${rest}…`
+      : intense && !/[!?]\s*(?:\[[^\]]+])?\s*$/.test(rest)
+        ? `${rest.replace(/[.…]+\s*$/, "")}!`
+        : rest;
   return {
     text: `${prefix}${prefix ? " " : ""}${expressiveText}`,
     model_id: "eleven_v3",

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { UserRole } from '../types';
+import { useCallback, useEffect, useState } from "react";
+import type { UserRole } from "../types";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:3001';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
 export interface AuthUser {
   id: string;
@@ -15,7 +15,7 @@ export interface AuthUser {
   roles?: UserRole[];
 }
 
-const TOKEN_KEY = 'auth_token';
+const TOKEN_KEY = "auth_token";
 
 export function getAuthToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -35,15 +35,15 @@ export function useAuth() {
   useEffect(() => {
     // Pick up token from OAuth redirect
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
+    const token = params.get("token");
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      window.history.replaceState({}, '', '/');
+      window.history.replaceState({}, "", "/");
     }
 
     setConnectionError(false);
     fetch(`${SERVER_URL}/auth/me`, {
-      credentials: 'include',
+      credentials: "include",
       headers: authHeaders(),
     })
       .then((r) => {
@@ -58,12 +58,18 @@ export function useAuth() {
       .finally(() => setLoading(false));
   }, [retryKey]);
 
-  const login = () => { window.location.href = `${SERVER_URL}/auth/twitch`; };
+  const login = () => {
+    window.location.href = `${SERVER_URL}/auth/twitch`;
+  };
 
   const logout = async () => {
     localStorage.removeItem(TOKEN_KEY);
     try {
-      await fetch(`${SERVER_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers: authHeaders() });
+      await fetch(`${SERVER_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: authHeaders(),
+      });
     } catch {
       // The local token is authoritative for the dashboard; server logout is best-effort.
     } finally {
@@ -74,7 +80,10 @@ export function useAuth() {
 
   const refreshUser = useCallback(async () => {
     try {
-      const r = await fetch(`${SERVER_URL}/auth/refresh`, { credentials: 'include', headers: authHeaders() });
+      const r = await fetch(`${SERVER_URL}/auth/refresh`, {
+        credentials: "include",
+        headers: authHeaders(),
+      });
       if (r.ok) setUser(await r.json());
       else if (r.status >= 500) setConnectionError(true);
     } catch {

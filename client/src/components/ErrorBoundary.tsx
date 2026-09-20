@@ -38,7 +38,9 @@ export class ErrorBoundary extends Component<Props, State> {
       this.state.error?.stack ?? "",
       this.state.componentStack ?? "",
       "This report does not include login or OAuth tokens.",
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     try {
       await navigator.clipboard.writeText(report);
       this.setState({ copied: true });
@@ -55,12 +57,21 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="loading-screen__content">
           <div>
             <h1>Something went wrong</h1>
-            <p>The page hit an unexpected error. Reloading normally restores the latest room state.</p>
+            <p>
+              The page hit an unexpected error. Reloading normally restores the latest room state.
+            </p>
             <code className="crash-support-id">Support ID: {this.state.supportId}</code>
           </div>
           <div className="crash-actions">
-            <button className="ui-button" onClick={this.copyDetails}><Clipboard size={14} /> {this.state.copied ? "Copied" : "Copy error details"}</button>
-            <button className="ui-button ui-button--primary" onClick={() => window.location.reload()}><RefreshCw size={14} /> Reload page</button>
+            <button className="ui-button" onClick={this.copyDetails}>
+              <Clipboard size={14} /> {this.state.copied ? "Copied" : "Copy error details"}
+            </button>
+            <button
+              className="ui-button ui-button--primary"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCw size={14} /> Reload page
+            </button>
           </div>
         </div>
       </main>

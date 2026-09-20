@@ -30,13 +30,20 @@ interface LibraryState {
 }
 
 const mediaTypeFor = (mime: string): MediaType =>
-  mime.startsWith("audio/") ? "audio" : mime.startsWith("video/") ? "video" : mime === "image/gif" ? "gif" : "image";
+  mime.startsWith("audio/")
+    ? "audio"
+    : mime.startsWith("video/")
+      ? "video"
+      : mime === "image/gif"
+        ? "gif"
+        : "image";
 
 const megabytes = (bytes: number) =>
   bytes < 1024 * 1024
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
-const kindLabel = (type: MediaType) => (type === "gif" ? "GIF" : type === "audio" ? "Audio" : type === "video" ? "Video" : "Image");
+const kindLabel = (type: MediaType) =>
+  type === "gif" ? "GIF" : type === "audio" ? "Audio" : type === "video" ? "Video" : "Image";
 
 interface MediaLibraryProps {
   open: boolean;
@@ -57,8 +64,13 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch(`${SERVER_URL}/library`, { credentials: "include", headers: authHeaders() });
-      const data = (await response.json().catch(() => ({}))) as Partial<LibraryState> & { error?: string };
+      const response = await fetch(`${SERVER_URL}/library`, {
+        credentials: "include",
+        headers: authHeaders(),
+      });
+      const data = (await response.json().catch(() => ({}))) as Partial<LibraryState> & {
+        error?: string;
+      };
       if (!response.ok) throw new Error(data.error || "The shared library could not be loaded.");
       setState(data as LibraryState);
       setError("");
@@ -90,7 +102,12 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
     try {
       const body = new FormData();
       body.append("file", file);
-      const response = await fetch(`${SERVER_URL}/library`, { method: "POST", body, credentials: "include", headers: authHeaders() });
+      const response = await fetch(`${SERVER_URL}/library`, {
+        method: "POST",
+        body,
+        credentials: "include",
+        headers: authHeaders(),
+      });
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(data.error || `Upload failed (${response.status})`);
       toast.success(`${file.name} saved to the shared library`);
@@ -105,7 +122,8 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
   const addToCanvas = async (item: LibraryItem) => {
     const type = mediaTypeFor(item.mime);
     const src = `${SERVER_URL}${item.url}`;
-    const size = type === "audio" ? null : await measureMediaUrl(src, type === "video" ? "video" : "image");
+    const size =
+      type === "audio" ? null : await measureMediaUrl(src, type === "video" ? "video" : "image");
     onAdd({
       id: randomUUID(),
       type,
@@ -126,19 +144,32 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
   };
 
   const addToSoundboard = (item: LibraryItem) => {
-    onSaveSound({ id: randomUUID(), name: item.name, url: `${SERVER_URL}${item.url}`, volume: 0.25 });
+    onSaveSound({
+      id: randomUUID(),
+      name: item.name,
+      url: `${SERVER_URL}${item.url}`,
+      volume: 0.25,
+    });
     toast.success(`${item.name} added to the Soundboard`);
   };
 
   const remove = async (item: LibraryItem) => {
-    if (!await confirm({
-      title: `Delete “${item.name}” from the library?`,
-      message: "It disappears for everyone. Layers and sounds already using it will stop loading it.",
-      confirmLabel: "Delete file",
-      danger: true,
-    })) return;
+    if (
+      !(await confirm({
+        title: `Delete “${item.name}” from the library?`,
+        message:
+          "It disappears for everyone. Layers and sounds already using it will stop loading it.",
+        confirmLabel: "Delete file",
+        danger: true,
+      }))
+    )
+      return;
     try {
-      const response = await fetch(`${SERVER_URL}/library/${item.id}`, { method: "DELETE", credentials: "include", headers: authHeaders() });
+      const response = await fetch(`${SERVER_URL}/library/${item.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: authHeaders(),
+      });
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(data.error || "Could not delete the file.");
       toast.success(`${item.name} removed from the library`);
@@ -152,7 +183,11 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
   const limit = state?.limitBytes ?? 1;
 
   return (
-    <div className="readiness-backdrop motion-backdrop" data-state={presence.state} onMouseDown={onClose}>
+    <div
+      className="readiness-backdrop motion-backdrop"
+      data-state={presence.state}
+      onMouseDown={onClose}
+    >
       <section
         className="readiness-dialog library-dialog motion-dialog"
         data-state={presence.state}
@@ -164,9 +199,16 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
         <header>
           <div>
             <h2 id="library-title">Shared media library</h2>
-            <p>Files everyone can add to the canvas. They stay available after the server restarts.</p>
+            <p>
+              Files everyone can add to the canvas. They stay available after the server restarts.
+            </p>
           </div>
-          <button className="ui-icon-button" onClick={onClose} title="Close the library" aria-label="Close the library">
+          <button
+            className="ui-icon-button"
+            onClick={onClose}
+            title="Close the library"
+            aria-label="Close the library"
+          >
             <X size={16} />
           </button>
         </header>
@@ -177,9 +219,17 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
               <div className="library-usage__bar" aria-hidden="true">
                 <span style={{ width: `${Math.min(100, (used / limit) * 100)}%` }} />
               </div>
-              <small>{megabytes(used)} of {megabytes(limit)} used · up to {megabytes(state.maxFileBytes)} per file</small>
+              <small>
+                {megabytes(used)} of {megabytes(limit)} used · up to {megabytes(state.maxFileBytes)}{" "}
+                per file
+              </small>
             </div>
-            <button className="ui-button studio-primary" style={{ width: "auto" }} onClick={() => fileRef.current?.click()} disabled={busy}>
+            <button
+              className="ui-button studio-primary"
+              style={{ width: "auto" }}
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+            >
               <Upload size={14} /> {busy ? "Saving…" : "Add file"}
             </button>
             <input
@@ -199,12 +249,17 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
           {error && <p className="library-note library-note--bad">{error}</p>}
           {!error && !state && <p className="library-note">Loading…</p>}
           {state && !state.configured && (
-            <p className="library-note">The shared library needs the Neon database. Set <code>DATABASE_URL</code> on the server to enable it.</p>
+            <p className="library-note">
+              The shared library needs the Neon database. Set <code>DATABASE_URL</code> on the
+              server to enable it.
+            </p>
           )}
           {state?.configured && state.items.length === 0 && (
             <div className="studio-empty-state">
               <strong>Nothing here yet</strong>
-              <span>Add the default videos, images and sounds you want everyone to be able to use.</span>
+              <span>
+                Add the default videos, images and sounds you want everyone to be able to use.
+              </span>
             </div>
           )}
           {state?.configured && state.items.length > 0 && (
@@ -223,20 +278,35 @@ export function MediaLibrary({ open, onClose, onAdd, onSaveSound }: MediaLibrary
                         <AudioLines size={28} aria-hidden="true" />
                       )}
                       <span className="library-card__kind">
-                        {type === "video" ? <Film size={11} /> : type === "audio" ? <Volume2 size={11} /> : <ImagePlus size={11} />}
+                        {type === "video" ? (
+                          <Film size={11} />
+                        ) : type === "audio" ? (
+                          <Volume2 size={11} />
+                        ) : (
+                          <ImagePlus size={11} />
+                        )}
                         {kindLabel(type)}
                       </span>
                     </div>
                     <div className="library-card__body">
                       <strong title={item.name}>{item.name}</strong>
-                      <small>{megabytes(item.size)} · {item.addedBy}</small>
+                      <small>
+                        {megabytes(item.size)} · {item.addedBy}
+                      </small>
                     </div>
                     <div className="library-card__actions">
-                      <button className="ui-button ui-button--compact soundboard-action--obs" onClick={() => void addToCanvas(item)}>
+                      <button
+                        className="ui-button ui-button--compact soundboard-action--obs"
+                        onClick={() => void addToCanvas(item)}
+                      >
                         <Play size={12} fill="currentColor" /> Add to canvas
                       </button>
                       {type === "audio" && (
-                        <button className="ui-button ui-button--compact" onClick={() => addToSoundboard(item)} title="Add this sound to the Soundboard">
+                        <button
+                          className="ui-button ui-button--compact"
+                          onClick={() => addToSoundboard(item)}
+                          title="Add this sound to the Soundboard"
+                        >
                           <Volume2 size={13} /> Soundboard
                         </button>
                       )}

@@ -75,15 +75,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const nextId = useRef(1);
 
   const dismiss = useCallback((id: number) => {
-    setToasts((current) => current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)));
-    window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), EXIT_MS);
+    setToasts((current) =>
+      current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)),
+    );
+    window.setTimeout(
+      () => setToasts((current) => current.filter((toast) => toast.id !== id)),
+      EXIT_MS,
+    );
   }, []);
 
   const show = useCallback(
     (kind: ToastKind, message: string) => {
       const id = nextId.current++;
       setToasts((current) => [...current.slice(-3), { id, kind, message }]);
-      setNotifications((current) => [...current.slice(-99), { id: Date.now() * 100 + id, kind, message, at: Date.now() }]);
+      setNotifications((current) => [
+        ...current.slice(-99),
+        { id: Date.now() * 100 + id, kind, message, at: Date.now() },
+      ]);
       window.setTimeout(() => dismiss(id), kind === "error" ? 7000 : 4500);
     },
     [dismiss],
@@ -122,11 +130,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <div className="toast-region" role="region" aria-label="Notifications">
           {toasts.map((toast) => {
             const Icon =
-              toast.kind === "success"
-                ? CheckCircle2
-                : toast.kind === "error"
-                  ? CircleAlert
-                  : Info;
+              toast.kind === "success" ? CheckCircle2 : toast.kind === "error" ? CircleAlert : Info;
             return (
               <div
                 key={toast.id}

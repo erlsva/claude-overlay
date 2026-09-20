@@ -4,11 +4,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
 import { getFeatureFlags } from "../db/index.js";
-import {
-  audioUrl,
-  deleteUploadedClip,
-  discordStorageConfigured,
-} from "./discord.js";
+import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
 import { ffmpegAvailable } from "./audio.js";
 import {
   getTtsPlaybackState,
@@ -21,12 +17,7 @@ import {
   stopTtsPlayback,
   submit,
 } from "./service.js";
-import {
-  deleteClip,
-  getClip,
-  listClips,
-  ttsMetadataStorageConfigured,
-} from "./store.js";
+import { deleteClip, getClip, listClips, ttsMetadataStorageConfigured } from "./store.js";
 
 export const ttsRouter = Router();
 const audioAccess = rateLimit({
@@ -67,9 +58,7 @@ ttsRouter.get("/clips/:id/audio", audioAccess, async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.redirect(await audioUrl(clip));
   } catch {
-    res
-      .status(502)
-      .json({ error: "Saved audio could not be loaded from Discord." });
+    res.status(502).json({ error: "Saved audio could not be loaded from Discord." });
   }
 });
 ttsRouter.use(requireAuth);
@@ -105,43 +94,32 @@ ttsRouter.get("/state", async (_req, res) => {
       jobs: [...jobs.values()].reverse().slice(0, 20),
     });
   } catch {
-    res
-      .status(503)
-      .json({
-        error:
-          "TTS storage unavailable. Check DATABASE_URL and the server logs.",
-      });
+    res.status(503).json({
+      error: "TTS storage unavailable. Check DATABASE_URL and the server logs.",
+    });
   }
 });
 ttsRouter.get("/clips", async (_req, res) => {
   try {
     res.json(await listClips());
   } catch {
-    res
-      .status(503)
-      .json({ error: "TTS storage unavailable. Check DATABASE_URL." });
+    res.status(503).json({ error: "TTS storage unavailable. Check DATABASE_URL." });
   }
 });
-ttsRouter.get("/jobs", (_req, res) =>
-  res.json([...jobs.values()].reverse().slice(0, 20)),
-);
+ttsRouter.get("/jobs", (_req, res) => res.json([...jobs.values()].reverse().slice(0, 20)));
 ttsRouter.post("/preview", expensive, async (req, res) => {
   try {
-    const { prompt } = z
-      .object({ prompt: z.string().trim().min(1).max(6000) })
-      .parse(req.body);
+    const { prompt } = z.object({ prompt: z.string().trim().min(1).max(6000) }).parse(req.body);
     res.json(await preview(prompt, req.authUser!.id));
   } catch (e) {
-    res
-      .status(400)
-      .json({
-        error:
-          e instanceof z.ZodError
-            ? "Invalid prompt."
-            : e instanceof Error
-              ? e.message
-              : "Preview failed.",
-      });
+    res.status(400).json({
+      error:
+        e instanceof z.ZodError
+          ? "Invalid prompt."
+          : e instanceof Error
+            ? e.message
+            : "Preview failed.",
+    });
   }
 });
 ttsRouter.post("/generate", expensive, async (req, res) => {
@@ -160,21 +138,17 @@ ttsRouter.post("/generate", expensive, async (req, res) => {
     });
     res.status(202).json(job);
   } catch (e) {
-    res
-      .status(400)
-      .json({
-        error:
-          e instanceof z.ZodError
-            ? "Invalid TTS request."
-            : e instanceof Error
-              ? e.message
-              : "Generation failed.",
-      });
+    res.status(400).json({
+      error:
+        e instanceof z.ZodError
+          ? "Invalid TTS request."
+          : e instanceof Error
+            ? e.message
+            : "Generation failed.",
+    });
   }
 });
-ttsRouter.post("/stop", (_req, res) =>
-  res.json({ stopped: stopTtsPlayback() }),
-);
+ttsRouter.post("/stop", (_req, res) => res.json({ stopped: stopTtsPlayback() }));
 ttsRouter.post("/playback", (req, res) => {
   try {
     const input = z
@@ -192,20 +166,16 @@ ttsRouter.post("/playback", (req, res) => {
     let changed = false;
     if (input.action === "pause") changed = pauseTtsPlayback();
     else if (input.action === "resume") changed = resumeTtsPlayback();
-    else if (input.action === "volume")
-      changed = setTtsPlaybackVolume(input.volume);
+    else if (input.action === "volume") changed = setTtsPlaybackVolume(input.volume);
     else {
       setTtsPlaybackEnabled(input.enabled);
       changed = before.enabled !== input.enabled;
     }
     res.json({ changed, state: getTtsPlaybackState() });
   } catch (error) {
-    res
-      .status(400)
-      .json({
-        error:
-          error instanceof Error ? error.message : "Invalid playback control.",
-      });
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "Invalid playback control.",
+    });
   }
 });
 ttsRouter.delete("/clips/:id", async (req, res) => {
@@ -223,13 +193,8 @@ ttsRouter.delete("/clips/:id", async (req, res) => {
     await deleteClip(clip.id);
     res.json({ deleted: true });
   } catch (error) {
-    res
-      .status(502)
-      .json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Could not delete the saved clip.",
-      });
+    res.status(502).json({
+      error: error instanceof Error ? error.message : "Could not delete the saved clip.",
+    });
   }
 });

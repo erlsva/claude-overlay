@@ -29,7 +29,12 @@ const upload = multer({
   fileFilter: (_req, file, callback) => callback(null, allowedMimeTypes.has(file.mimetype)),
 });
 
-const fileAccess = rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: "draft-8", legacyHeaders: false });
+const fileAccess = rateLimit({
+  windowMs: 60_000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
 
 const publicItem = (item: LibraryItem) => ({ ...item, url: `/library/files/${item.id}` });
 
@@ -58,7 +63,10 @@ libraryRouter.get("/files/:id", fileAccess, async (req, res) => {
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
     };
-    const send = () => new Promise<boolean>((resolve) => res.sendFile(cached, { headers }, (error) => resolve(!error)));
+    const send = () =>
+      new Promise<boolean>((resolve) =>
+        res.sendFile(cached, { headers }, (error) => resolve(!error)),
+      );
     if (await send()) return;
     if (res.headersSent) return;
     // Cache miss (first request since a restart): rebuild it from the durable copy.
@@ -83,7 +91,13 @@ libraryRouter.use(requireAuth);
 libraryRouter.get("/", async (_req, res) => {
   const store = getLibraryStore();
   if (!store) {
-    res.json({ configured: false, items: [], usedBytes: 0, limitBytes: MAX_TOTAL_BYTES, maxFileBytes: MAX_FILE_BYTES });
+    res.json({
+      configured: false,
+      items: [],
+      usedBytes: 0,
+      limitBytes: MAX_TOTAL_BYTES,
+      maxFileBytes: MAX_FILE_BYTES,
+    });
     return;
   }
   try {
@@ -98,7 +112,11 @@ libraryRouter.get("/", async (_req, res) => {
     });
   } catch (error) {
     console.error("Library list failed", error);
-    res.status(503).json({ error: "The shared library is unavailable. Check DATABASE_URL and the server logs." });
+    res
+      .status(503)
+      .json({
+        error: "The shared library is unavailable. Check DATABASE_URL and the server logs.",
+      });
   }
 });
 
@@ -106,10 +124,16 @@ function parseUpload(req: Request, res: Response, next: NextFunction) {
   upload.single("file")(req, res, (error) => {
     if (!error) return next();
     if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-      res.status(413).json({ error: `Files in the library can be at most ${MAX_FILE_BYTES / (1024 * 1024)} MB.` });
+      res
+        .status(413)
+        .json({
+          error: `Files in the library can be at most ${MAX_FILE_BYTES / (1024 * 1024)} MB.`,
+        });
       return;
     }
-    res.status(400).json({ error: error instanceof Error ? error.message : "Upload could not be processed." });
+    res
+      .status(400)
+      .json({ error: error instanceof Error ? error.message : "Upload could not be processed." });
   });
 }
 
@@ -129,7 +153,11 @@ libraryRouter.post("/", uploadRateLimit, parseUpload, async (req, res) => {
     return;
   }
   try {
-    const problem = checkLibraryUpload({ mime: file.mimetype, size: file.size, usedBytes: await store.usedBytes() });
+    const problem = checkLibraryUpload({
+      mime: file.mimetype,
+      size: file.size,
+      usedBytes: await store.usedBytes(),
+    });
     if (problem) {
       res.status(problem.includes("full") ? 507 : 400).json({ error: problem });
       return;

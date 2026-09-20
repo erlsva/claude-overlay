@@ -5,11 +5,9 @@ const SERVER_URL = (
   process.env.RENDER_EXTERNAL_URL ??
   "http://localhost:3001"
 ).replace(/\/$/, "");
-const TWITCH_REDIRECT_URI =
-  process.env.TWITCH_REDIRECT_URI || `${SERVER_URL}/auth/callback`;
+const TWITCH_REDIRECT_URI = process.env.TWITCH_REDIRECT_URI || `${SERVER_URL}/auth/callback`;
 export const twitchEventsRedirectUri =
-  process.env.TWITCH_EVENTS_REDIRECT_URI ||
-  `${SERVER_URL}/auth/events/callback`;
+  process.env.TWITCH_EVENTS_REDIRECT_URI || `${SERVER_URL}/auth/events/callback`;
 
 export interface TwitchUser {
   id: string;
@@ -48,12 +46,20 @@ export function getTwitchEventsAuthUrl(state: string, scopes: string[]): string 
   return `https://id.twitch.tv/oauth2/authorize?${params}`;
 }
 
-export interface TwitchTokenSet { accessToken: string; refreshToken: string; expiresIn: number; scopes: string[]; }
+export interface TwitchTokenSet {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  scopes: string[];
+}
 export async function exchangeCode(code: string): Promise<TwitchTokenSet> {
   return exchangeCodeForRedirect(code, TWITCH_REDIRECT_URI);
 }
 
-export async function exchangeCodeForRedirect(code: string, redirectUri: string): Promise<TwitchTokenSet> {
+export async function exchangeCodeForRedirect(
+  code: string,
+  redirectUri: string,
+): Promise<TwitchTokenSet> {
   const res = await fetch("https://id.twitch.tv/oauth2/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -69,22 +75,49 @@ export async function exchangeCodeForRedirect(code: string, redirectUri: string)
     const body = await res.text();
     throw new Error(`Twitch token exchange failed (${res.status}): ${body.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number; scope?: string[] };
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresIn: data.expires_in, scopes: data.scope ?? [] };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    scope?: string[];
+  };
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresIn: data.expires_in,
+    scopes: data.scope ?? [],
+  };
 }
 
 export async function refreshUserToken(refreshToken: string): Promise<TwitchTokenSet> {
-  const res = await fetch("https://id.twitch.tv/oauth2/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: TWITCH_CLIENT_ID, client_secret: TWITCH_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: refreshToken }) });
+  const res = await fetch("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: TWITCH_CLIENT_ID,
+      client_secret: TWITCH_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  });
   if (!res.ok) throw new Error("Failed to refresh Twitch token");
-  const data = await res.json() as { access_token: string; refresh_token: string; expires_in: number; scope?: string[] };
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresIn: data.expires_in, scopes: data.scope ?? [] };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    scope?: string[];
+  };
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresIn: data.expires_in,
+    scopes: data.scope ?? [],
+  };
 }
 
 export const twitchClientId = TWITCH_CLIENT_ID;
 
-export async function getTwitchUserFromToken(
-  accessToken: string,
-): Promise<TwitchUser> {
+export async function getTwitchUserFromToken(accessToken: string): Promise<TwitchUser> {
   const res = await fetch("https://api.twitch.tv/helix/users", {
     headers: {
       "Client-Id": TWITCH_CLIENT_ID,
@@ -98,21 +131,15 @@ export async function getTwitchUserFromToken(
 }
 
 // Fetch the user's Twitch chat color (requires user:read:chat scope)
-export async function getTwitchChatColor(
-  userId: string,
-  accessToken: string,
-): Promise<string> {
+export async function getTwitchChatColor(userId: string, accessToken: string): Promise<string> {
   const fallbackColor = "#9146FF";
 
-  const res = await fetch(
-    `https://api.twitch.tv/helix/chat/color?user_id=${userId}`,
-    {
-      headers: {
-        "Client-Id": TWITCH_CLIENT_ID,
-        Authorization: `Bearer ${accessToken}`,
-      },
+  const res = await fetch(`https://api.twitch.tv/helix/chat/color?user_id=${userId}`, {
+    headers: {
+      "Client-Id": TWITCH_CLIENT_ID,
+      Authorization: `Bearer ${accessToken}`,
     },
-  );
+  });
   if (!res.ok) return fallbackColor; // fallback to Twitch purple
   const data = (await res.json()) as { data: TwitchChatColor[] };
   const color = data.data[0]?.color;
@@ -147,9 +174,7 @@ export async function getAppAccessToken(): Promise<string> {
   return appAccessToken;
 }
 
-export async function lookupTwitchUser(
-  username: string,
-): Promise<TwitchUser | null> {
+export async function lookupTwitchUser(username: string): Promise<TwitchUser | null> {
   const token = await getAppAccessToken();
   const res = await fetch(
     `https://api.twitch.tv/helix/users?login=${encodeURIComponent(username)}`,
@@ -168,15 +193,12 @@ export async function lookupTwitchUser(
 export async function isStreamerLive(username: string) {
   const token = await getAppAccessToken();
 
-  const response = await fetch(
-    `https://api.twitch.tv/helix/streams?user_login=${username}`,
-    {
-      headers: {
-        "Client-ID": process.env.TWITCH_CLIENT_ID!,
-        Authorization: `Bearer ${token}`,
-      },
+  const response = await fetch(`https://api.twitch.tv/helix/streams?user_login=${username}`, {
+    headers: {
+      "Client-ID": process.env.TWITCH_CLIENT_ID!,
+      Authorization: `Bearer ${token}`,
     },
-  );
+  });
 
   const data = await response.json();
 

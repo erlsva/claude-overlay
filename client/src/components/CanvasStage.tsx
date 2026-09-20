@@ -14,14 +14,7 @@
  * - draggingRef prevents React from overwriting DOM positions for group members mid-drag
  */
 
-import {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import type {
   CanvasElement,
   CursorPayload,
@@ -87,15 +80,19 @@ function iconHTML(Icon: LucideIcon, size = 14): string {
   return renderToStaticMarkup(<Icon size={size} strokeWidth={2} />);
 }
 
-function animationFrames(name: CanvasElement['enterAnimation']): Keyframe[] {
-  const end = { opacity: 1, transform: 'translate(0, 0) scale(1) rotate(0deg)' };
+function animationFrames(name: CanvasElement["enterAnimation"]): Keyframe[] {
+  const end = { opacity: 1, transform: "translate(0, 0) scale(1) rotate(0deg)" };
   const starts: Record<string, Keyframe> = {
-    fade: { opacity: 0 }, pop: { opacity: 0, transform: 'scale(.55)' },
-    'slide-left': { opacity: 0, transform: 'translateX(-80px)' }, 'slide-right': { opacity: 0, transform: 'translateX(80px)' },
-    'slide-up': { opacity: 0, transform: 'translateY(-80px)' }, 'slide-down': { opacity: 0, transform: 'translateY(80px)' },
-    spin: { opacity: 0, transform: 'scale(.65) rotate(-180deg)' }, none: end,
+    fade: { opacity: 0 },
+    pop: { opacity: 0, transform: "scale(.55)" },
+    "slide-left": { opacity: 0, transform: "translateX(-80px)" },
+    "slide-right": { opacity: 0, transform: "translateX(80px)" },
+    "slide-up": { opacity: 0, transform: "translateY(-80px)" },
+    "slide-down": { opacity: 0, transform: "translateY(80px)" },
+    spin: { opacity: 0, transform: "scale(.65) rotate(-180deg)" },
+    none: end,
   };
-  return [starts[name ?? 'fade'] ?? starts.fade, end];
+  return [starts[name ?? "fade"] ?? starts.fade, end];
 }
 
 function applyTextStyles(span: HTMLSpanElement, src: string) {
@@ -108,61 +105,62 @@ function applyTextStyles(span: HTMLSpanElement, src: string) {
   span.style.textAlign = config.textAlign;
   span.style.lineHeight = String(config.lineHeight);
   span.style.letterSpacing = `${config.letterSpacing}px`;
-  span.style.webkitTextStroke = config.strokeWidth ? `${config.strokeWidth}px ${config.strokeColor}` : "0 transparent";
+  span.style.webkitTextStroke = config.strokeWidth
+    ? `${config.strokeWidth}px ${config.strokeColor}`
+    : "0 transparent";
   span.style.textShadow = config.shadowEnabled ? `1px 2px 5px ${config.shadowColor}` : "none";
   span.style.background = config.backgroundEnabled ? config.backgroundColor : "transparent";
 }
 
-function effectAnimationFrames(name: CanvasElement['effectAnimation']): Keyframe[] {
-  if (name === 'bounce') return [
-    { transform: 'translateY(0) scaleY(1)' },
-    { transform: 'translateY(-28px) scaleY(1.02)', offset: 0.32 },
-    { transform: 'translateY(0) scaleY(.94)', offset: 0.55 },
-    { transform: 'translateY(-11px) scaleY(1)', offset: 0.72 },
-    { transform: 'translateY(0) scaleY(1)' },
-  ];
-  if (name === 'float') return [
-    { transform: 'translateY(0)' },
-    { transform: 'translateY(-18px)', offset: 0.25 },
-    { transform: 'translateY(0)', offset: 0.5 },
-    { transform: 'translateY(-10px)', offset: 0.75 },
-    { transform: 'translateY(0)' },
-  ];
-  if (name === 'sway') return [
-    { transform: 'rotate(0deg)' },
-    { transform: 'rotate(-7deg)', offset: 0.22 },
-    { transform: 'rotate(6deg)', offset: 0.48 },
-    { transform: 'rotate(-3deg)', offset: 0.72 },
-    { transform: 'rotate(0deg)' },
-  ];
-  if (name === 'heartbeat') return [
-    { transform: 'scale(1)' },
-    { transform: 'scale(1.16)', offset: 0.2 },
-    { transform: 'scale(1)', offset: 0.36 },
-    { transform: 'scale(1.1)', offset: 0.53 },
-    { transform: 'scale(1)' },
-  ];
-  if (name === 'pulse') return [
-    { transform: 'scale(1)' },
-    { transform: 'scale(1.18)' },
-    { transform: 'scale(1)' },
-  ];
-  if (name === 'spin') return [
-    { transform: 'rotate(0deg)' },
-    { transform: 'rotate(360deg)' },
-  ];
-  if (name === 'shake') return [
-    { transform: 'translateX(0)' },
-    { transform: 'translateX(-16px) rotate(-2deg)' },
-    { transform: 'translateX(14px) rotate(2deg)' },
-    { transform: 'translateX(-10px) rotate(-1deg)' },
-    { transform: 'translateX(8px) rotate(1deg)' },
-    { transform: 'translateX(0)' },
-  ];
+function effectAnimationFrames(name: CanvasElement["effectAnimation"]): Keyframe[] {
+  if (name === "bounce")
+    return [
+      { transform: "translateY(0) scaleY(1)" },
+      { transform: "translateY(-28px) scaleY(1.02)", offset: 0.32 },
+      { transform: "translateY(0) scaleY(.94)", offset: 0.55 },
+      { transform: "translateY(-11px) scaleY(1)", offset: 0.72 },
+      { transform: "translateY(0) scaleY(1)" },
+    ];
+  if (name === "float")
+    return [
+      { transform: "translateY(0)" },
+      { transform: "translateY(-18px)", offset: 0.25 },
+      { transform: "translateY(0)", offset: 0.5 },
+      { transform: "translateY(-10px)", offset: 0.75 },
+      { transform: "translateY(0)" },
+    ];
+  if (name === "sway")
+    return [
+      { transform: "rotate(0deg)" },
+      { transform: "rotate(-7deg)", offset: 0.22 },
+      { transform: "rotate(6deg)", offset: 0.48 },
+      { transform: "rotate(-3deg)", offset: 0.72 },
+      { transform: "rotate(0deg)" },
+    ];
+  if (name === "heartbeat")
+    return [
+      { transform: "scale(1)" },
+      { transform: "scale(1.16)", offset: 0.2 },
+      { transform: "scale(1)", offset: 0.36 },
+      { transform: "scale(1.1)", offset: 0.53 },
+      { transform: "scale(1)" },
+    ];
+  if (name === "pulse")
+    return [{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }];
+  if (name === "spin") return [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }];
+  if (name === "shake")
+    return [
+      { transform: "translateX(0)" },
+      { transform: "translateX(-16px) rotate(-2deg)" },
+      { transform: "translateX(14px) rotate(2deg)" },
+      { transform: "translateX(-10px) rotate(-1deg)" },
+      { transform: "translateX(8px) rotate(1deg)" },
+      { transform: "translateX(0)" },
+    ];
   return [
-    { opacity: 0, transform: 'scale(.4)' },
-    { opacity: 1, transform: 'scale(1.12)', offset: 0.72 },
-    { opacity: 1, transform: 'scale(1)' },
+    { opacity: 0, transform: "scale(.4)" },
+    { opacity: 1, transform: "scale(1.12)", offset: 0.72 },
+    { opacity: 1, transform: "scale(1)" },
   ];
 }
 
@@ -173,12 +171,14 @@ function playRequestedEffect(node: HTMLElement, element: CanvasElement) {
   node.dataset.effectAnimation = key;
   const duration = Math.max(150, Math.min(10_000, element.effectDurationMs ?? 700));
   if (Date.now() - element.effectStartedAt > duration + 1500) return;
-  const surface = node.querySelector<HTMLElement>('.element-content') ?? node.firstElementChild as HTMLElement | null;
+  const surface =
+    node.querySelector<HTMLElement>(".element-content") ??
+    (node.firstElementChild as HTMLElement | null);
   surface?.animate(effectAnimationFrames(element.effectAnimation), {
     duration,
     easing: ["shake", "sway", "float"].includes(element.effectAnimation)
-      ? 'ease-in-out'
-      : 'cubic-bezier(.2,.8,.2,1)',
+      ? "ease-in-out"
+      : "cubic-bezier(.2,.8,.2,1)",
   });
 }
 
@@ -329,10 +329,8 @@ function addResizeHandle(
       // so the opposite edge/corner remains visually anchored.
       const localCenterShiftX = newLeft + newW / 2 - startCenterX;
       const localCenterShiftY = newTop + newH / 2 - startCenterY;
-      const centerX =
-        startCenterX + localCenterShiftX * cos - localCenterShiftY * sin;
-      const centerY =
-        startCenterY + localCenterShiftX * sin + localCenterShiftY * cos;
+      const centerX = startCenterX + localCenterShiftX * cos - localCenterShiftY * sin;
+      const centerY = startCenterY + localCenterShiftX * sin + localCenterShiftY * cos;
       newLeft = centerX - newW / 2;
       newTop = centerY - newH / 2;
 
@@ -371,7 +369,6 @@ function addResizeHandle(
       if (btn.hasPointerCapture(e.pointerId)) {
         btn.releasePointerCapture(e.pointerId);
       }
-
     };
     btn.addEventListener("pointermove", onMove);
     btn.addEventListener("pointerup", finish);
@@ -424,20 +421,13 @@ function addRotationHandle(
     const centerX = pivot?.x ?? rect.left + rect.width / 2;
     const centerY = pivot?.y ?? rect.top + rect.height / 2;
     const startRotation = getRotation(container);
-    const startAngle = Math.atan2(
-      event.clientY - centerY,
-      event.clientX - centerX,
-    );
+    const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
     let pending: Partial<CanvasElement> | null = null;
     let lastEmit = 0;
 
     const move = (moveEvent: PointerEvent) => {
-      const angle = Math.atan2(
-        moveEvent.clientY - centerY,
-        moveEvent.clientX - centerX,
-      );
-      let rotation =
-        startRotation + ((angle - startAngle) * 180) / Math.PI;
+      const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+      let rotation = startRotation + ((angle - startAngle) * 180) / Math.PI;
       if (moveEvent.shiftKey) rotation = Math.round(rotation / 15) * 15;
       const delta = rotation - startRotation;
       if (onGroupRotate && pivot) {
@@ -539,13 +529,7 @@ function makeDraggable(
               guideX: undefined,
               guideY: undefined,
             }
-          : snapToStream(
-              startLeft + dx,
-              startTop + dy,
-              el.offsetWidth,
-              el.offsetHeight,
-              10 / zoom,
-            );
+          : snapToStream(startLeft + dx, startTop + dy, el.offsetWidth, el.offsetHeight, 10 / zoom);
         lastDx = snapped.x - startLeft;
         lastDy = snapped.y - startTop;
         el.style.left = snapped.x + "px";
@@ -618,10 +602,7 @@ function makeDraggable(
 // ---------------------------------------------------------------------------
 function attachMediaListeners(
   media: HTMLMediaElement,
-  onMediaEvent: (
-    action: "play" | "pause" | "seek",
-    currentTime: number,
-  ) => void,
+  onMediaEvent: (action: "play" | "pause" | "seek", currentTime: number) => void,
   trackNativeSeeking = false,
 ) {
   // Only track play/pause via events. Seek is emitted directly by UI controls to avoid
@@ -637,26 +618,16 @@ function attachMediaListeners(
   if (trackNativeSeeking) {
     media.addEventListener("seeked", () => {
       const remoteTarget = (media as any).__remoteSeekTarget;
-      if (
-        typeof remoteTarget === "number" &&
-        Math.abs(media.currentTime - remoteTarget) < 0.25
-      ) {
+      if (typeof remoteTarget === "number" && Math.abs(media.currentTime - remoteTarget) < 0.25) {
         delete (media as any).__remoteSeekTarget;
         return;
       }
-      if (!(media as any).__applyingRemote)
-        onMediaEvent("seek", media.currentTime);
+      if (!(media as any).__applyingRemote) onMediaEvent("seek", media.currentTime);
     });
   }
 }
 
-function snapToStream(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  threshold: number,
-) {
+function snapToStream(x: number, y: number, width: number, height: number, threshold: number) {
   const left = STREAM_OFFSET_X;
   const right = STREAM_OFFSET_X + STREAM_W;
   const centerX = STREAM_OFFSET_X + STREAM_W / 2;
@@ -723,10 +694,7 @@ function createMediaElement(
   el: CanvasElement,
   options: {
     isOverlay?: boolean;
-    onMediaEvent?: (
-      action: "play" | "pause" | "seek",
-      currentTime: number,
-    ) => void;
+    onMediaEvent?: (action: "play" | "pause" | "seek", currentTime: number) => void;
     onMediaReady?: (mediaEl: HTMLMediaElement) => void;
     onVolumeChange?: (vol: number) => void;
     onVisibilityChange?: (visible: boolean) => void;
@@ -743,7 +711,8 @@ function createMediaElement(
 
   if (type === "text") {
     const span = document.createElement("span");
-    span.style.cssText = "white-space:pre-wrap;display:block;width:100%;height:100%;padding:12px 16px;box-sizing:border-box;overflow:hidden;word-break:break-word;pointer-events:none;";
+    span.style.cssText =
+      "white-space:pre-wrap;display:block;width:100%;height:100%;padding:12px 16px;box-sizing:border-box;overflow:hidden;word-break:break-word;pointer-events:none;";
     applyTextStyles(span, src);
     return span;
   }
@@ -765,8 +734,7 @@ function createMediaElement(
     video.preload = "auto";
 
     if (isOverlay) {
-      video.style.cssText =
-        "width:100%;height:100%;object-fit:contain;display:block;";
+      video.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;";
       if (el.mediaCurrentTime && el.mediaCurrentTime > 0) {
         video.addEventListener(
           "loadedmetadata",
@@ -833,8 +801,7 @@ function createMediaElement(
     if (isOverlay) {
       // Audio is handled via hidden elements in OverlayStage — return invisible placeholder
       const placeholder = document.createElement("div");
-      placeholder.style.cssText =
-        "width:0;height:0;overflow:hidden;pointer-events:none;";
+      placeholder.style.cssText = "width:0;height:0;overflow:hidden;pointer-events:none;";
       return placeholder;
     }
 
@@ -884,8 +851,7 @@ function createMediaElement(
     const labelText = document.createElement("span");
     labelText.className = "media-name";
     labelText.textContent = name;
-    labelText.style.cssText =
-      "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+    labelText.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
     label.appendChild(labelIcon);
     label.appendChild(labelText);
 
@@ -928,10 +894,7 @@ function applySlotOrder(
   slots: LayerSlot[],
   onElementChange: (id: string, changes: Partial<CanvasElement>) => void,
 ) {
-  const total = slots.reduce(
-    (n, s) => n + (s.kind === "element" ? 1 : s.members.length),
-    0,
-  );
+  const total = slots.reduce((n, s) => n + (s.kind === "element" ? 1 : s.members.length), 0);
   let z = total * 100;
   for (const slot of slots) {
     if (slot.kind === "element") {
@@ -1001,12 +964,15 @@ export function ElementPanel({
     .filter(({ slot }) => {
       if (!normalizedSearch) return true;
       const members = slot.kind === "element" ? [slot.el] : slot.members;
-      const groupName = slot.kind === "group" ? slot.members[0]?.groupName ?? "group" : "";
-      return [groupName, ...members.map((element) =>
-        element.type === "text"
-          ? parseTextSrc(element.src).text
-          : element.displayName || getFileLabel(element.src) || element.type,
-      )].some((value) => value.toLowerCase().includes(normalizedSearch));
+      const groupName = slot.kind === "group" ? (slot.members[0]?.groupName ?? "group") : "";
+      return [
+        groupName,
+        ...members.map((element) =>
+          element.type === "text"
+            ? parseTextSrc(element.src).text
+            : element.displayName || getFileLabel(element.src) || element.type,
+        ),
+      ].some((value) => value.toLowerCase().includes(normalizedSearch));
     });
   const icon = (t: string) => {
     const Icon =
@@ -1021,18 +987,17 @@ export function ElementPanel({
               : TypeIcon;
     return <Icon size={12} strokeWidth={2} />;
   };
-  const anyGrouped = [...selectedIds].some(
-    (id) => elements.find((e) => e.id === id)?.groupId,
-  );
+  const anyGrouped = [...selectedIds].some((id) => elements.find((e) => e.id === id)?.groupId);
   const canGroup = selectedIds.size >= 2;
   const selectedElement =
-    selectedIds.size === 1
-      ? elements.find((element) => selectedIds.has(element.id))
-      : undefined;
+    selectedIds.size === 1 ? elements.find((element) => selectedIds.has(element.id)) : undefined;
 
-  useEffect(() => () => {
-    for (const timer of animationTimersRef.current.values()) window.clearTimeout(timer);
-  }, []);
+  useEffect(
+    () => () => {
+      for (const timer of animationTimersRef.current.values()) window.clearTimeout(timer);
+    },
+    [],
+  );
 
   const playSelectedAnimation = () => {
     if (!selectedElement || !["image", "gif", "video"].includes(selectedElement.type)) return;
@@ -1056,7 +1021,9 @@ export function ElementPanel({
         effectStartedAt: Date.now(),
         effectDurationMs: durationMs,
       });
-      toast.success(`Playing ${effectLabels[selectedAnimation as ElementEffectAnimation]} on ${selectedElement.displayName || getFileLabel(selectedElement.src) || selectedElement.type}`);
+      toast.success(
+        `Playing ${effectLabels[selectedAnimation as ElementEffectAnimation]} on ${selectedElement.displayName || getFileLabel(selectedElement.src) || selectedElement.type}`,
+      );
       return;
     }
 
@@ -1067,20 +1034,34 @@ export function ElementPanel({
     };
     const horizontal = selectedAnimation === "slide-lr" || selectedAnimation === "slide-rl";
     const forward = selectedAnimation === "slide-lr" || selectedAnimation === "slide-tb";
-    const laneX = Math.max(STREAM_OFFSET_X, Math.min(STREAM_OFFSET_X + STREAM_W - selectedElement.width, selectedElement.x));
-    const laneY = Math.max(STREAM_OFFSET_Y, Math.min(STREAM_OFFSET_Y + STREAM_H - selectedElement.height, selectedElement.y));
+    const laneX = Math.max(
+      STREAM_OFFSET_X,
+      Math.min(STREAM_OFFSET_X + STREAM_W - selectedElement.width, selectedElement.x),
+    );
+    const laneY = Math.max(
+      STREAM_OFFSET_Y,
+      Math.min(STREAM_OFFSET_Y + STREAM_H - selectedElement.height, selectedElement.y),
+    );
     const fromX = horizontal
-      ? (forward ? STREAM_OFFSET_X - selectedElement.width : STREAM_OFFSET_X + STREAM_W)
+      ? forward
+        ? STREAM_OFFSET_X - selectedElement.width
+        : STREAM_OFFSET_X + STREAM_W
       : laneX;
     const toX = horizontal
-      ? (forward ? STREAM_OFFSET_X + STREAM_W : STREAM_OFFSET_X - selectedElement.width)
+      ? forward
+        ? STREAM_OFFSET_X + STREAM_W
+        : STREAM_OFFSET_X - selectedElement.width
       : laneX;
     const fromY = horizontal
       ? laneY
-      : (forward ? STREAM_OFFSET_Y - selectedElement.height : STREAM_OFFSET_Y + STREAM_H);
+      : forward
+        ? STREAM_OFFSET_Y - selectedElement.height
+        : STREAM_OFFSET_Y + STREAM_H;
     const toY = horizontal
       ? laneY
-      : (forward ? STREAM_OFFSET_Y + STREAM_H : STREAM_OFFSET_Y - selectedElement.height);
+      : forward
+        ? STREAM_OFFSET_Y + STREAM_H
+        : STREAM_OFFSET_Y - selectedElement.height;
     onElementChange(selectedElement.id, {
       visible: true,
       dvdEnabled: false,
@@ -1110,22 +1091,11 @@ export function ElementPanel({
   };
 
   const fitSelectedToStream = (mode: "fit" | "fill") => {
-    if (
-      !selectedElement ||
-      selectedElement.width <= 0 ||
-      selectedElement.height <= 0
-    )
-      return;
+    if (!selectedElement || selectedElement.width <= 0 || selectedElement.height <= 0) return;
     const factor =
       mode === "fit"
-        ? Math.min(
-            STREAM_W / selectedElement.width,
-            STREAM_H / selectedElement.height,
-          )
-        : Math.max(
-            STREAM_W / selectedElement.width,
-            STREAM_H / selectedElement.height,
-          );
+        ? Math.min(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height)
+        : Math.max(STREAM_W / selectedElement.width, STREAM_H / selectedElement.height);
     const width = selectedElement.width * factor;
     const height = selectedElement.height * factor;
     onElementChange(selectedElement.id, {
@@ -1161,10 +1131,7 @@ export function ElementPanel({
       selectedElement.dvdVelocityY === undefined
     )
       return;
-    const currentSpeed = Math.hypot(
-      selectedElement.dvdVelocityX,
-      selectedElement.dvdVelocityY,
-    );
+    const currentSpeed = Math.hypot(selectedElement.dvdVelocityX, selectedElement.dvdVelocityY);
     if (currentSpeed <= 0) return;
     const position = getDvdPosition(selectedElement);
     const factor = speed / currentSpeed;
@@ -1180,20 +1147,19 @@ export function ElementPanel({
   };
 
   const dvdSpeed = selectedElement?.dvdEnabled
-    ? Math.round(
-        Math.hypot(
-          selectedElement.dvdVelocityX ?? 0,
-          selectedElement.dvdVelocityY ?? 0,
-        ),
-      )
+    ? Math.round(Math.hypot(selectedElement.dvdVelocityX ?? 0, selectedElement.dvdVelocityY ?? 0))
     : 0;
 
-  const canFlipSelected = selectedElement && ["image", "gif", "video"].includes(selectedElement.type);
+  const canFlipSelected =
+    selectedElement && ["image", "gif", "video"].includes(selectedElement.type);
   const flipSelected = (axis: "x" | "y") => {
     if (!selectedElement || !canFlipSelected) return;
-    onElementChange(selectedElement.id, axis === "x"
-      ? { scaleX: -(selectedElement.scaleX ?? 1) }
-      : { scaleY: -(selectedElement.scaleY ?? 1) });
+    onElementChange(
+      selectedElement.id,
+      axis === "x"
+        ? { scaleX: -(selectedElement.scaleX ?? 1) }
+        : { scaleY: -(selectedElement.scaleY ?? 1) },
+    );
   };
 
   const moveSlot = (idx: number, dir: "up" | "down") => {
@@ -1204,11 +1170,7 @@ export function ElementPanel({
     applySlotOrder(arr, onElementChange);
   };
 
-  const moveMember = (
-    groupId: string,
-    memberId: string,
-    dir: "up" | "down",
-  ) => {
+  const moveMember = (groupId: string, memberId: string, dir: "up" | "down") => {
     const newSlots = slots.map((slot) => {
       if (slot.kind !== "group" || slot.groupId !== groupId) return slot;
       const arr = [...slot.members];
@@ -1250,9 +1212,7 @@ export function ElementPanel({
         ? parseTextSrc(el.src).text.slice(0, 60) || "Text"
         : (el.displayName || getFileLabel(el.src)).slice(0, 80) || el.type;
     const isTop = inGroup ? memberIdx === 0 : slotIdx === 0;
-    const isBottom = inGroup
-      ? memberIdx === groupSize! - 1
-      : slotIdx === slots.length - 1;
+    const isBottom = inGroup ? memberIdx === groupSize! - 1 : slotIdx === slots.length - 1;
     return (
       <div
         key={el.id}
@@ -1271,10 +1231,9 @@ export function ElementPanel({
               aria-label={`Rename ${label}`}
               onClick={(event) => {
                 event.stopPropagation();
-                const value = window.prompt(
-                  "Media name",
-                  el.displayName || getFileLabel(el.src) || el.type,
-                )?.trim();
+                const value = window
+                  .prompt("Media name", el.displayName || getFileLabel(el.src) || el.type)
+                  ?.trim();
                 if (value) onElementChange(el.id, { displayName: value.slice(0, 120) });
               }}
             >
@@ -1282,14 +1241,10 @@ export function ElementPanel({
             </button>
           )}
           {arrowBtn(isTop, "up", () =>
-            inGroup
-              ? moveMember(groupId!, el.id, "up")
-              : moveSlot(slotIdx, "up"),
+            inGroup ? moveMember(groupId!, el.id, "up") : moveSlot(slotIdx, "up"),
           )}
           {arrowBtn(isBottom, "down", () =>
-            inGroup
-              ? moveMember(groupId!, el.id, "down")
-              : moveSlot(slotIdx, "down"),
+            inGroup ? moveMember(groupId!, el.id, "down") : moveSlot(slotIdx, "down"),
           )}
           <button
             className="ui-icon-button ui-button--compact ui-icon-button--ghost ui-icon-button--danger"
@@ -1305,9 +1260,7 @@ export function ElementPanel({
         </div>
         <button
           className="ui-icon-button ui-button--compact ui-icon-button--ghost layer-row__eye"
-          title={
-            el.visible ? "Hide this layer from the overlay" : "Show this layer on the overlay"
-          }
+          title={el.visible ? "Hide this layer from the overlay" : "Show this layer on the overlay"}
           aria-label={el.visible ? `Hide ${label}` : `Show ${label}`}
           onClick={(e) => {
             e.stopPropagation();
@@ -1396,9 +1349,7 @@ export function ElementPanel({
                       ? "1px solid var(--accent-border)"
                       : "1px solid var(--line-strong)",
                     borderRadius: 3,
-                    color: selectedElement.dvdEnabled
-                      ? "var(--accent-text)"
-                      : "#aaa",
+                    color: selectedElement.dvdEnabled ? "var(--accent-text)" : "#aaa",
                     fontSize: 11,
                     padding: "2px 5px",
                     cursor: "pointer",
@@ -1409,8 +1360,32 @@ export function ElementPanel({
               )}
               {canFlipSelected && (
                 <>
-                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("x")} title="Flip selected media left to right" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: "var(--accent-text)", cursor: "pointer" }}><FlipHorizontal2 size={12} /></button>
-                  <button className="ui-icon-button ui-button--compact" onClick={() => flipSelected("y")} title="Flip selected media top to bottom" style={{ background: "var(--bg-control)", border: "1px solid var(--line-strong)", color: "var(--accent-text)", cursor: "pointer" }}><FlipVertical2 size={12} /></button>
+                  <button
+                    className="ui-icon-button ui-button--compact"
+                    onClick={() => flipSelected("x")}
+                    title="Flip selected media left to right"
+                    style={{
+                      background: "var(--bg-control)",
+                      border: "1px solid var(--line-strong)",
+                      color: "var(--accent-text)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FlipHorizontal2 size={12} />
+                  </button>
+                  <button
+                    className="ui-icon-button ui-button--compact"
+                    onClick={() => flipSelected("y")}
+                    title="Flip selected media top to bottom"
+                    style={{
+                      background: "var(--bg-control)",
+                      border: "1px solid var(--line-strong)",
+                      color: "var(--accent-text)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <FlipVertical2 size={12} />
+                  </button>
                 </>
               )}
             </span>
@@ -1464,55 +1439,60 @@ export function ElementPanel({
       )}
       {selectedElement?.dvdEnabled && !selectedElement.locked && (
         <div className="dvd-selected-controls">
-        <div
-          style={{
-            height: 34,
-            padding: "5px 9px",
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            borderBottom: "1px solid var(--line)",
-            background: "var(--accent-surface)",
-            flexShrink: 0,
-          }}
-        >
-          <Disc size={12} color="var(--accent-text)" />
-          <span
+          <div
             style={{
-              color: "var(--text-secondary)",
-              fontSize: 11,
-              fontFamily: "Inter,sans-serif",
+              height: 34,
+              padding: "5px 9px",
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              borderBottom: "1px solid var(--line)",
+              background: "var(--accent-surface)",
+              flexShrink: 0,
             }}
           >
-            Speed
-          </span>
-          <input
-            type="range"
-            min="40"
-            max="400"
-            step="10"
-            value={Math.min(400, Math.max(40, dvdSpeed))}
-            onChange={(event) => setDvdSpeed(Number(event.target.value))}
-            style={{
-              minWidth: 0,
-              flex: 1,
-              accentColor: "var(--accent-border)",
-              cursor: "pointer",
-            }}
+            <Disc size={12} color="var(--accent-text)" />
+            <span
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: 11,
+                fontFamily: "Inter,sans-serif",
+              }}
+            >
+              Speed
+            </span>
+            <input
+              type="range"
+              min="40"
+              max="400"
+              step="10"
+              value={Math.min(400, Math.max(40, dvdSpeed))}
+              onChange={(event) => setDvdSpeed(Number(event.target.value))}
+              style={{
+                minWidth: 0,
+                flex: 1,
+                accentColor: "var(--accent-border)",
+                cursor: "pointer",
+              }}
+            />
+            <span
+              style={{
+                width: 30,
+                color: "var(--accent-text)",
+                fontSize: 11,
+                fontFamily: "monospace",
+                textAlign: "right",
+              }}
+            >
+              {dvdSpeed}
+            </span>
+          </div>
+          <DvdCelebrationControls
+            settings={dvdCelebrationSettings}
+            uploading={dvdSoundUploading}
+            onChange={onDvdSettingsChange}
+            onSoundUpload={onDvdSoundUpload}
           />
-          <span
-            style={{
-              width: 30,
-              color: "var(--accent-text)",
-              fontSize: 11,
-              fontFamily: "monospace",
-              textAlign: "right",
-            }}
-          >
-            {dvdSpeed}
-          </span>
-        </div>
-        <DvdCelebrationControls settings={dvdCelebrationSettings} uploading={dvdSoundUploading} onChange={onDvdSettingsChange} onSoundUpload={onDvdSoundUpload}/>
         </div>
       )}
       {selectedElement && (
@@ -1548,10 +1528,12 @@ export function ElementPanel({
               <output>{Math.round((selectedElement.opacity ?? 1) * 100)}%</output>
             </label>
             <div className="selected-transition-controls">
-              {([
-                ["Show effect", "enterAnimation"],
-                ["Hide effect", "exitAnimation"],
-              ] as const).map(([label, property]) => (
+              {(
+                [
+                  ["Show effect", "enterAnimation"],
+                  ["Hide effect", "exitAnimation"],
+                ] as const
+              ).map(([label, property]) => (
                 <label key={property}>
                   <span>{label}</span>
                   <select
@@ -1618,9 +1600,7 @@ export function ElementPanel({
                   max="10"
                   step="0.1"
                   value={animationDuration}
-                  onChange={(event) =>
-                    setAnimationDuration(Number(event.target.value))
-                  }
+                  onChange={(event) => setAnimationDuration(Number(event.target.value))}
                 />
                 <output>{animationDuration.toFixed(1)}s</output>
               </label>
@@ -1686,7 +1666,9 @@ export function ElementPanel({
           </div>
         )}
         {slots.length > 0 && visibleSlots.length === 0 && (
-          <div style={{ padding: 16, fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}>
+          <div
+            style={{ padding: 16, fontSize: 11, color: "var(--text-muted)", textAlign: "center" }}
+          >
             No layers match “{layerSearch}”.
           </div>
         )}
@@ -1734,9 +1716,7 @@ export function ElementPanel({
                   }}
                 >
                   {slot.members[0]?.groupName || "Group"}{" "}
-                  <span
-                    style={{ color: "var(--text-muted)", fontWeight: 500, fontSize: 11 }}
-                  >
+                  <span style={{ color: "var(--text-muted)", fontWeight: 500, fontSize: 11 }}>
                     ({slot.members.length})
                   </span>
                 </span>
@@ -1746,10 +1726,9 @@ export function ElementPanel({
                   aria-label="Rename group"
                   onClick={(event) => {
                     event.stopPropagation();
-                    const value = window.prompt(
-                      "Group name",
-                      slot.members[0]?.groupName || "Group",
-                    )?.trim();
+                    const value = window
+                      .prompt("Group name", slot.members[0]?.groupName || "Group")
+                      ?.trim();
                     if (!value) return;
                     slot.members.forEach((member) =>
                       onElementChange(member.id, {
@@ -1789,9 +1768,7 @@ export function ElementPanel({
                   onClick={(e) => {
                     e.stopPropagation();
                     const target = !allVisible;
-                    slot.members.forEach((m) =>
-                      onElementChange(m.id, { visible: target }),
-                    );
+                    slot.members.forEach((m) => onElementChange(m.id, { visible: target }));
                   }}
                   title={allVisible ? "Hide group" : "Show group"}
                   style={{
@@ -1809,14 +1786,7 @@ export function ElementPanel({
               </div>
               {/* Member rows */}
               {slot.members.map((m, mIdx) =>
-                renderRow(
-                  m,
-                  slotIdx,
-                  true,
-                  mIdx,
-                  slot.groupId,
-                  slot.members.length,
-                ),
+                renderRow(m, slotIdx, true, mIdx, slot.groupId, slot.members.length),
               )}
             </div>
           );
@@ -1874,10 +1844,7 @@ function useMarquee(
         didMove = true;
         const x = Math.min(startScreenX, curX);
         const y = Math.min(startScreenY, curY);
-        marquee.style.cssText = marquee.style.cssText.replace(
-          /display:[^;]+/,
-          "",
-        );
+        marquee.style.cssText = marquee.style.cssText.replace(/display:[^;]+/, "");
         Object.assign(marquee.style, {
           display: "block",
           left: x + "px",
@@ -1950,21 +1917,21 @@ export interface CanvasStageProps {
   onElementDelete: (id: string) => void;
   onCursorMove?: (x: number, y: number) => void;
   onEditText?: (id: string) => void;
-  onMediaControl?: (
-    id: string,
-    action: MediaControlPayload["action"],
-    currentTime: number,
-  ) => void;
+  onMediaControl?: (id: string, action: MediaControlPayload["action"], currentTime: number) => void;
   /** Ref populated with a function that applies incoming remote media:control events to this stage */
-  mediaControlRef?: React.MutableRefObject<
-    ((payload: MediaControlPayload) => void) | null
-  >;
+  mediaControlRef?: React.MutableRefObject<((payload: MediaControlPayload) => void) | null>;
   /** Ref populated with a function for direct DOM position updates, bypassing React state */
   directUpdateRef?: React.MutableRefObject<
     ((id: string, changes: Partial<CanvasElement>) => void) | null
   >;
   previewFlyRef?: React.MutableRefObject<
-    ((id: string, direction: FlyDirection, durationSeconds: number, onDone?: () => void) => (() => void) | null) | null
+    | ((
+        id: string,
+        direction: FlyDirection,
+        durationSeconds: number,
+        onDone?: () => void,
+      ) => (() => void) | null)
+    | null
   >;
   showTwitchEmbed?: boolean;
   /** True while the player itself takes the mouse (play, pause, mute) and the canvas is paused. */
@@ -2005,7 +1972,10 @@ export function CanvasStage({
   const twitchEmbedRef = useRef<HTMLDivElement>(null);
   const interactionChangeRef = useRef(onTwitchInteractionChange);
   interactionChangeRef.current = onTwitchInteractionChange;
-  const setTwitchInteractionEnabled = useCallback((enabled: boolean) => interactionChangeRef.current?.(enabled), []);
+  const setTwitchInteractionEnabled = useCallback(
+    (enabled: boolean) => interactionChangeRef.current?.(enabled),
+    [],
+  );
   const [twitchNeedsReconnect, setTwitchNeedsReconnect] = useState(false);
   const [twitchPlayerGeneration, setTwitchPlayerGeneration] = useState(0);
   const snapXGuideRef = useRef<HTMLDivElement>(null);
@@ -2119,10 +2089,7 @@ export function CanvasStage({
       const oldZ = zoomRef.current;
       const ptX = (px - panRef.current.x) / oldZ;
       const ptY = (py - panRef.current.y) / oldZ;
-      const newZ = Math.min(
-        4,
-        Math.max(0.04, oldZ * (e.deltaY < 0 ? 1.08 : 1 / 1.08)),
-      );
+      const newZ = Math.min(4, Math.max(0.04, oldZ * (e.deltaY < 0 ? 1.08 : 1 / 1.08)));
       panRef.current = { x: px - ptX * newZ, y: py - ptY * newZ };
       zoomRef.current = newZ;
       applyTransform();
@@ -2166,8 +2133,7 @@ export function CanvasStage({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const inInput =
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement;
+        e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       if ((e.code === "Delete" || e.code === "Backspace") && !inInput) {
         selectedIdsRef.current.forEach((id) => onElementDelete(id));
       }
@@ -2196,14 +2162,8 @@ export function CanvasStage({
     return () => wrapper.removeEventListener("mousemove", onMove);
   }, [onCursorMove]);
 
-  useMarquee(
-    wrapperRef,
-    workspaceRef,
-    panRef,
-    zoomRef,
-    elements,
-    onSelectMany,
-    () => onSelect(null),
+  useMarquee(wrapperRef, workspaceRef, panRef, zoomRef, elements, onSelectMany, () =>
+    onSelect(null),
   );
 
   // Sync DOM elements
@@ -2219,11 +2179,11 @@ export function CanvasStage({
         const node = nodeMap.get(id);
         const element = elementsRef.current.find((item) => item.id === id);
         if (!node || !element) return null;
-        const [movement, lane] = direction.split(
-          /-(?=top$|center$|bottom$|left$|right$)/,
-        ) as [string, string];
-        const horizontal =
-          movement === "left-to-right" || movement === "right-to-left";
+        const [movement, lane] = direction.split(/-(?=top$|center$|bottom$|left$|right$)/) as [
+          string,
+          string,
+        ];
+        const horizontal = movement === "left-to-right" || movement === "right-to-left";
         const laneX =
           lane === "left"
             ? STREAM_OFFSET_X
@@ -2241,11 +2201,23 @@ export function CanvasStage({
         let fromY = laneY;
         let toY = laneY;
         if (horizontal) {
-          fromX = movement === "left-to-right" ? STREAM_OFFSET_X - element.width : STREAM_OFFSET_X + STREAM_W;
-          toX = movement === "left-to-right" ? STREAM_OFFSET_X + STREAM_W : STREAM_OFFSET_X - element.width;
+          fromX =
+            movement === "left-to-right"
+              ? STREAM_OFFSET_X - element.width
+              : STREAM_OFFSET_X + STREAM_W;
+          toX =
+            movement === "left-to-right"
+              ? STREAM_OFFSET_X + STREAM_W
+              : STREAM_OFFSET_X - element.width;
         } else {
-          fromY = movement === "top-to-bottom" ? STREAM_OFFSET_Y - element.height : STREAM_OFFSET_Y + STREAM_H;
-          toY = movement === "top-to-bottom" ? STREAM_OFFSET_Y + STREAM_H : STREAM_OFFSET_Y - element.height;
+          fromY =
+            movement === "top-to-bottom"
+              ? STREAM_OFFSET_Y - element.height
+              : STREAM_OFFSET_Y + STREAM_H;
+          toY =
+            movement === "top-to-bottom"
+              ? STREAM_OFFSET_Y + STREAM_H
+              : STREAM_OFFSET_Y - element.height;
         }
         node.getAnimations().forEach((animation) => animation.cancel());
         const flight = node.animate(
@@ -2265,10 +2237,7 @@ export function CanvasStage({
     }
 
     if (directUpdateRef) {
-      directUpdateRef.current = (
-        id: string,
-        changes: Partial<CanvasElement>,
-      ) => {
+      directUpdateRef.current = (id: string, changes: Partial<CanvasElement>) => {
         const n = nodeMap.get(id);
         if (!n || draggingRef.current.has(id)) return;
         if (changes.x != null) n.style.left = changes.x + "px";
@@ -2281,11 +2250,7 @@ export function CanvasStage({
         }
         if (changes.scaleX != null || changes.scaleY != null) {
           const currentScale = getScale(n);
-          setScale(
-            n,
-            changes.scaleX ?? currentScale.x,
-            changes.scaleY ?? currentScale.y,
-          );
+          setScale(n, changes.scaleX ?? currentScale.x, changes.scaleY ?? currentScale.y);
           applyNodeTransform(n);
         }
         // Mark node so the DOM sync effect skips geometry this frame
@@ -2322,46 +2287,49 @@ export function CanvasStage({
           "position:absolute;cursor:move;transform-origin:center center;box-sizing:border-box;";
 
         const content = createMediaElement(el, {
-            onMediaEvent: onMediaControl
-              ? (action, currentTime) =>
-                  onMediaControl(el.id, action, currentTime)
-              : undefined,
-            onMediaReady: (media) => {
-              mediaElMap.set(el.id, media);
-              if (media instanceof HTMLVideoElement && !dashboardSilencedVideosRef.current.has(media)) {
-                try {
-                  const context = dashboardAudioContextRef.current ?? new AudioContext();
-                  dashboardAudioContextRef.current = context;
-                  const source = context.createMediaElementSource(media);
-                  const silentOutput = context.createGain();
-                  silentOutput.gain.value = 0;
-                  source.connect(silentOutput).connect(context.destination);
-                  dashboardSilencedVideosRef.current.add(media);
-                } catch (error) {
-                  // Very old/restricted browsers may reject Web Audio routing.
-                  // Keep the dashboard silent even in that fallback case.
-                  media.muted = true;
-                  console.warn("Could not route dashboard video through silent output", error);
-                }
+          onMediaEvent: onMediaControl
+            ? (action, currentTime) => onMediaControl(el.id, action, currentTime)
+            : undefined,
+          onMediaReady: (media) => {
+            mediaElMap.set(el.id, media);
+            if (
+              media instanceof HTMLVideoElement &&
+              !dashboardSilencedVideosRef.current.has(media)
+            ) {
+              try {
+                const context = dashboardAudioContextRef.current ?? new AudioContext();
+                dashboardAudioContextRef.current = context;
+                const source = context.createMediaElementSource(media);
+                const silentOutput = context.createGain();
+                silentOutput.gain.value = 0;
+                source.connect(silentOutput).connect(context.destination);
+                dashboardSilencedVideosRef.current.add(media);
+              } catch (error) {
+                // Very old/restricted browsers may reject Web Audio routing.
+                // Keep the dashboard silent even in that fallback case.
+                media.muted = true;
+                console.warn("Could not route dashboard video through silent output", error);
               }
-            },
-            onVolumeChange: (vol) => {
-              const existing = volumeCommitTimersRef.current.get(el.id);
-              if (existing !== undefined) window.clearTimeout(existing);
-              volumeCommitTimersRef.current.set(el.id, window.setTimeout(() => {
+            }
+          },
+          onVolumeChange: (vol) => {
+            const existing = volumeCommitTimersRef.current.get(el.id);
+            if (existing !== undefined) window.clearTimeout(existing);
+            volumeCommitTimersRef.current.set(
+              el.id,
+              window.setTimeout(() => {
                 volumeCommitTimersRef.current.delete(el.id);
                 onElementChange(el.id, { mediaVolume: vol });
-              }, 100));
-            },
-            onVisibilityChange: (visible) => {
-              const current = elementsRef.current.find(
-                (element) => element.id === el.id,
-              );
-              if (current?.autoVisibility) {
-                onElementChange(el.id, { visible });
-              }
-            },
-          });
+              }, 100),
+            );
+          },
+          onVisibilityChange: (visible) => {
+            const current = elementsRef.current.find((element) => element.id === el.id);
+            if (current?.autoVisibility) {
+              onElementChange(el.id, { visible });
+            }
+          },
+        });
         content.classList.add("element-content");
         node.appendChild(content);
 
@@ -2373,33 +2341,28 @@ export function CanvasStage({
         node.appendChild(selBorder);
 
         // 8 resize handles
-        const handlePos: HandlePos[] = [
-          "tl",
-          "tc",
-          "tr",
-          "ml",
-          "mr",
-          "bl",
-          "bc",
-          "br",
-        ];
+        const handlePos: HandlePos[] = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
         for (const pos of handlePos) {
-          addResizeHandle(node, pos, getZoom, (changes) => {
-            const current = elementsRef.current.find(
-              (element) => element.id === el.id,
-            );
-            if (current?.dvdEnabled) {
-              const position = getDvdPosition(current);
-              onElementChange(el.id, {
-                ...changes,
-                dvdEnabled: false,
-                x: changes.x ?? position.x,
-                y: changes.y ?? position.y,
-              });
-              return;
-            }
-            onElementChange(el.id, changes);
-          }, () => !elementsRef.current.find((element) => element.id === el.id)?.locked);
+          addResizeHandle(
+            node,
+            pos,
+            getZoom,
+            (changes) => {
+              const current = elementsRef.current.find((element) => element.id === el.id);
+              if (current?.dvdEnabled) {
+                const position = getDvdPosition(current);
+                onElementChange(el.id, {
+                  ...changes,
+                  dvdEnabled: false,
+                  x: changes.x ?? position.x,
+                  y: changes.y ?? position.y,
+                });
+                return;
+              }
+              onElementChange(el.id, changes);
+            },
+            () => !elementsRef.current.find((element) => element.id === el.id)?.locked,
+          );
         }
 
         // Delete button
@@ -2425,8 +2388,7 @@ export function CanvasStage({
               delete node!.dataset.justDragged;
               return;
             }
-            if ((e.target as HTMLElement).closest("button, input, audio, .rh"))
-              return;
+            if ((e.target as HTMLElement).closest("button, input, audio, .rh")) return;
             onSelect(el.id, e.shiftKey || e.metaKey || e.ctrlKey);
           },
           true,
@@ -2463,9 +2425,7 @@ export function CanvasStage({
         addRotationHandle(
           node,
           (changes) => onElementChange(el.id, changes),
-          () =>
-            !elementsRef.current.find((element) => element.id === el.id)
-              ?.locked,
+          () => !elementsRef.current.find((element) => element.id === el.id)?.locked,
           () => draggingRef.current.add(el.id),
           () => draggingRef.current.delete(el.id),
         );
@@ -2497,16 +2457,11 @@ export function CanvasStage({
               }
             }
             for (const other of elementsRef.current) {
-              if (other.id === el.id || !activeDragIds.has(other.id) || other.locked)
-                continue;
+              if (other.id === el.id || !activeDragIds.has(other.id) || other.locked) continue;
               const otherNode = nodeMapRef.current.get(other.id);
               if (!otherNode) continue;
-              const startLeft = parseFloat(
-                otherNode.dataset.startLeft ?? String(other.x),
-              );
-              const startTop = parseFloat(
-                otherNode.dataset.startTop ?? String(other.y),
-              );
+              const startLeft = parseFloat(otherNode.dataset.startLeft ?? String(other.x));
+              const startTop = parseFloat(otherNode.dataset.startTop ?? String(other.y));
               if (!otherNode.dataset.startLeft) {
                 otherNode.dataset.startLeft = String(other.x);
                 otherNode.dataset.startTop = String(other.y);
@@ -2559,8 +2514,7 @@ export function CanvasStage({
       const sx = el.scaleX ?? 1,
         sy = el.scaleY ?? 1,
         rot = el.rotation ?? 0;
-      const recentlyDirect =
-        ((node as any).__directUpdatedAt ?? 0) > Date.now() - 200;
+      const recentlyDirect = ((node as any).__directUpdatedAt ?? 0) > Date.now() - 200;
       if (!draggingRef.current.has(el.id) && !recentlyDirect) {
         node.style.left = el.x + "px";
         node.style.top = el.y + "px";
@@ -2589,8 +2543,7 @@ export function CanvasStage({
         if (mediaName) {
           const label = el.displayName || getFileLabel(el.src) || el.type;
           mediaName.textContent = label;
-          mediaName.parentElement!.title =
-            `${label} · Drag to move · Use the round handle above the selection to rotate`;
+          mediaName.parentElement!.title = `${label} · Drag to move · Use the round handle above the selection to rotate`;
         }
       }
 
@@ -2602,26 +2555,18 @@ export function CanvasStage({
           (media as any).__remoteVolumeTarget = vol;
           media.volume = vol;
         }
-        const slider = node.querySelector<HTMLInputElement>(
-          "input[type=range][title='Volume']",
-        );
-        if (slider && Math.abs(parseFloat(slider.value) - vol) > 0.001)
-          slider.value = String(vol);
+        const slider = node.querySelector<HTMLInputElement>("input[type=range][title='Volume']");
+        if (slider && Math.abs(parseFloat(slider.value) - vol) > 0.001) slider.value = String(vol);
       }
 
       // Group indicator — dashed outline per element
-      node.style.outline = el.groupId
-        ? "1px dashed rgba(var(--accent-rgb),0.35)"
-        : "none";
+      node.style.outline = el.groupId ? "1px dashed rgba(var(--accent-rgb),0.35)" : "none";
 
       // Selection UI
       const isSelected = selectedIds.has(el.id);
-      node.querySelector<HTMLElement>(".sel-border")!.style.display = isSelected
-        ? "block"
-        : "none";
-      node.querySelector<HTMLElement>(".delete-btn")!.style.display = isSelected && !el.locked
-        ? "flex"
-        : "none";
+      node.querySelector<HTMLElement>(".sel-border")!.style.display = isSelected ? "block" : "none";
+      node.querySelector<HTMLElement>(".delete-btn")!.style.display =
+        isSelected && !el.locked ? "flex" : "none";
       for (const h of node.querySelectorAll<HTMLElement>(".rh")) {
         h.style.display =
           isSelected && !el.locked
@@ -2656,12 +2601,8 @@ export function CanvasStage({
       if (members.length < 2) continue;
       const corners = members.flatMap((member) => {
         const memberNode = nodeMap.get(member.id);
-        const x = memberNode
-          ? parseFloat(memberNode.style.left) || member.x
-          : member.x;
-        const y = memberNode
-          ? parseFloat(memberNode.style.top) || member.y
-          : member.y;
+        const x = memberNode ? parseFloat(memberNode.style.left) || member.x : member.x;
+        const y = memberNode ? parseFloat(memberNode.style.top) || member.y : member.y;
         const width = memberNode?.offsetWidth || member.width;
         const height = memberNode?.offsetHeight || member.height;
         const rotation = memberNode ? getRotation(memberNode) : (member.rotation ?? 0);
@@ -2690,27 +2631,23 @@ export function CanvasStage({
         box = document.createElement("div");
         box.style.cssText =
           "position:absolute;border:1.5px dashed rgba(var(--accent-rgb),0.45);background:rgba(var(--accent-rgb),0.04);pointer-events:none;border-radius:4px;";
-        let rotationState:
-          | {
-              pivotX: number;
-              pivotY: number;
-              members: Array<{
-                id: string;
-                centerX: number;
-                centerY: number;
-                width: number;
-                height: number;
-                rotation: number;
-              }>;
-            }
-          | null = null;
+        let rotationState: {
+          pivotX: number;
+          pivotY: number;
+          members: Array<{
+            id: string;
+            centerX: number;
+            centerY: number;
+            width: number;
+            height: number;
+            rotation: number;
+          }>;
+        } | null = null;
         const rotationHandle = addRotationHandle(
           box,
           () => {},
           () =>
-            elementsRef.current
-              .filter((item) => item.groupId === gid)
-              .some((item) => !item.locked),
+            elementsRef.current.filter((item) => item.groupId === gid).some((item) => !item.locked),
           () => {
             const currentMembers = elementsRef.current.filter(
               (item) => item.groupId === gid && !item.locked,
@@ -2757,10 +2694,8 @@ export function CanvasStage({
             for (const member of rotationState.members) {
               const offsetX = member.centerX - rotationState.pivotX;
               const offsetY = member.centerY - rotationState.pivotY;
-              const centerX =
-                rotationState.pivotX + offsetX * groupCos - offsetY * groupSin;
-              const centerY =
-                rotationState.pivotY + offsetX * groupSin + offsetY * groupCos;
+              const centerX = rotationState.pivotX + offsetX * groupCos - offsetY * groupSin;
+              const centerY = rotationState.pivotY + offsetX * groupSin + offsetY * groupCos;
               const changes = {
                 x: centerX - member.width / 2,
                 y: centerY - member.height / 2,
@@ -2785,8 +2720,7 @@ export function CanvasStage({
         rotationHandle.style.background = "var(--accent-solid)";
         rotationHandle.style.color = "var(--accent-contrast)";
         rotationHandle.style.zIndex = "100000";
-        rotationHandle.title =
-          "Drag to rotate the group · Hold Shift to snap to 15° increments";
+        rotationHandle.title = "Drag to rotate the group · Hold Shift to snap to 15° increments";
         rotationHandle.setAttribute("aria-label", "Rotate group");
         workspace.insertBefore(box, workspace.firstChild);
         groupBoxMap.set(gid, box);
@@ -2796,9 +2730,7 @@ export function CanvasStage({
       box.style.width = maxX - minX + "px";
       box.style.height = maxY - minY + "px";
       const groupSelected = members.some((member) => selectedIds.has(member.id));
-      const groupRotationHandle = box.querySelector<HTMLElement>(
-        ".group-rotation-handle",
-      );
+      const groupRotationHandle = box.querySelector<HTMLElement>(".group-rotation-handle");
       if (groupRotationHandle) {
         groupRotationHandle.style.display = groupSelected ? "flex" : "none";
       }
@@ -2814,12 +2746,15 @@ export function CanvasStage({
     onMediaControl,
   ]);
 
-  useEffect(() => () => {
-    volumeCommitTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    volumeCommitTimersRef.current.clear();
-    void dashboardAudioContextRef.current?.close();
-    dashboardAudioContextRef.current = null;
-  }, []);
+  useEffect(
+    () => () => {
+      volumeCommitTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      volumeCommitTimersRef.current.clear();
+      void dashboardAudioContextRef.current?.close();
+      dashboardAudioContextRef.current = null;
+    },
+    [],
+  );
 
   // Expose applyControl for incoming remote media:control events
   useEffect(() => {
@@ -2855,9 +2790,7 @@ export function CanvasStage({
     twitchHasPlayedRef.current = false;
     twitchPlayerRef.current = null;
     twitchInitedRef.current = false;
-    twitchEmbedRef.current
-      ?.querySelector("#twitch-player-container")
-      ?.replaceChildren();
+    twitchEmbedRef.current?.querySelector("#twitch-player-container")?.replaceChildren();
     setTwitchPlayerGeneration((generation) => generation + 1);
   }, [showTwitchEmbed, twitchChannel]);
 
@@ -2912,10 +2845,7 @@ export function CanvasStage({
   // only its player when the tab returns instead of refreshing the dashboard.
   useEffect(() => {
     const onVisible = () => {
-      if (
-        document.visibilityState === "visible" &&
-        twitchNeedsReconnectRef.current
-      )
+      if (document.visibilityState === "visible" && twitchNeedsReconnectRef.current)
         reconnectTwitchPlayer();
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -3170,28 +3100,19 @@ export const OverlayStage = forwardRef<
 ) {
   const [cornerHitCount, setCornerHitCount] = useState(0);
   const hasActiveDvd = elements.some(
-    (element) =>
-      element.dvdEnabled && element.visible && element.type !== "audio",
+    (element) => element.dvdEnabled && element.visible && element.type !== "audio",
   );
   const counterAtTop = dvdCelebrationSettings.counterPosition.startsWith("top");
   const counterAtCenter = dvdCelebrationSettings.counterPosition.endsWith("center");
   const counterAtLeft = dvdCelebrationSettings.counterPosition.endsWith("left");
-  const counterLeft = counterAtCenter
-    ? "50%"
-    : counterAtLeft
-      ? "28px"
-      : "calc(100% - 28px)";
+  const counterLeft = counterAtCenter ? "50%" : counterAtLeft ? "28px" : "calc(100% - 28px)";
   const counterTop = counterAtTop ? "28px" : "calc(100% - 28px)";
   const counterTransform = `translate(${counterAtCenter ? "-50%" : counterAtLeft ? "0" : "-100%"}, ${counterAtTop ? "0" : "-100%"})`;
   const hadActiveDvdRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const nodeMapRef = useRef<Map<string, HTMLElement>>(new Map());
-  const posMapRef = useRef<
-    Map<string, { x: number; y: number; rotation: number }>
-  >(new Map());
-  const targetMapRef = useRef<
-    Map<string, { x: number; y: number; rotation: number }>
-  >(new Map());
+  const posMapRef = useRef<Map<string, { x: number; y: number; rotation: number }>>(new Map());
+  const targetMapRef = useRef<Map<string, { x: number; y: number; rotation: number }>>(new Map());
   const animatingRef = useRef<Set<string>>(new Set());
   const flyingRef = useRef<Set<string>>(new Set());
   // Stores the actual HTMLMediaElement for each element id (video or hidden audio)
@@ -3246,8 +3167,7 @@ export const OverlayStage = forwardRef<
     const animateMovingElements = () => {
       const now = Date.now();
       for (const element of overlayElementsRef.current) {
-        if (!element.visible || element.type === "audio")
-          continue;
+        if (!element.visible || element.type === "audio") continue;
         const node = nodeMapRef.current.get(element.id);
         if (!node) continue;
         if (
@@ -3262,8 +3182,10 @@ export const OverlayStage = forwardRef<
             0,
             Math.min(1, (now - element.flyStartedAt) / element.flyDurationMs),
           );
-          const x = element.flyFromX + (element.flyToX - element.flyFromX) * progress - STREAM_OFFSET_X;
-          const y = element.flyFromY + (element.flyToY - element.flyFromY) * progress - STREAM_OFFSET_Y;
+          const x =
+            element.flyFromX + (element.flyToX - element.flyFromX) * progress - STREAM_OFFSET_X;
+          const y =
+            element.flyFromY + (element.flyToY - element.flyFromY) * progress - STREAM_OFFSET_Y;
           node.style.left = `${x}px`;
           node.style.top = `${y}px`;
           const current = posMapRef.current.get(element.id);
@@ -3281,13 +3203,9 @@ export const OverlayStage = forwardRef<
           const dx = x - previous.x;
           const dy = y - previous.y;
           const bouncedX =
-            previous.dx !== 0 &&
-            dx !== 0 &&
-            Math.sign(previous.dx) !== Math.sign(dx);
+            previous.dx !== 0 && dx !== 0 && Math.sign(previous.dx) !== Math.sign(dx);
           const bouncedY =
-            previous.dy !== 0 &&
-            dy !== 0 &&
-            Math.sign(previous.dy) !== Math.sign(dy);
+            previous.dy !== 0 && dy !== 0 && Math.sign(previous.dy) !== Math.sign(dy);
           if (bouncedX) {
             previous.lastXBounce = now;
             previous.lastXEdge = previous.dx > 0 ? "right" : "left";
@@ -3360,9 +3278,7 @@ export const OverlayStage = forwardRef<
         x: cornerX,
         y: cornerY,
         vx: directionX * (180 + Math.random() * 620),
-        vy:
-          directionY * (120 + Math.random() * 520) -
-          directionY * Math.random() * 220,
+        vy: directionY * (120 + Math.random() * 520) - directionY * Math.random() * 220,
         rotation: Math.random() * Math.PI * 2,
         spin: (Math.random() - 0.5) * 14,
         size: 8 + Math.random() * 14,
@@ -3374,8 +3290,7 @@ export const OverlayStage = forwardRef<
 
     if (settings.volume <= 0) return;
     if (settings.soundUrl) {
-      const audio =
-        customCornerAudioRef.current ?? new Audio(settings.soundUrl);
+      const audio = customCornerAudioRef.current ?? new Audio(settings.soundUrl);
       if (audio.src !== settings.soundUrl) {
         audio.src = settings.soundUrl;
       }
@@ -3388,8 +3303,7 @@ export const OverlayStage = forwardRef<
 
     try {
       const AudioContextClass = window.AudioContext;
-      const audioContext =
-        cornerAudioContextRef.current ?? new AudioContextClass();
+      const audioContext = cornerAudioContextRef.current ?? new AudioContextClass();
       cornerAudioContextRef.current = audioContext;
       void audioContext.resume().then(() => {
         const start = audioContext.currentTime;
@@ -3403,10 +3317,7 @@ export const OverlayStage = forwardRef<
             Math.max(0.0001, 0.24 * settings.volume),
             start + index * 0.07 + 0.015,
           );
-          gain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            start + index * 0.07 + 0.28,
-          );
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.07 + 0.28);
           oscillator.connect(gain).connect(audioContext.destination);
           oscillator.start(start + index * 0.07);
           oscillator.stop(start + index * 0.07 + 0.3);
@@ -3466,10 +3377,7 @@ export const OverlayStage = forwardRef<
       drawBaseCanvasRef.current = base;
     }
     const canvas = drawCanvasRef.current;
-    if (
-      canvas &&
-      (base.width !== canvas.width || base.height !== canvas.height)
-    ) {
+    if (canvas && (base.width !== canvas.width || base.height !== canvas.height)) {
       base.width = canvas.width;
       base.height = canvas.height;
       drawBakedCountRef.current = 0;
@@ -3606,16 +3514,15 @@ export const OverlayStage = forwardRef<
       let node = nodeMap.get(el.id);
       if (!node) {
         node = document.createElement("div");
-        node.style.cssText =
-          "position:absolute;transform-origin:center center;";
+        node.style.cssText = "position:absolute;transform-origin:center center;";
 
         const content = createMediaElement(el, {
-            isOverlay: true,
-            onMediaReady: (media) => mediaElMap.set(el.id, media),
-            onVisibilityChange: (visible) => {
-              if (!visible) onMediaEnded?.(el.id);
-            },
-          });
+          isOverlay: true,
+          onMediaReady: (media) => mediaElMap.set(el.id, media),
+          onVisibilityChange: (visible) => {
+            if (!visible) onMediaEnded?.(el.id);
+          },
+        });
         content.classList.add("element-content");
         node.appendChild(content);
 
@@ -3645,14 +3552,19 @@ export const OverlayStage = forwardRef<
         surface?.getAnimations().forEach((animation) => animation.cancel());
         if (el.visible) {
           node.style.visibility = "visible";
-          surface?.animate(animationFrames(el.enterAnimation), { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" });
+          surface?.animate(animationFrames(el.enterAnimation), {
+            duration: 320,
+            easing: "cubic-bezier(.2,.8,.2,1)",
+          });
         } else {
           const frames = animationFrames(el.exitAnimation).reverse();
           const animation = surface?.animate(frames, { duration: 260, easing: "ease-in" });
           if (animation) {
-            animation.finished.then(() => {
-              if (node?.dataset.visible === "false") node.style.visibility = "hidden";
-            }).catch(() => {});
+            animation.finished
+              .then(() => {
+                if (node?.dataset.visible === "false") node.style.visibility = "hidden";
+              })
+              .catch(() => {});
           } else node.style.visibility = "hidden";
         }
       } else if (!el.visible) {
@@ -3683,11 +3595,11 @@ export const OverlayStage = forwardRef<
 
       const hasActiveFlight = Boolean(
         el.flyStartedAt &&
-          el.flyDurationMs &&
-          el.flyFromX !== undefined &&
-          el.flyFromY !== undefined &&
-          el.flyToX !== undefined &&
-          el.flyToY !== undefined,
+        el.flyDurationMs &&
+        el.flyFromX !== undefined &&
+        el.flyFromY !== undefined &&
+        el.flyToX !== undefined &&
+        el.flyToY !== undefined,
       );
       if (hasActiveFlight) {
         flyingRef.current.add(el.id);
@@ -3731,9 +3643,7 @@ export const OverlayStage = forwardRef<
         const id = el.id;
         const FACTOR = 0.18;
         const animate = () => {
-          const latestElement = overlayElementsRef.current.find(
-            (candidate) => candidate.id === id,
-          );
+          const latestElement = overlayElementsRef.current.find((candidate) => candidate.id === id);
           if (latestElement?.dvdEnabled || latestElement?.flyStartedAt) {
             animating.delete(id);
             return;
@@ -3788,10 +3698,7 @@ export const OverlayStage = forwardRef<
         position: "relative",
       }}
     >
-      <div
-        ref={viewportRef}
-        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-      />
+      <div ref={viewportRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
       <canvas
         ref={drawCanvasRef}
         width={STREAM_W}
@@ -3840,8 +3747,7 @@ export const OverlayStage = forwardRef<
             color: "#fff7ed",
             background: "rgba(24,18,15,.88)",
             border: "2px solid #f97316",
-            boxShadow:
-              "0 5px 18px rgba(0,0,0,.55), 0 0 16px rgba(249,115,22,.22)",
+            boxShadow: "0 5px 18px rgba(0,0,0,.55), 0 0 16px rgba(249,115,22,.22)",
             font: "700 22px Inter,sans-serif",
             letterSpacing: "0.03em",
             pointerEvents: "none",

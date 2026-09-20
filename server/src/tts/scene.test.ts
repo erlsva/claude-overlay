@@ -22,7 +22,7 @@ test("TTS scripts preserve sequential voices and effects", () => {
 });
 
 test("plain speech can be mixed with directed sound blocks in order", () => {
-  const { scenes } = parsePrompt('This is a test. How does this sound? ((fart in a cave;5s))');
+  const { scenes } = parsePrompt("This is a test. How does this sound? ((fart in a cave;5s))");
   assert.equal(scenes.length, 2);
   assert.equal(scenes[0].dialogue, "This is a test. How does this sound?");
   assert.equal(scenes[0].sound, "");
@@ -55,13 +55,26 @@ test("speech, silence, emphatic speech, and sound remain in written order", () =
 });
 
 test("TTS input limits reject malformed or expensive prompts", () => {
-  for (const prompt of ["", "((rain;31s))", "((rain;0s))", "((broken", "broken))", "x".repeat(6001)]) {
+  for (const prompt of [
+    "",
+    "((rain;31s))",
+    "((rain;0s))",
+    "((broken",
+    "broken))",
+    "x".repeat(6001),
+  ]) {
     assert.throws(() => parsePrompt(prompt));
   }
 });
 
 test("common duration and pause spellings are accepted", () => {
-  for (const prompt of ["((silence 2 seconds))", "((pause, 2 sec))", "((silent pause;2s))", "((pause for 2 seconds))", "((2 seconds of silence))"]) {
+  for (const prompt of [
+    "((silence 2 seconds))",
+    "((pause, 2 sec))",
+    "((silent pause;2s))",
+    "((pause for 2 seconds))",
+    "((2 seconds of silence))",
+  ]) {
     const scene = parsePrompt(prompt).scenes[0];
     assert.equal(scene.sound, "__silence__");
     assert.equal(scene.duration, 2);
@@ -73,13 +86,20 @@ test("common duration and pause spellings are accepted", () => {
 
 test("authored speech speed supports natural and precise prompt directions", () => {
   assert.equal(parsePrompt('((pirate slowly says "Wait for me";8s))').scenes[0].speechRate, 0.9);
-  assert.equal(parsePrompt('((pirate says "Wait for me";speed=0.8x;8s))').scenes[0].speechRate, 0.8);
+  assert.equal(
+    parsePrompt('((pirate says "Wait for me";speed=0.8x;8s))').scenes[0].speechRate,
+    0.8,
+  );
   assert.equal(parsePrompt('((pirate very quickly says "Run!";8s))').scenes[0].speechRate, 1.25);
   assert.throws(() => parsePrompt('((pirate says "No";speed=0.5x;8s))'), /0.75x.*1.25x/);
 });
 
 test("straight, smart double, and smart single quotes become dialogue", () => {
-  for (const prompt of ['((angry voice: "NOW!"))', "((angry voice: “NOW!”))", "((angry voice: ‘NOW!’))"]) {
+  for (const prompt of [
+    '((angry voice: "NOW!"))',
+    "((angry voice: “NOW!”))",
+    "((angry voice: ‘NOW!’))",
+  ]) {
     const scene = parsePrompt(prompt).scenes[0];
     assert.equal(scene.dialogue, "NOW!");
     assert.equal(scene.sound, "");
@@ -87,7 +107,9 @@ test("straight, smart double, and smart single quotes become dialogue", () => {
 });
 
 test("local fallback keeps one recurring character while retaining emotional direction", () => {
-  const { scenes } = parsePrompt('((man yelling at top of lungs: "ABOBA" in a cave;10s)) ((man crying and sobbing saying: "ABOBA" in a cave;10s))');
+  const { scenes } = parsePrompt(
+    '((man yelling at top of lungs: "ABOBA" in a cave;10s)) ((man crying and sobbing saying: "ABOBA" in a cave;10s))',
+  );
   assert.equal(scenes[0].character, "man");
   assert.equal(scenes[1].character, "man");
   assert.match(scenes[0].delivery || "", /yelling at top of lungs/i);
@@ -103,7 +125,10 @@ test("block delimiters inside quoted dialogue do not close the block", () => {
 
 test("escaped and HTML-encoded quotes remain spoken text", () => {
   assert.equal(parsePrompt('((voice says "hello \\"chat\\""))').scenes[0].dialogue, 'hello "chat"');
-  assert.equal(parsePrompt("((voice says &quot;hello chat&quot;))").scenes[0].dialogue, "hello chat");
+  assert.equal(
+    parsePrompt("((voice says &quot;hello chat&quot;))").scenes[0].dialogue,
+    "hello chat",
+  );
 });
 
 test("multiple quoted phrases preserve their order", () => {
@@ -120,27 +145,42 @@ test("sound direction flags survive deterministic fallback", () => {
 });
 
 test("background sound and speech can share a scene", () => {
-  const scene = parsePrompt('((rain in the background while a voice says "Welcome home";6s))').scenes[0];
+  const scene = parsePrompt('((rain in the background while a voice says "Welcome home";6s))')
+    .scenes[0];
   assert.equal(scene.dialogue, "Welcome home");
   assert.equal(scene.sound, "rain");
   assert.equal(scene.duration, 6);
 });
 
 test("malformed, nested, and excessive blocks fail precisely", () => {
-  for (const prompt of ["((", "))", "text ((sound)", "(())", "((outer ((inner))))"]) assert.throws(() => parsePrompt(prompt));
-  assert.throws(() => parsePrompt(Array.from({ length: 11 }, (_, index) => `((sound ${index}))`).join(" ")), /at most 10/);
+  for (const prompt of ["((", "))", "text ((sound)", "(())", "((outer ((inner))))"])
+    assert.throws(() => parsePrompt(prompt));
+  assert.throws(
+    () => parsePrompt(Array.from({ length: 11 }, (_, index) => `((sound ${index}))`).join(" ")),
+    /at most 10/,
+  );
   assert.throws(() => parsePrompt("((silence;31 seconds))"), /0.5.*30/);
 });
 
 test("parser matrix preserves multilingual dialogue across formatting variants", () => {
-  const quotes = [["\"", "\""], ["“", "”"], ["‘", "’"]] as const;
+  const quotes = [
+    ['"', '"'],
+    ["“", "”"],
+    ["‘", "’"],
+  ] as const;
   const durations = [";0.5s", ", 2 sec", " 3 seconds", ";30s"];
-  const directions = ["warm voice says", "angry robot shouts", "distant voice whispers", "voice2 through an intercom says"];
+  const directions = [
+    "warm voice says",
+    "angry robot shouts",
+    "distant voice whispers",
+    "voice2 through an intercom says",
+  ];
   const dialogue = "Hei chat 👋 — déjà vu! こんにちは";
   for (const [open, close] of quotes) {
     for (const duration of durations) {
       for (const direction of directions) {
-        const scene = parsePrompt(`((${direction}: ${open}${dialogue}${close}${duration}))`).scenes[0];
+        const scene = parsePrompt(`((${direction}: ${open}${dialogue}${close}${duration}))`)
+          .scenes[0];
         assert.equal(scene.dialogue, dialogue);
         assert.equal(scene.sound, "");
         assert.ok((scene.duration ?? 0) >= 0.5 && (scene.duration ?? 0) <= 30);

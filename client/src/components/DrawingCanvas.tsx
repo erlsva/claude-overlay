@@ -1,18 +1,23 @@
-import { useRef, useEffect, useCallback } from 'react';
-import type { DrawStroke, LiveDrawStroke } from '../types';
-import { randomUUID } from '../utils';
+import { useRef, useEffect, useCallback } from "react";
+import type { DrawStroke, LiveDrawStroke } from "../types";
+import { randomUUID } from "../utils";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function hexToRGBA(hex: string): [number, number, number, number] {
-  const n = parseInt(hex.replace('#', ''), 16);
+  const n = parseInt(hex.replace("#", ""), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 255];
 }
 
 function withOpacity(color: [number, number, number, number], opacity: number) {
-  return [color[0], color[1], color[2], Math.round(255 * opacity)] as [number, number, number, number];
+  return [color[0], color[1], color[2], Math.round(255 * opacity)] as [
+    number,
+    number,
+    number,
+    number,
+  ];
 }
 
 function floodFill(
@@ -34,7 +39,10 @@ function floodFill(
   const h = canvas.height;
 
   const si = (startY * w + startX) * 4;
-  const tR = data[si], tG = data[si + 1], tB = data[si + 2], tA = data[si + 3];
+  const tR = data[si],
+    tG = data[si + 1],
+    tB = data[si + 2],
+    tA = data[si + 3];
 
   // Don't fill if target already matches fill color
   if (
@@ -42,7 +50,8 @@ function floodFill(
     Math.abs(tG - fillColor[1]) <= tolerance &&
     Math.abs(tB - fillColor[2]) <= tolerance &&
     Math.abs(tA - fillColor[3]) <= tolerance
-  ) return false;
+  )
+    return false;
 
   const matches = (i: number) =>
     Math.abs(data[i] - tR) <= tolerance &&
@@ -69,7 +78,8 @@ function floodFill(
     data[i4 + 3] = fillColor[3];
     filled[pos] = 1;
     count++;
-    const x = pos % w, y = (pos / w) | 0;
+    const x = pos % w,
+      y = (pos / w) | 0;
     if (x === 0 || x === w - 1 || y === 0 || y === h - 1) touchesBoundary = true;
     if (x > 0) stack.push(pos - 1);
     if (x < w - 1) stack.push(pos + 1);
@@ -82,7 +92,8 @@ function floodFill(
   // otherwise the exact edge pixels are skipped and a hairline gap remains.
   for (let pos = 0; pos < w * h; pos++) {
     if (!filled[pos]) continue;
-    const x = pos % w, y = (pos / w) | 0;
+    const x = pos % w,
+      y = (pos / w) | 0;
     const neighbors = [
       x > 0 ? pos - 1 : -1,
       x < w - 1 ? pos + 1 : -1,
@@ -103,8 +114,7 @@ function floodFill(
       if (outAlpha === 0) continue;
       for (let channel = 0; channel < 3; channel++) {
         data[i4 + channel] = Math.round(
-          (data[i4 + channel] * edgeAlpha +
-            fillColor[channel] * fillAlpha * (1 - edgeAlpha)) /
+          (data[i4 + channel] * edgeAlpha + fillColor[channel] * fillAlpha * (1 - edgeAlpha)) /
             outAlpha,
         );
       }
@@ -135,23 +145,33 @@ export function renderStroke(
   const { points, color, size, eraser } = stroke;
   if (points.length === 0) return;
   ctx.save();
-  ctx.globalCompositeOperation = eraser ? 'destination-out' : 'source-over';
+  ctx.globalCompositeOperation = eraser ? "destination-out" : "source-over";
   ctx.globalAlpha = stroke.opacity ?? 1;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = size;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const tool = stroke.tool ?? (eraser ? 'eraser' : 'pen');
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const tool = stroke.tool ?? (eraser ? "eraser" : "pen");
   if (["line", "arrow", "rectangle", "ellipse"].includes(tool) && points.length >= 2) {
     const [start, end] = [points[0], points[points.length - 1]];
-    const x1 = start[0] - offsetX, y1 = start[1] - offsetY;
-    const x2 = end[0] - offsetX, y2 = end[1] - offsetY;
+    const x1 = start[0] - offsetX,
+      y1 = start[1] - offsetY;
+    const x2 = end[0] - offsetX,
+      y2 = end[1] - offsetY;
     ctx.beginPath();
     if (tool === "rectangle") {
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
     } else if (tool === "ellipse") {
-      ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(
+        (x1 + x2) / 2,
+        (y1 + y2) / 2,
+        Math.abs(x2 - x1) / 2,
+        Math.abs(y2 - y1) / 2,
+        0,
+        0,
+        Math.PI * 2,
+      );
       ctx.stroke();
     } else {
       ctx.moveTo(x1, y1);
@@ -160,9 +180,15 @@ export function renderStroke(
         const angle = Math.atan2(y2 - y1, x2 - x1);
         const head = Math.max(10, Math.min(30, size * 3));
         ctx.moveTo(x2, y2);
-        ctx.lineTo(x2 - head * Math.cos(angle - Math.PI / 6), y2 - head * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(
+          x2 - head * Math.cos(angle - Math.PI / 6),
+          y2 - head * Math.sin(angle - Math.PI / 6),
+        );
         ctx.moveTo(x2, y2);
-        ctx.lineTo(x2 - head * Math.cos(angle + Math.PI / 6), y2 - head * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(
+          x2 - head * Math.cos(angle + Math.PI / 6),
+          y2 - head * Math.sin(angle + Math.PI / 6),
+        );
       }
       ctx.stroke();
     }
@@ -204,7 +230,7 @@ export function renderAction(
 // DrawingCanvas
 // ---------------------------------------------------------------------------
 
-export type DrawToolMode = 'pen' | 'eraser' | 'fill' | 'line' | 'arrow' | 'rectangle' | 'ellipse';
+export type DrawToolMode = "pen" | "eraser" | "fill" | "line" | "arrow" | "rectangle" | "ellipse";
 
 interface DrawingCanvasProps {
   width: number;
@@ -219,7 +245,7 @@ interface DrawingCanvasProps {
   fillTolerance: number;
   onStroke: (stroke: DrawStroke) => void;
   onFillRejected?: () => void;
-  onLiveStroke?: (data: Omit<LiveDrawStroke, 'userId'>) => void;
+  onLiveStroke?: (data: Omit<LiveDrawStroke, "userId">) => void;
   offsetX?: number;
   offsetY?: number;
   zIndex?: number;
@@ -261,18 +287,28 @@ export function DrawingCanvas({
   const lastLiveEmitRef = useRef(0);
   const redrawFrameRef = useRef<number | null>(null);
 
-  useEffect(() => { colorRef.current = color; }, [color]);
-  useEffect(() => { sizeRef.current = size; }, [size]);
-  useEffect(() => { toolRef.current = toolMode; }, [toolMode]);
-  useEffect(() => { opacityRef.current = opacity; }, [opacity]);
-  useEffect(() => { fillToleranceRef.current = fillTolerance; }, [fillTolerance]);
+  useEffect(() => {
+    colorRef.current = color;
+  }, [color]);
+  useEffect(() => {
+    sizeRef.current = size;
+  }, [size]);
+  useEffect(() => {
+    toolRef.current = toolMode;
+  }, [toolMode]);
+  useEffect(() => {
+    opacityRef.current = opacity;
+  }, [opacity]);
+  useEffect(() => {
+    fillToleranceRef.current = fillTolerance;
+  }, [fillTolerance]);
 
   // Bake newly-committed strokes into the offscreen base layer once.
   // If strokes shrank (e.g. cleared) or otherwise diverged, rebuild from scratch.
   useEffect(() => {
     let base = baseCanvasRef.current;
     if (!base) {
-      base = document.createElement('canvas');
+      base = document.createElement("canvas");
       baseCanvasRef.current = base;
     }
     if (base.width !== width || base.height !== height) {
@@ -280,7 +316,7 @@ export function DrawingCanvas({
       base.height = height;
       bakedCountRef.current = 0;
     }
-    const ctx = base.getContext('2d')!;
+    const ctx = base.getContext("2d")!;
     if (strokes.length < bakedCountRef.current) {
       ctx.clearRect(0, 0, base.width, base.height);
       bakedCountRef.current = 0;
@@ -291,7 +327,7 @@ export function DrawingCanvas({
     bakedCountRef.current = strokes.length;
     const canvas = canvasRef.current;
     if (canvas) {
-      const visibleContext = canvas.getContext('2d')!;
+      const visibleContext = canvas.getContext("2d")!;
       visibleContext.clearRect(0, 0, canvas.width, canvas.height);
       visibleContext.drawImage(base, 0, 0);
     }
@@ -303,37 +339,50 @@ export function DrawingCanvas({
       redrawFrameRef.current = null;
       const canvas = previewCanvasRef.current;
       if (!canvas) return;
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (liveStrokes) {
         for (const live of liveStrokes.values()) {
           // A transparent preview layer cannot erase pixels from the committed
           // canvas beneath it, so show an understated light trail until the
           // eraser action is committed on mouse-up.
-          renderStroke(ctx, live.eraser
-            ? { ...live, eraser: false, color: "#ffffff", opacity: 0.3 }
-            : live, offsetX, offsetY);
+          renderStroke(
+            ctx,
+            live.eraser ? { ...live, eraser: false, color: "#ffffff", opacity: 0.3 } : live,
+            offsetX,
+            offsetY,
+          );
         }
       }
       const drawingShape = ["line", "arrow", "rectangle", "ellipse"].includes(toolRef.current);
       if (livePointsRef.current.length > 0 && !drawingShape) {
-        const erasing = toolRef.current === 'eraser';
-        renderStroke(ctx, {
-          points: livePointsRef.current,
-          color: erasing ? "#ffffff" : colorRef.current,
-          size: sizeRef.current,
-          eraser: false,
-          tool: toolRef.current === "fill" ? "pen" : toolRef.current,
-          opacity: erasing ? 0.3 : opacityRef.current,
-        }, offsetX, offsetY);
+        const erasing = toolRef.current === "eraser";
+        renderStroke(
+          ctx,
+          {
+            points: livePointsRef.current,
+            color: erasing ? "#ffffff" : colorRef.current,
+            size: sizeRef.current,
+            eraser: false,
+            tool: toolRef.current === "fill" ? "pen" : toolRef.current,
+            opacity: erasing ? 0.3 : opacityRef.current,
+          },
+          offsetX,
+          offsetY,
+        );
       }
     });
   }, [liveStrokes, offsetX, offsetY]);
 
-  useEffect(() => { redrawAll(); }, [strokes, redrawAll]);
-  useEffect(() => () => {
-    if (redrawFrameRef.current !== null) window.cancelAnimationFrame(redrawFrameRef.current);
-  }, []);
+  useEffect(() => {
+    redrawAll();
+  }, [strokes, redrawAll]);
+  useEffect(
+    () => () => {
+      if (redrawFrameRef.current !== null) window.cancelAnimationFrame(redrawFrameRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const canvas = previewCanvasRef.current;
@@ -373,8 +422,10 @@ export function DrawingCanvas({
       const path = shapePreviewRef.current;
       const [start, end] = livePointsRef.current;
       if (!path || !start || !end) return;
-      const x1 = start[0] - offsetX, y1 = start[1] - offsetY;
-      const x2 = end[0] - offsetX, y2 = end[1] - offsetY;
+      const x1 = start[0] - offsetX,
+        y1 = start[1] - offsetY;
+      const x2 = end[0] - offsetX,
+        y2 = end[1] - offsetY;
       let d = "";
       if (toolRef.current === "rectangle") {
         d = `M ${x1} ${y1} H ${x2} V ${y2} H ${x1} Z`;
@@ -383,9 +434,10 @@ export function DrawingCanvas({
         const ry = Math.abs(y2 - y1) / 2;
         const cx = (x1 + x2) / 2;
         const cy = (y1 + y2) / 2;
-        d = rx > 0 && ry > 0
-          ? `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy}`
-          : "";
+        d =
+          rx > 0 && ry > 0
+            ? `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy}`
+            : "";
       } else {
         d = `M ${x1} ${y1} L ${x2} ${y2}`;
         if (toolRef.current === "arrow") {
@@ -414,12 +466,12 @@ export function DrawingCanvas({
       e.preventDefault();
       e.stopPropagation();
 
-      if (toolRef.current === 'fill') {
+      if (toolRef.current === "fill") {
         const [wx, wy] = getPoint(e);
         // Run fill locally immediately
         const committedCanvas = canvasRef.current;
         if (!committedCanvas) return;
-        const ctx = committedCanvas.getContext('2d')!;
+        const ctx = committedCanvas.getContext("2d")!;
         const filled = floodFill(
           ctx,
           wx - offsetX,
@@ -472,7 +524,7 @@ export function DrawingCanvas({
           points: livePointsRef.current,
           color: colorRef.current,
           size: sizeRef.current,
-          eraser: toolRef.current === 'eraser',
+          eraser: toolRef.current === "eraser",
           tool: toolRef.current === "fill" ? "pen" : toolRef.current,
           opacity: opacityRef.current,
         });
@@ -491,17 +543,17 @@ export function DrawingCanvas({
           points: pts,
           color: colorRef.current,
           size: sizeRef.current,
-          eraser: toolRef.current === 'eraser',
+          eraser: toolRef.current === "eraser",
           tool: toolRef.current,
           opacity: opacityRef.current,
         });
       } else {
-        onLiveStroke?.({ points: [], color: '', size: 0, eraser: false });
+        onLiveStroke?.({ points: [], color: "", size: 0, eraser: false });
         redrawAll();
       }
     };
 
-    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener("mousedown", onDown);
     const updatePreview = (event: MouseEvent) => {
       const preview = brushPreviewRef.current;
       if (!preview) return;
@@ -521,93 +573,96 @@ export function DrawingCanvas({
     const hidePreview = () => {
       if (brushPreviewRef.current) brushPreviewRef.current.style.display = "none";
     };
-    canvas.addEventListener('mousemove', updatePreview);
-    canvas.addEventListener('mouseleave', hidePreview);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener("mousemove", updatePreview);
+    canvas.addEventListener("mouseleave", hidePreview);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
     return () => {
-      canvas.removeEventListener('mousedown', onDown);
-      canvas.removeEventListener('mousemove', updatePreview);
-      canvas.removeEventListener('mouseleave', hidePreview);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      canvas.removeEventListener("mousedown", onDown);
+      canvas.removeEventListener("mousemove", updatePreview);
+      canvas.removeEventListener("mouseleave", hidePreview);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     };
   }, [drawMode, onStroke, onFillRejected, onLiveStroke, redrawAll, offsetX, offsetY]);
 
-  const cursor = !drawMode ? 'default'
-    : toolMode === 'fill' ? 'cell'
-    : ['pen', 'eraser'].includes(toolMode) ? 'none'
-    : 'crosshair';
+  const cursor = !drawMode
+    ? "default"
+    : toolMode === "fill"
+      ? "cell"
+      : ["pen", "eraser"].includes(toolMode)
+        ? "none"
+        : "crosshair";
 
   return (
     <>
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width,
-        height,
-        pointerEvents: 'none',
-        // Uploaded layers use timestamp-based z-indices, so drawing mode must
-        // sit above them rather than relying on a small fixed layer number.
-        zIndex: drawMode ? 2147483646 : zIndex,
-      }}
-    />
-    <canvas
-      ref={previewCanvasRef}
-      width={width}
-      height={height}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width,
-        height,
-        pointerEvents: drawMode ? 'all' : 'none',
-        cursor,
-        zIndex: drawMode ? 2147483647 : zIndex + 1,
-      }}
-    />
-    <svg
-      aria-hidden="true"
-      viewBox={`0 0 ${width} ${height}`}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width,
-        height,
-        overflow: 'visible',
-        pointerEvents: 'none',
-        zIndex: 2147483647,
-      }}
-    >
-      <path
-        ref={shapePreviewRef}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ display: 'none' }}
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width,
+          height,
+          pointerEvents: "none",
+          // Uploaded layers use timestamp-based z-indices, so drawing mode must
+          // sit above them rather than relying on a small fixed layer number.
+          zIndex: drawMode ? 2147483646 : zIndex,
+        }}
       />
-    </svg>
-    <div
-      ref={brushPreviewRef}
-      aria-hidden="true"
-      style={{
-        position: "absolute",
-        zIndex: 2147483647,
-        display: "none",
-        boxSizing: "border-box",
-        border: "1px solid",
-        borderRadius: "50%",
-        transform: "translate(-50%, -50%)",
-        pointerEvents: "none",
-        boxShadow: "0 0 0 1px rgba(0,0,0,.65)",
-      }}
-    />
+      <canvas
+        ref={previewCanvasRef}
+        width={width}
+        height={height}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width,
+          height,
+          pointerEvents: drawMode ? "all" : "none",
+          cursor,
+          zIndex: drawMode ? 2147483647 : zIndex + 1,
+        }}
+      />
+      <svg
+        aria-hidden="true"
+        viewBox={`0 0 ${width} ${height}`}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width,
+          height,
+          overflow: "visible",
+          pointerEvents: "none",
+          zIndex: 2147483647,
+        }}
+      >
+        <path
+          ref={shapePreviewRef}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ display: "none" }}
+        />
+      </svg>
+      <div
+        ref={brushPreviewRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          zIndex: 2147483647,
+          display: "none",
+          boxSizing: "border-box",
+          border: "1px solid",
+          borderRadius: "50%",
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+          boxShadow: "0 0 0 1px rgba(0,0,0,.65)",
+        }}
+      />
     </>
   );
 }

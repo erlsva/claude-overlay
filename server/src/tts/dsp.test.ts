@@ -24,14 +24,15 @@ test("TTS room reverb surrounds the phrase and decays after it", () => {
   const dry = new Float32Array(RATE * 2);
   dry[Math.round(0.2 * RATE)] = 0.5;
   dry[Math.round(1.8 * RATE)] = 0.5;
-  const output = effectTail(
-    dry,
-    parsePrompt('((man says "Hello there" in cave;8s))').scenes[0],
-    { start: 1.7, end: 2 },
-  );
+  const output = effectTail(dry, parsePrompt('((man says "Hello there" in cave;8s))').scenes[0], {
+    start: 1.7,
+    end: 2,
+  });
 
   assert.equal(output.length, 8 * RATE);
-  assert.ok(output.slice(Math.round(2.2 * RATE), 3 * RATE).some((sample) => Math.abs(sample) > 0.000001));
+  assert.ok(
+    output.slice(Math.round(2.2 * RATE), 3 * RATE).some((sample) => Math.abs(sample) > 0.000001),
+  );
 });
 
 test("sound-only reverb remains audible after a transient source ends", () => {
@@ -45,18 +46,25 @@ test("sound-only reverb remains audible after a transient source ends", () => {
 });
 
 test("explicit durations add up to the authored total instead of extra tails", () => {
-  const prompt = '((man saying "again" over and over;reverb;15s)) ((dry loud fart;reverb;5s)) ((man saying "again" over and over;reverb;15s)) ((dry loud fart;reverb;5s))';
+  const prompt =
+    '((man saying "again" over and over;reverb;15s)) ((dry loud fart;reverb;5s)) ((man saying "again" over and over;reverb;15s)) ((dry loud fart;reverb;5s))';
   const scenes = parsePrompt(prompt).scenes;
   const speech = new Float32Array(RATE * 4);
   const sound = new Float32Array(RATE);
-  const durations = scenes.map((scene) => effectTail(
-    scene.dialogue ? speech.slice() : sound.slice(),
-    scene,
-    scene.dialogue ? { start: 3.5, end: 4 } : null,
-  ).length / RATE);
+  const durations = scenes.map(
+    (scene) =>
+      effectTail(
+        scene.dialogue ? speech.slice() : sound.slice(),
+        scene,
+        scene.dialogue ? { start: 3.5, end: 4 } : null,
+      ).length / RATE,
+  );
 
   assert.deepEqual(durations, [15, 5, 15, 5]);
-  assert.equal(durations.reduce((total, seconds) => total + seconds, 0), 40);
+  assert.equal(
+    durations.reduce((total, seconds) => total + seconds, 0),
+    40,
+  );
 });
 
 test("effects without an authored duration retain an automatic tail", () => {
@@ -66,7 +74,9 @@ test("effects without an authored duration retain an automatic tail", () => {
 });
 
 test("giant troll roles receive a deterministic deep character treatment", () => {
-  const scene = parsePrompt('((giant troll in cave shouts "I CANT HOLD IT IN! AAAHH!" with reverb;11s))').scenes[0];
+  const scene = parsePrompt(
+    '((giant troll in cave shouts "I CANT HOLD IT IN! AAAHH!" with reverb;11s))',
+  ).scenes[0];
   assert.equal(scene.effect, "reverb");
   assert.equal(characterPitch(scene), 0.72);
   assert.match(channelFilter(scene), /asetrate=31752/);
@@ -109,7 +119,8 @@ test("room reverb remains active when natural speech has no decay time left", ()
 
 test("expressive waveform beyond provider alignment is retained and effects fade to silence", () => {
   const dry = new Float32Array(RATE * 3);
-  for (let index = Math.round(RATE * 2.6); index <= Math.round(RATE * 2.7); index++) dry[index] = 0.7;
+  for (let index = Math.round(RATE * 2.6); index <= Math.round(RATE * 2.7); index++)
+    dry[index] = 0.7;
   const scene = parsePrompt('((man yells "ABOBA" in a cave;5s))').scenes[0];
   const rendered = effectTail(dry, scene, { start: 0.2, end: 2 });
 
@@ -118,11 +129,14 @@ test("expressive waveform beyond provider alignment is retained and effects fade
 });
 
 test("ElevenLabs alignment isolates the final spoken word", () => {
-  assert.deepEqual(finalWordTiming({
-    characters: ["H", "i", " ", "a", "l", "l", "!"],
-    character_start_times_seconds: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-    character_end_times_seconds: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
-  }), { start: 0.3, end: 0.6 });
+  assert.deepEqual(
+    finalWordTiming({
+      characters: ["H", "i", " ", "a", "l", "l", "!"],
+      character_start_times_seconds: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+      character_end_times_seconds: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+    }),
+    { start: 0.3, end: 0.6 },
+  );
 });
 
 test("custom pause scenes render locally without a provider request", async () => {

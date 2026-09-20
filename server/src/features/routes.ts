@@ -30,11 +30,12 @@ export function createFeatureRouter(onUpdated: (flags: FeatureFlags) => void) {
       res.json(flags);
     } catch (error) {
       res.status(400).json({
-        error: error instanceof z.ZodError
-          ? "Invalid feature flag settings."
-          : error instanceof Error
-            ? error.message
-            : "Could not update feature flags.",
+        error:
+          error instanceof z.ZodError
+            ? "Invalid feature flag settings."
+            : error instanceof Error
+              ? error.message
+              : "Could not update feature flags.",
       });
     }
   });
