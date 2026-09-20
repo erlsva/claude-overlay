@@ -1,6 +1,6 @@
 import type { MutableRefObject } from "react";
 import type { CanvasElement } from "../types";
-import type { CanvasStageProps } from "../components/CanvasStage";
+import type { CanvasStageProps } from "../components/canvas-stage/types";
 import { STREAM_OFFSET_X, STREAM_W, STREAM_OFFSET_Y, STREAM_H, getFileLabel } from "./config";
 import {
   setRotation,

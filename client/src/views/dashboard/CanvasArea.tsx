@@ -1,5 +1,5 @@
 import { OverlayMirror } from "../../components/OverlayMirror";
-import { CanvasStage } from "../../components/CanvasStage";
+import { CanvasStage } from "../../components/canvas-stage/CanvasStage";
 import { DrawingCanvas } from "../../components/DrawingCanvas";
 import { WORKSPACE_W, WORKSPACE_H } from "../../canvas/config";
 import { HelpGuide } from "../../components/HelpGuide";
