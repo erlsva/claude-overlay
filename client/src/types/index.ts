@@ -184,7 +184,7 @@ export interface ChatEmoteSettings {
   nameBackgroundEnabled: boolean;
   nameBackgroundColor: string;
   nameFontSize: number;
-  motion: "walls" | "floor" | "parade" | "corners";
+  motion: "walls" | "floor" | "parade" | "corners" | "pop";
   direction: "left" | "right";
   gravity: number;
   size: number;

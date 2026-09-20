@@ -15,6 +15,10 @@ interface Particle extends ChatEmoteSpawn {
   cornerDirection?: "left" | "right";
 }
 
+/** "Pop in & bounce": how long an emote fades in where it appeared before it starts moving, and how long it fades out at the end. */
+const POP_FADE_IN_MS = 1000;
+const POP_FADE_OUT_MS = 600;
+
 interface ChatEmoteLayerProps {
   spawn: ChatEmoteSpawn | null;
   settings: ChatEmoteSettings;
@@ -144,6 +148,13 @@ export function ChatEmoteLayer({
         y = height - size - labelHeight;
         vx = 0;
         vy = 0;
+      } else if (activeSettings.motion === "pop") {
+        // Appears anywhere; the velocity is used once the fade-in is over.
+        x = Math.random() * Math.max(1, width - particleWidth);
+        y = Math.random() * Math.max(1, height - size - labelHeight);
+        const angle = Math.random() * Math.PI * 2;
+        vx = Math.cos(angle) * speed;
+        vy = Math.sin(angle) * speed;
       } else if (activeSettings.motion === "floor") {
         x = Math.random() * Math.max(1, width - particleWidth);
         y = height * (0.08 + Math.random() * 0.25);
@@ -226,6 +237,23 @@ export function ChatEmoteLayer({
       for (const particle of particlesRef.current) {
         const particleWidth = size * particle.aspectRatio;
         const floorY = height - size - labelHeight;
+        const popNode = nodesRef.current.get(particle.id);
+        if (settings.motion === "pop") {
+          const age = now - particle.bornAt;
+          const remaining = settings.lifetimeSeconds * 1000 - age;
+          if (popNode)
+            popNode.style.opacity = String(
+              Math.max(0, Math.min(1, age / POP_FADE_IN_MS, remaining / POP_FADE_OUT_MS)),
+            );
+          if (age < POP_FADE_IN_MS) {
+            // Hold still while fading in.
+            if (popNode)
+              popNode.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0)`;
+            continue;
+          }
+        } else if (popNode?.style.opacity) {
+          popNode.style.opacity = "";
+        }
         if (settings.motion === "parade") {
           particle.vx =
             settings.direction === "left" ? -settings.speed * scale : settings.speed * scale;
@@ -342,7 +370,11 @@ export function ChatEmoteLayer({
             else nodesRef.current.delete(particle.id);
           }}
           className="chat-emote-particle"
-          style={{ width: settings.size * scale * particle.aspectRatio }}
+          style={{
+            width: settings.size * scale * particle.aspectRatio,
+            // Start invisible so a new emote never flashes before its first fade-in frame.
+            opacity: settings.motion === "pop" ? 0 : undefined,
+          }}
         >
           {settings.showNames && (
             <span

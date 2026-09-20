@@ -89,7 +89,9 @@ export function EmoteBehaviorCard({
                   ? "Emotes will travel around the corners"
                   : motion === "floor"
                     ? "Using floor bounce physics"
-                    : "Using wall-to-wall bounce",
+                    : motion === "pop"
+                      ? "Emotes will fade in, then bounce around"
+                      : "Using wall-to-wall bounce",
             );
           }}
         >
@@ -97,6 +99,7 @@ export function EmoteBehaviorCard({
           <option value="corners">Corner route</option>
           <option value="floor">Floor bounce</option>
           <option value="walls">Wall bounce</option>
+          <option value="pop">Pop in &amp; bounce</option>
         </select>
       </label>
       {(props.chatEmoteSettings.motion === "parade" ||

@@ -29,7 +29,7 @@ Konva is not used by the current application code.
   FFmpeg, with private dashboard previews, OBS playback, reusable clip tokens,
   deletion, job feedback, and trigger-chain support.
 - Listens anonymously to public Vicksy or Wixels chat commands through `tmi.js`.
-- Displays Twitch and 7TV chat emotes as an ordered bottom parade or with floor/wall-bounce movement,
+- Displays Twitch and 7TV chat emotes as an ordered bottom parade or with floor/wall-bounce movement, or fade-in-then-bounce,
 - Plays one-shot Pop, Pulse, Spin, Shake, and directional slide animations on selected media,
   configurable physics, sender labels, limits, and a chatter blacklist.
 - Receives authenticated Twitch follows, subscriptions, gift subscriptions,
