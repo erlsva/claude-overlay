@@ -3,7 +3,7 @@
 import { writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { muffle, normalizeLoudness, readWav, tameSpikes } from "../dsp/index.js";
-import type { Scene } from "../shared/scene.js";
+import type { Scene } from "../scene/index.js";
 import { buildSoundPrompt, isSharpSound, soundDecodeFilter } from "../sound.js";
 import { eleven } from "./elevenlabs.js";
 import { decodeToWav, run } from "./ffmpeg.js";

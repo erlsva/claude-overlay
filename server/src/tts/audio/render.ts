@@ -3,7 +3,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { RATE, effectTail, finish, softLimit, tameSpikes, writeWav } from "../dsp/index.js";
-import type { Scene } from "../shared/scene.js";
+import type { Scene } from "../scene/index.js";
 import { isSharpSound } from "../sound.js";
 import {
   errorText,

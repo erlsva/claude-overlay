@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { blockCount, decodePlan, interpretPrompt } from "./interpreter/index.js";
-import { castScenes } from "./casting.js";
+import { castScenes } from "./casting/index.js";
 
 const voices = [
   { voice_id: "callum", name: "Callum" },

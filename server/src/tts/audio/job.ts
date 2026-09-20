@@ -1,5 +1,5 @@
-import type { Casting } from "../casting.js";
-import type { Scene } from "../shared/scene.js";
+import type { Casting } from "../casting/index.js";
+import type { Scene } from "../scene/index.js";
 
 /** Everything a render is asked to do. */
 export type RenderOptions = {

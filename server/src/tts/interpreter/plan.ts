@@ -1,8 +1,8 @@
 /** Asking OpenAI to plan a prompt as scenes, with a safe local plan whenever it cannot. */
 
 import { z } from "zod";
-import type { AccountVoice } from "../casting.js";
-import { parsePrompt } from "../shared/scene.js";
+import type { AccountVoice } from "../casting/index.js";
+import { parsePrompt } from "../scene/index.js";
 import { blockCount, decodePlan } from "./decode.js";
 import { plannerInstructions } from "./prompt.js";
 import { planFormat } from "./schema.js";

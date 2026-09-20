@@ -1,6 +1,6 @@
 /** Rooms, echo and reverb: what a room sounds like and how an effect tail is built. */
 
-import { type Scene } from "../shared/scene.js";
+import { type Scene } from "../scene/index.js";
 import { RATE } from "./wav.js";
 
 // A room is a reverb time, a spread of reflection delays, how much high end it

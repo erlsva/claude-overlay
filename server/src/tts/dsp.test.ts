@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { renderAudio } from "./audio/index.js";
 import { channelFilter, characterPitch, effectTail, finalWordTiming, RATE } from "./dsp/index.js";
-import { parsePrompt } from "./shared/scene.js";
+import { parsePrompt } from "./scene/index.js";
 
 test("TTS echo repeats only the final word within the total scene duration", () => {
   const dry = new Float32Array(RATE * 2);

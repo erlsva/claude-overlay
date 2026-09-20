@@ -11,8 +11,8 @@ import {
   renderAudio,
   run,
 } from "./audio/index.js";
-import { castScenes, type AccountVoice } from "./casting.js";
-import { scenesSchema, type Scene } from "./shared/scene.js";
+import { castScenes, type AccountVoice } from "./casting/index.js";
+import { scenesSchema, type Scene } from "./scene/index.js";
 import { getClip, saveClip, type TtsClip } from "./store.js";
 import { deleteUploadedClip, uploadClip } from "./discord.js";
 

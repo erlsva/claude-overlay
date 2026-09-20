@@ -1,6 +1,6 @@
 /** Shaping a voice: character pitch, channel (intercom) and the scream, strain and muffle effects. */
 
-import { type Scene } from "../shared/scene.js";
+import { type Scene } from "../scene/index.js";
 import { RATE } from "./wav.js";
 import { biquad } from "./biquad.js";
 

@@ -3,7 +3,7 @@
  * Every dial is optional and has a default, so nothing here has to be set on the host.
  */
 
-import type { Intensity } from "../shared/scene.js";
+import type { Intensity } from "../scene/index.js";
 
 // --- Loudness targets ---------------------------------------------------------
 // Every scene is balanced by how loud it sounds before the scenes are joined.

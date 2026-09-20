@@ -1,6 +1,6 @@
 /** How long the sound of a scene should be, and how fast its speech has to go to fit. */
 
-import { type Scene } from "../shared/scene.js";
+import { type Scene } from "../scene/index.js";
 import { isHugeSound } from "../sound.js";
 import { MAX_AUTO_SPEECH_TEMPO } from "./tuning.js";
 

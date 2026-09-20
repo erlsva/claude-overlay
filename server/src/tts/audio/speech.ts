@@ -2,7 +2,7 @@
 
 import { writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
-import { sceneIntensity, speechRequest } from "../casting.js";
+import { sceneIntensity, speechRequest } from "../casting/index.js";
 import {
   RATE,
   channelFilter,
@@ -15,7 +15,7 @@ import {
   tameSpikes,
   type Alignment,
 } from "../dsp/index.js";
-import type { Scene } from "../shared/scene.js";
+import type { Scene } from "../scene/index.js";
 import { screamLayerPrompt } from "../sound.js";
 import { eleven } from "./elevenlabs.js";
 import { atempoFilters, decodeToWav, run } from "./ffmpeg.js";

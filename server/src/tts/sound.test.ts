@@ -33,10 +33,10 @@ import {
   screamLayerPrompt,
   soundDecodeFilter,
 } from "./sound.js";
-import { detectEffect, detectMuffled, detectRoom, isExtreme, parsePrompt } from "./shared/scene.js";
-import { speechRequest } from "./casting.js";
+import { detectEffect, detectMuffled, detectRoom, isExtreme, parsePrompt } from "./scene/index.js";
+import { speechRequest } from "./casting/index.js";
 import { stripRoomPhrases } from "./sound.js";
-import type { Scene } from "./shared/scene.js";
+import type { Scene } from "./scene/index.js";
 
 const tone = (frequency: number, seconds: number, amplitude: number) => {
   const samples = new Float32Array(Math.round(seconds * RATE));

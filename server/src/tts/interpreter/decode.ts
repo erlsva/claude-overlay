@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import type { AccountVoice } from "../casting.js";
+import type { AccountVoice } from "../casting/index.js";
 import {
   detectEffect,
   detectIntensity,
@@ -17,7 +17,7 @@ import {
   scenesSchema,
   splitPromptSegments,
   type PromptSegment,
-} from "../shared/scene.js";
+} from "../scene/index.js";
 import { sanitizeSoundPrompt } from "../sound.js";
 
 type RawScene = Record<string, unknown>;

@@ -13,7 +13,7 @@ import {
   run,
   speechTempo,
 } from "./audio/index.js";
-import { parsePrompt } from "./shared/scene.js";
+import { parsePrompt } from "./scene/index.js";
 import { readWav } from "./dsp/index.js";
 
 test("final TTS encoding normalizes loud input below the true-peak ceiling", async () => {
