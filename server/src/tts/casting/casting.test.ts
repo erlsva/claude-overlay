@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { castScenes, speechRequest, type AccountVoice } from "./casting/index.js";
-import type { Scene } from "./scene/index.js";
+import { castScenes, speechRequest, type AccountVoice } from "./index.js";
+import type { Scene } from "../scene/index.js";
 
 const scene = (overrides: Partial<Scene> = {}): Scene => ({
   dialogue: "Hello, chat!",

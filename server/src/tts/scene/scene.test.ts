@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parsePrompt } from "./scene/index.js";
+import { parsePrompt } from "./index.js";
 
 test("TTS scenes separate quoted speech from background sound", () => {
   const { scenes } = parsePrompt(
