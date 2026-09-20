@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../components/ToastProvider";
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
+import { SERVER_URL } from "../config/server";
 
 export function useTwitchLive(channel: string) {
   const toast = useToast();

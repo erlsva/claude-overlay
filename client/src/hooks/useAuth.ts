@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UserRole } from "../types";
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
+import { SERVER_URL } from "../config/server";
 
 export interface AuthUser {
   id: string;

@@ -52,8 +52,8 @@ import {
   type DashboardTheme,
 } from "../theme";
 import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
+import { SERVER_URL } from "../config/server";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
 const ONBOARDING_VERSION = "v2";
 const APP_VERSION = import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VERSION ?? "local";
@@ -61,7 +61,7 @@ const UI_SCALE_STORAGE_KEY = "overlay_dashboard_ui_scale";
 const UI_SCALE_OPTIONS = [100, 110, 125] as const;
 type DashboardUiScale = (typeof UI_SCALE_OPTIONS)[number];
 const StudioPanel = lazy(() =>
-  import("../components/StudioPanel").then((module) => ({ default: module.StudioPanel })),
+  import("../components/studio/StudioPanel").then((module) => ({ default: module.StudioPanel })),
 );
 
 function loadDashboardUiScale(): DashboardUiScale {

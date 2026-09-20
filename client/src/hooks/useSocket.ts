@@ -24,8 +24,8 @@ import { playTestTone } from "../audio/testTone";
 import { randomUUID } from "../utils";
 import { useToast } from "../components/ToastProvider";
 import { DEFAULT_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../config/twitchChannels";
+import { SERVER_URL } from "../config/server";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 interface UseSocketOptions {

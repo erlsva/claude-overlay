@@ -12,8 +12,7 @@ import type { CanvasElement, StudioState, TriggerStep } from "../types";
 import { STREAM_H, STREAM_OFFSET_X, STREAM_OFFSET_Y, STREAM_W } from "../canvas/config";
 import { authHeaders } from "../hooks/useAuth";
 import { usePresence } from "../hooks/usePresence";
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
+import { SERVER_URL } from "../config/server";
 
 type CheckKind = "pass" | "warning" | "info";
 interface CheckItem {

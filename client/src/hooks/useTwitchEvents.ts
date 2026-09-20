@@ -3,8 +3,8 @@ import type { TriggerEventType } from "../types";
 import { authHeaders } from "./useAuth";
 import { useToast } from "../components/ToastProvider";
 import { useConfirm } from "../components/ConfirmProvider";
+import { SERVER_URL } from "../config/server";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 type TestableEvent = Exclude<TriggerEventType, "chat-command">;
 
 export interface TwitchEventChannelStatus {

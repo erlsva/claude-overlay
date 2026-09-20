@@ -4,8 +4,7 @@ import { authHeaders } from "../hooks/useAuth";
 import { useToast } from "./ToastProvider";
 import { RoleTags } from "./RoleTag";
 import type { UserRole } from "../types";
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
+import { SERVER_URL } from "../config/server";
 
 interface WhitelistEntry {
   username: string;

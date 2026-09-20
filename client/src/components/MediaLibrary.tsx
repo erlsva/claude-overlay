@@ -7,8 +7,8 @@ import { measureMediaUrl } from "../canvas/mediaSize";
 import { randomUUID } from "../utils";
 import { useConfirm } from "./ConfirmProvider";
 import { useToast } from "./ToastProvider";
+import { SERVER_URL } from "../config/server";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const ACCEPTED = "image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,.gif";
 
 interface LibraryItem {

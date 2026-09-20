@@ -6,12 +6,11 @@ import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
 import TileController from "../components/TileController";
 import { isMirrorMode, silencePage } from "../audio/silence";
+import { SERVER_URL } from "../config/server";
 
 // The dashboard embeds the overlay as a silent live preview (?mirror=1).
 const IS_MIRROR = isMirrorMode();
 if (IS_MIRROR) silencePage();
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 
 export function Overlay() {
   const stageRef = useRef<OverlayStageHandle>(null);

@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { STREAM_H, STREAM_OFFSET_X, STREAM_OFFSET_Y, STREAM_W } from "../canvas/config";
 import { createDvdMotion, getDvdPosition } from "../canvas/dvdMotion";
+import { SERVER_URL } from "../config/server";
 
 const PRESET_COLORS = [
   "#ffffff",
@@ -80,7 +81,6 @@ interface ToolbarProps {
 }
 
 const ACCEPTED = "image/*,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg,.gif";
-const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001";
 const BUTTON_HEIGHT = 30;
 const ICON_SIZE = 15;
 const TOOLBAR_FONT_SIZE = 12;
