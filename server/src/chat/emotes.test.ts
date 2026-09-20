@@ -88,6 +88,26 @@ test("blocked emotes never appear", async () => {
   assert.equal(spawned.length, 0);
 });
 
+test("an allow-listed emote appears once even when the message repeats it", async () => {
+  canvasStore.chatEmoteSettings.additionalEmotes = ["Violin", "Pog"];
+  spawnChatEmotes(
+    message([
+      emote("Fox", 0),
+      emote("Violin", 4),
+      emote("Violin", 11),
+      emote("Pog", 18),
+      emote("Violin", 22),
+      emote("Fox", 29),
+    ]),
+  );
+  await tick();
+  assert.equal(spawned[0].name, "Fox");
+  assert.deepEqual(
+    spawned[0].additional.map((item: any) => item.name),
+    ["Violin", "Pog"],
+  );
+});
+
 test("only the first emote spawns unless later ones are on the allow list", async () => {
   canvasStore.chatEmoteSettings.additionalEmotes = ["Pog"];
   spawnChatEmotes(message([emote("Kappa", 0), emote("Pog", 6), emote("LUL", 10)]));

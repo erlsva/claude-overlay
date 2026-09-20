@@ -49,7 +49,7 @@ const overlayPayload = (item: { id: string; name: string; imageUrl: string }) =>
   imageUrl: item.imageUrl,
 });
 
-/** Spawns the first emote of a message, plus later ones the streamer allow-listed. */
+/** Spawns the first emote of a message, plus later ones the streamer allow-listed (each one once). */
 function spawn(
   event: TriggerEventPayload,
   { stacks, leadingOverlays }: Stacks,
@@ -60,9 +60,12 @@ function spawn(
   if (!emote) return false;
   const firstOverlays = stacks[0]?.overlays ?? leadingOverlays;
   const allowlist = lowerCase(chatEmoteSettings.additionalEmotes);
+  // A chatter repeating an emote does not repeat it on screen, and the first emote is not added again.
+  const shown = new Set([emote.id]);
   const additional = stacks
     .filter((_stack, index) => index > 0)
     .filter((stack) => allowlist.has(stack.base.name.toLowerCase()))
+    .filter((stack) => !shown.has(stack.base.id) && shown.add(stack.base.id))
     .map((stack) => ({
       id: randomUUID(),
       emoteId: stack.base.id,
