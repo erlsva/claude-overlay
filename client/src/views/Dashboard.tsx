@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useCallback, useRef, useEffect } from "react";
-import { CanvasStage, ElementPanel } from "../components/CanvasStage";
+import { CanvasStage } from "../components/CanvasStage";
+import { ElementPanel } from "../components/ElementPanel";
 import { SPAWN_X, SPAWN_Y, WORKSPACE_H, WORKSPACE_W } from "../canvas/config";
 import { DrawingCanvas, renderAction } from "../components/DrawingCanvas";
 import type { DrawToolMode } from "../components/DrawingCanvas";

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Pause, Volume2 } from "lucide-react";
-import { OverlayStage, type OverlayStageHandle } from "../components/CanvasStage";
+import { OverlayStage, type OverlayStageHandle } from "../components/OverlayStage";
 import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/ChatEmoteLayer";
