@@ -1,6 +1,6 @@
 import { twitchClientId } from "../auth/twitch.js";
 import { getValidEventAuth } from "../twitch/eventAuthStore.js";
-import { CHATBOT_AUTH_KEY } from "../twitch/eventRoutes.js";
+import { CHATBOT_AUTH_KEY } from "../twitch/eventOAuth.js";
 import type { TriggerStep } from "../types.js";
 import { renderEventMessage, type TriggerEventPayload } from "./message.js";
 

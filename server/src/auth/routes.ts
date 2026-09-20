@@ -17,6 +17,8 @@ import {
 } from "../twitch/channels.js";
 import type { UserRole } from "../types.js";
 import { CLIENT_URL } from "../config/env.js";
+import { eventsAuthUrlForLogin } from "../twitch/eventOAuth.js";
+import { holdPendingLogin, readCookie } from "./pendingLogin.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -111,12 +113,7 @@ authRouter.get("/twitch", loginRateLimit, (_req, res) => {
 
 authRouter.get("/callback", async (req, res) => {
   const { code, state, error } = req.query as Record<string, string>;
-  const cookieHeader = req.headers.cookie ?? "";
-  const storedState = cookieHeader
-    .split(";")
-    .map((c: string) => c.trim())
-    .find((c: string) => c.startsWith(STATE_COOKIE + "="))
-    ?.split("=")[1];
+  const storedState = readCookie(req.headers.cookie, STATE_COOKIE);
   res.clearCookie(STATE_COOKIE);
 
   if (error) {
@@ -153,6 +150,13 @@ authRouter.get("/callback", async (req, res) => {
     };
 
     const token = signToken(user, SESSION_SECRET);
+    // A broadcaster who has not yet granted the Events permissions is asked for them now, once.
+    const eventsUrl = await eventsAuthUrlForLogin(login);
+    if (eventsUrl) {
+      holdPendingLogin(res, token, IS_PROD);
+      res.redirect(eventsUrl);
+      return;
+    }
     res.redirect(`${CLIENT_URL}/?token=${token}`);
   } catch (err) {
     console.error("OAuth callback error:", err);

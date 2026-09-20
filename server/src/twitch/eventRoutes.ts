@@ -1,6 +1,6 @@
 import { CLIENT_URL } from "../config/env.js";
-import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
+import { takePendingLogin } from "../auth/pendingLogin.js";
 import { getUserFromRequest } from "../auth/routes.js";
 import {
   exchangeCodeForRedirect,
@@ -17,14 +17,16 @@ import {
 } from "./eventAuthStore.js";
 import type { TriggerEventType } from "../types.js";
 import { registerEventSubscriptions } from "./eventWebhook.js";
-import { getConfiguredTwitchChannels } from "./channels.js";
+import {
+  CHATBOT_AUTH_KEY,
+  CHATBOT_SCOPES,
+  EVENT_SCOPES,
+  createState,
+  getEventChannels,
+  isEventChannel,
+  parseState,
+} from "./eventOAuth.js";
 
-export function getEventChannels(): EventChannel[] {
-  return getConfiguredTwitchChannels();
-}
-function isEventChannel(channel: string): channel is EventChannel {
-  return getEventChannels().includes(channel);
-}
 function canManageEventChannel(
   req: Parameters<typeof getUserFromRequest>[0],
   channel: EventChannel,
@@ -32,52 +34,15 @@ function canManageEventChannel(
   const user = getUserFromRequest(req);
   return !!user && (user.isOwner || user.login.toLowerCase() === channel);
 }
-const sessionSecret = process.env.SESSION_SECRET ?? "development-only-secret";
 const redirectUri = twitchEventsRedirectUri;
-// Broadcasters only authorize the read permissions needed by EventSub. Outgoing
-// chat uses the independently-authorized chatbot account below.
-export const EVENT_SCOPES = [
-  "moderator:read:followers",
-  "channel:read:subscriptions",
-  "bits:read",
-  "channel:read:redemptions",
-  "channel:read:hype_train",
-  "channel:moderate",
-  "channel:read:predictions",
-];
-export const CHATBOT_AUTH_KEY = "__chatbot__";
-export const CHATBOT_SCOPES = ["user:write:chat"];
-const chatbotLogin = (process.env.CHAT_BOT_USERNAME ?? "dankchapbot").trim().toLowerCase();
-type AuthTarget = EventChannel | typeof CHATBOT_AUTH_KEY;
+const sessionSecret = process.env.SESSION_SECRET ?? "development-only-secret";
 
-function createState(channel: AuthTarget) {
-  const payload = Buffer.from(
-    JSON.stringify({
-      channel,
-      expires: Date.now() + 600_000,
-      nonce: randomBytes(16).toString("hex"),
-    }),
-  ).toString("base64url");
-  return `${payload}.${createHmac("sha256", sessionSecret).update(payload).digest("base64url")}`;
+/** Sends the browser back to the dashboard, signing the streamer in too if she came here from logging in. */
+function returnToDashboard(req: Request, res: Response, query: string) {
+  const pending = takePendingLogin(req, res, sessionSecret);
+  res.redirect(`${CLIENT_URL}/?${pending ? `token=${pending}&` : ""}${query}`);
 }
-function parseState(state: string): AuthTarget | null {
-  try {
-    const [payload, signature] = state.split(".");
-    const expected = createHmac("sha256", sessionSecret).update(payload).digest();
-    const actual = Buffer.from(signature, "base64url");
-    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
-    const value = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-      channel: AuthTarget;
-      expires: number;
-    };
-    return (value.channel === CHATBOT_AUTH_KEY || isEventChannel(value.channel)) &&
-      value.expires > Date.now()
-      ? value.channel
-      : null;
-  } catch {
-    return null;
-  }
-}
+const chatbotLogin = (process.env.CHAT_BOT_USERNAME ?? "dankchapbot").trim().toLowerCase();
 
 export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any) => void) {
   const router = Router();
@@ -109,7 +74,7 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
           req.query.error,
           req.query.error_description,
         );
-        return res.redirect(`${CLIENT_URL}/?events_error=twitch_denied`);
+        return returnToDashboard(req, res, "events_error=twitch_denied");
       }
       const channel = parseState(String(req.query.state ?? ""));
       if (!channel || !req.query.code) throw new Error("Invalid authorization state");
@@ -123,8 +88,10 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
       stage = "account_lookup";
       const twitchUser = await getTwitchUserFromToken(token.accessToken);
       if (twitchUser.login.toLowerCase() !== expectedLogin)
-        return res.redirect(
-          `${CLIENT_URL}/?events_error=expected_${expectedLogin}&events_actual=${encodeURIComponent(twitchUser.login.toLowerCase())}`,
+        return returnToDashboard(
+          req,
+          res,
+          `events_error=expected_${expectedLogin}&events_actual=${encodeURIComponent(twitchUser.login.toLowerCase())}`,
         );
       stage = "database_save";
       await saveEventAuth({
@@ -148,12 +115,14 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
           scopes: token.scopes,
         });
       }
-      res.redirect(
-        `${CLIENT_URL}/?${channel === CHATBOT_AUTH_KEY ? "chatbot_connected" : "events_connected"}=${encodeURIComponent(expectedLogin)}`,
+      returnToDashboard(
+        req,
+        res,
+        `${channel === CHATBOT_AUTH_KEY ? "chatbot_connected" : "events_connected"}=${encodeURIComponent(expectedLogin)}`,
       );
     } catch (error) {
       console.error(`Event authorization failed during ${stage}`, error);
-      res.redirect(`${CLIENT_URL}/?events_error=${stage}`);
+      returnToDashboard(req, res, `events_error=${stage}`);
     }
   });
   router.get("/events/status", async (req, res) => {

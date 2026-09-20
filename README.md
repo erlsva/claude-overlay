@@ -211,7 +211,12 @@ These are separate OAuth flows:
    access; everyone else must exist in the whitelist.
 2. **Events connections** are completed once by the Vicksy and Wixels
    broadcaster accounts. They grant only the read permissions needed for
-   broadcaster events.
+   broadcaster events. The broadcaster is asked for them as part of signing in:
+   after a normal login, if the account is one of the configured event channels
+   and has not granted every permission (or a new one was added since), she is
+   sent straight to Twitch's permission screen once and then lands on the
+   dashboard. Other accounts are never asked. **Studio → Automations →
+   Connections** still works for reconnecting by hand.
 3. **Chatbot connection** is completed once by the dedicated DankChapBot
    account. It grants `user:write:chat`; configured messages use this account as
    the sender and never use a broadcaster token to write chat.

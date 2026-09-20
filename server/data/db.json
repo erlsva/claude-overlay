@@ -21,19 +21,78 @@
   ],
   "scenes": [],
   "presets": [],
-  "sounds": [],
+  "sounds": [
+    {
+      "id": "d1c7566b-e513-4773-aa19-0979e27ae817",
+      "name": "audio-0 (1)",
+      "url": "http://localhost:3001/files/5a5abc74dccff964638282bfdeb2a9fe?name=audio-0%20(1).mp3&type=audio%2Fmpeg",
+      "volume": 0.1
+    }
+  ],
   "chatEmoteSettings": {
-    "enabled": false,
+    "enabled": true,
     "showNames": true,
     "nameBackgroundEnabled": false,
     "nameBackgroundColor": "#08080a",
     "nameFontSize": 18,
-    "motion": "floor",
+    "motion": "parade",
     "gravity": 400,
-    "size": 60,
+    "size": 100,
     "speed": 240,
     "lifetimeSeconds": 20,
     "maxVisible": 10,
-    "blacklist": ["gekkerbot"]
-  }
+    "blacklist": [
+      "gekkerbot"
+    ]
+  },
+  "triggers": [
+    {
+      "id": "773f1664-02ad-4ebb-a4cd-65c5260e9817",
+      "name": "Follow",
+      "enabled": true,
+      "event": "follow",
+      "channel": "eple7",
+      "action": "send-chat",
+      "timing": "immediate",
+      "chatMessage": "Thanks you for the follow, {user}!",
+      "cooldownSeconds": 5,
+      "permission": "everyone"
+    },
+    {
+      "id": "789158b8-0b9d-48b5-af53-89f91126a455",
+      "name": "Ban",
+      "enabled": true,
+      "event": "ban",
+      "channel": "eple7",
+      "action": "send-chat",
+      "timing": "immediate",
+      "chatMessage": "{user} got banned LMAO",
+      "cooldownSeconds": 5,
+      "permission": "everyone"
+    },
+    {
+      "id": "dffa8721-1179-4622-9f09-f32b19cfc86b",
+      "name": "TTS Test",
+      "enabled": true,
+      "event": "chat-command",
+      "match": "<tts",
+      "action": "tts",
+      "timing": "immediate",
+      "chatMessage": "{message}",
+      "cooldownSeconds": 5,
+      "permission": "vip"
+    },
+    {
+      "id": "49c83ad1-8c2a-4ea9-a534-61fb35afd31c",
+      "name": "Test",
+      "enabled": true,
+      "event": "chat-command",
+      "match": "<test",
+      "action": "play-sound",
+      "targetId": "d1c7566b-e513-4773-aa19-0979e27ae817",
+      "timing": "immediate",
+      "cooldownSeconds": 5,
+      "permission": "everyone"
+    }
+  ]
 }
