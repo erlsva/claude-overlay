@@ -1,4 +1,5 @@
 import { getChatEmoteSettings, getStudioData } from "../db/index.js";
+import { CHAT_EMOTE_MOTIONS } from "../types.js";
 import type {
   ActivityItem,
   CanvasState,
@@ -51,7 +52,7 @@ export const canvasStore: CanvasStore = {
         ? stored!.nameBackgroundColor
         : "#08080a",
       nameFontSize: Math.min(32, Math.max(9, stored?.nameFontSize ?? 12)),
-      motion: (["walls", "floor", "parade", "corners", "pop-walls", "pop-floor", "fireworks"] as const).includes(stored?.motion as any)
+      motion: (CHAT_EMOTE_MOTIONS as readonly string[]).includes(stored?.motion as string)
         ? stored!.motion
         : "floor",
       direction: (["left", "right"] as const).includes(stored?.direction as any)

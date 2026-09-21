@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ChatEmoteSettings } from "../types.js";
+import { CHAT_EMOTE_MOTIONS } from "../types.js";
 import { validChatEmoteSettings } from "./validateSettings.js";
 
 const settings: ChatEmoteSettings = {
@@ -21,16 +22,9 @@ const settings: ChatEmoteSettings = {
   additionalEmotes: [],
 };
 
-test("accepts every movement mode, including the pop-in and fireworks modes", () => {
-  for (const motion of [
-    "walls",
-    "floor",
-    "parade",
-    "corners",
-    "pop-walls",
-    "pop-floor",
-    "fireworks",
-  ] as const) {
+test("accepts every movement mode", () => {
+  assert.ok(CHAT_EMOTE_MOTIONS.length >= 16);
+  for (const motion of CHAT_EMOTE_MOTIONS) {
     assert.equal(validChatEmoteSettings({ ...settings, motion }), true, motion);
   }
 });

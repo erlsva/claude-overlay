@@ -210,7 +210,7 @@ const sections = [
       ],
       [
         "Studio · Emotes",
-        "Choose a directional bottom parade, a mirrored corner route, floor physics, wall bounce, or emotes that fade in at random spots and then bounce off the walls or drop and bounce on the floor, or fireworks that burst into smaller copies; tune size, speed, labels, gravity, and limits, blacklist chatters, allow selected emotes after the first emote in a message, and preview locally. Wide and zero-width emotes retain their intended layout.",
+        "Pick a movement: bottom parade, corner route, floor or wall bounce, pop-in bounces, rain, snowfall, rising balloons, drift and twinkle, orbit, fireworks, bouncy slide-in, pinball, pile-up or a conga line; tune size, speed, labels, gravity, and limits, blacklist chatters, allow selected emotes after the first emote in a message, and preview locally. Wide and zero-width emotes retain their intended layout.",
       ],
       [
         "Show my cursor on overlay",

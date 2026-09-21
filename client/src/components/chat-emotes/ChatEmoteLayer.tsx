@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadImageAspectRatio } from "./modes";
+import { loadImageAspectRatio, turnsAwayWhenFull } from "./modes";
 import { ParticleView } from "./ParticleView";
 import { initialMotion } from "./spawnMotion";
 import { stepParticle } from "./stepMotion";
@@ -88,7 +88,7 @@ export function ChatEmoteLayer({
       const aspectRatio = Math.max(sequenceAspectRatio, labelWidth / size);
       const particleWidth = size * aspectRatio;
       const labelHeight = activeSettings.showNames ? (activeSettings.nameFontSize + 8) * scale : 0;
-      const { x, y, vx, vy } = initialMotion({
+      const { x, y, vx, vy, state } = initialMotion({
         settings: activeSettings,
         existing: particlesRef.current,
         width,
@@ -112,12 +112,12 @@ export function ChatEmoteLayer({
         stackAspectRatios,
         cornerWaypointIndex: activeSettings.motion === "corners" ? 0 : undefined,
         cornerDirection: activeSettings.motion === "corners" ? activeSettings.direction : undefined,
+        state,
       };
       setParticles((current) => {
-        // Parade and fireworks turn new emotes away when full; the rest drop the oldest.
-        // Fireworks' small copies do not count towards the limit.
-        const turnAway =
-          activeSettings.motion === "parade" || activeSettings.motion === "fireworks";
+        // Modes where emotes travel across the screen turn new ones away when full; the rest
+        // drop the oldest. Fireworks' small copies do not count towards the limit.
+        const turnAway = turnsAwayWhenFull(activeSettings.motion);
         const counted = current.filter((item) => !item.spark).length;
         const next = turnAway
           ? counted >= activeSettings.maxVisible
@@ -152,6 +152,7 @@ export function ChatEmoteLayer({
         labelHeight: settings.showNames ? (settings.nameFontSize + 8) * scale : 0,
         now,
         dt: Math.min(0.05, Math.max(0, (now - previous) / 1000)),
+        particles: particlesRef.current,
       };
       previous = now;
       const expired = new Set<string>();

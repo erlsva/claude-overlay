@@ -110,4 +110,7 @@ in the order where it should apply.
 - **A Studio tab or panel section**: a new `components/studio/` file, wired in `StudioPanel`.
 - **A trigger action or event**: `triggers/execute.ts` (what it does) and `triggers/dispatch.ts`
   (when it fires); the form lives in `components/studio/`.
+- **A chat-emote movement**: add its name to `CHAT_EMOTE_MOTIONS` in `shared/types.ts`, write a
+  `ModeImpl` (spawn + step) in `client/src/components/chat-emotes/` and register it in
+  `modeRegistry.ts`, then add it to the dropdown in `motionOptions.ts`.
 - **A TTS voice rule**: `tts/casting/` (see `docs/TTS.md` for the tuning knobs).

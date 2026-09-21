@@ -1,5 +1,5 @@
 import type { ChatEmoteSettings } from "../../types";
-import { isPop } from "./modes";
+import { startsHidden } from "./modes";
 import type { Particle } from "./types";
 
 /** One emote on screen: the optional sender name and its emote images, with any zero-width overlays. */
@@ -21,7 +21,7 @@ export function ParticleView({
       style={{
         width: settings.size * scale * particle.aspectRatio,
         // Start invisible so a new emote never flashes before its first fade-in frame.
-        opacity: isPop(settings.motion) || particle.spark ? 0 : undefined,
+        opacity: startsHidden(settings.motion) || particle.spark ? 0 : undefined,
       }}
     >
       {settings.showNames && !particle.spark && (

@@ -1,3 +1,4 @@
+import { CHAT_EMOTE_MOTIONS } from "../types.js";
 import type { ChatEmoteSettings, DvdCelebrationSettings, LiveDrawStroke } from "../types.js";
 
 const COUNTER_POSITIONS = [
@@ -31,9 +32,7 @@ export function validChatEmoteSettings(settings: ChatEmoteSettings): boolean {
     typeof settings.nameBackgroundColor === "string" &&
     /^#[0-9a-f]{6}$/i.test(settings.nameBackgroundColor) &&
     inRange(settings.nameFontSize, 9, 32) &&
-    ["walls", "floor", "parade", "corners", "pop-walls", "pop-floor", "fireworks"].includes(
-      settings.motion,
-    ) &&
+    (CHAT_EMOTE_MOTIONS as readonly string[]).includes(settings.motion) &&
     ["left", "right"].includes(settings.direction) &&
     inRange(settings.gravity, 100, 2400) &&
     inRange(settings.size, 24, 100) &&

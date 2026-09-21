@@ -1,40 +1,21 @@
-import type { ChatEmoteSettings } from "../../types";
+import { paradeStartX } from "./classicMotion";
 import { launchRocket } from "./fireworks";
 import { isPop } from "./modes";
-import type { Particle } from "./types";
-
-interface SpawnEnv {
-  settings: ChatEmoteSettings;
-  existing: Particle[];
-  width: number;
-  height: number;
-  scale: number;
-  size: number;
-  labelHeight: number;
-  particleWidth: number;
-  /** Movement speed in pixels per second, already scaled. */
-  speed: number;
-}
+import { MODES } from "./modeRegistry";
+import type { SpawnEnv, Start } from "./modeTypes";
 
 /** Where a new emote starts and how it is moving, for the chosen movement mode. */
-export function initialMotion(env: SpawnEnv) {
-  const { settings, existing, width, height, scale, size, labelHeight, particleWidth, speed } = env;
+export function initialMotion(env: SpawnEnv): Start {
+  const { settings, width, height, scale, size, labelHeight, particleWidth, speed } = env;
+  const custom = MODES[settings.motion]?.spawn;
+  if (custom) return custom(env);
   const floorY = height - size - labelHeight;
   let x: number;
   let y: number;
   let vx: number;
   let vy: number;
   if (settings.motion === "parade") {
-    if (settings.direction === "left") {
-      const rightmost = existing.reduce((edge, particle) => {
-        const width = size * particle.aspectRatio;
-        return Math.max(edge, particle.x + width);
-      }, width);
-      x = rightmost + (existing.length ? 12 * scale : 0);
-    } else {
-      const leftmost = existing.reduce((edge, particle) => Math.min(edge, particle.x), 0);
-      x = leftmost - particleWidth - (existing.length ? 12 * scale : 0);
-    }
+    x = paradeStartX(env);
     y = floorY;
     vx = settings.direction === "left" ? -speed : speed;
     vy = 0;

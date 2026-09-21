@@ -1,3 +1,4 @@
+import { usesGravitySetting } from "../chat-emotes/motionOptions";
 import { SliderField } from "../SliderField";
 import type { StudioPanelProps } from "./types";
 
@@ -16,11 +17,7 @@ export function EmoteMotionCard({ props }: { props: StudioPanelProps }) {
         ] as const
       )
         .filter(
-          ([, key]) =>
-            key !== "gravity" ||
-            props.chatEmoteSettings.motion === "floor" ||
-            props.chatEmoteSettings.motion === "pop-floor" ||
-            props.chatEmoteSettings.motion === "fireworks",
+          ([, key]) => key !== "gravity" || usesGravitySetting(props.chatEmoteSettings.motion),
         )
         .map(([label, key, min, max, step, suffix]) => (
           <SliderField

@@ -176,13 +176,34 @@ export interface DvdCelebrationSettings {
   counterPosition:
     "top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right";
 }
+/** How chat emotes move across the overlay. */
+export const CHAT_EMOTE_MOTIONS = [
+  "walls",
+  "floor",
+  "parade",
+  "corners",
+  "pop-walls",
+  "pop-floor",
+  "fireworks",
+  "drift",
+  "rain",
+  "snow",
+  "rise",
+  "orbit",
+  "slide",
+  "pinball",
+  "pile",
+  "conga",
+] as const;
+export type ChatEmoteMotion = (typeof CHAT_EMOTE_MOTIONS)[number];
+
 export interface ChatEmoteSettings {
   enabled: boolean;
   showNames: boolean;
   nameBackgroundEnabled: boolean;
   nameBackgroundColor: string;
   nameFontSize: number;
-  motion: "walls" | "floor" | "parade" | "corners" | "pop-walls" | "pop-floor" | "fireworks";
+  motion: ChatEmoteMotion;
   direction: "left" | "right";
   gravity: number;
   size: number;

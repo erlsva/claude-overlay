@@ -14,8 +14,34 @@ export interface Particle extends ChatEmoteSpawn {
   cornerDirection?: "left" | "right";
   /** Fireworks: one of the small copies a rocket bursts into. */
   spark?: boolean;
-  /** Fireworks: how much smaller than a full emote a spark is drawn. */
+  /** How much smaller than a full emote it is drawn (fireworks sparks, slide-in pop-away). */
   sizeFactor?: number;
+  /** Squash and stretch, used by pinball. */
+  scaleX?: number;
+  scaleY?: number;
+  /** Per-emote numbers the newer movement modes keep between frames. */
+  state?: MotionState;
+}
+
+/** What a movement mode remembers about one emote. Which fields are used depends on the mode. */
+export interface MotionState {
+  /** A random offset so emotes do not all wave in step. */
+  phase: number;
+  angle?: number;
+  radiusX?: number;
+  radiusY?: number;
+  omega?: number;
+  centerX?: number;
+  centerY?: number;
+  startX?: number;
+  startY?: number;
+  targetX?: number;
+  targetY?: number;
+  baseX?: number;
+  swayAmp?: number;
+  swayRate?: number;
+  squashAt?: number;
+  squashAxis?: "x" | "y";
 }
 
 export interface ChatEmoteLayerProps {
@@ -41,4 +67,6 @@ export interface FrameEnv {
   now: number;
   /** Seconds since the previous frame. */
   dt: number;
+  /** Every emote currently on screen, for modes where emotes react to each other. */
+  particles: Particle[];
 }

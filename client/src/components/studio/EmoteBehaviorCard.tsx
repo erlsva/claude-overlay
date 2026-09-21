@@ -3,6 +3,7 @@ import { fieldStyle } from "./shared";
 import { type ChatEmoteSettings } from "../../types";
 import type { StudioContext } from "./context";
 import type { StudioPanelProps } from "./types";
+import { MOTION_GROUPS, motionToast, usesDirectionSetting } from "../chat-emotes/motionOptions";
 
 /** Show names, name background and other emote behaviour. */
 export function EmoteBehaviorCard({
@@ -82,34 +83,21 @@ export function EmoteBehaviorCard({
           onChange={(event) => {
             const motion = event.target.value as ChatEmoteSettings["motion"];
             props.onChatEmoteSettingsChange({ ...props.chatEmoteSettings, motion });
-            toast.success(
-              motion === "parade"
-                ? "Using the bottom parade"
-                : motion === "corners"
-                  ? "Emotes will travel around the corners"
-                  : motion === "floor"
-                    ? "Using floor bounce physics"
-                    : motion === "pop-walls"
-                      ? "Emotes will fade in, then bounce wall to wall"
-                      : motion === "pop-floor"
-                        ? "Emotes will fade in, then drop and bounce on the floor"
-                        : motion === "fireworks"
-                          ? "Emotes will launch and burst like fireworks"
-                          : "Using wall-to-wall bounce",
-            );
+            toast.success(motionToast(motion));
           }}
         >
-          <option value="parade">Bottom parade</option>
-          <option value="corners">Corner route</option>
-          <option value="floor">Floor bounce</option>
-          <option value="walls">Wall bounce</option>
-          <option value="pop-walls">Pop in &amp; wall bounce</option>
-          <option value="pop-floor">Pop in &amp; floor bounce</option>
-          <option value="fireworks">Fireworks</option>
+          {MOTION_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </select>
       </label>
-      {(props.chatEmoteSettings.motion === "parade" ||
-        props.chatEmoteSettings.motion === "corners") && (
+      {usesDirectionSetting(props.chatEmoteSettings.motion) && (
         <label className="chat-emote-setting chat-emote-setting--motion">
           <span>Direction</span>
           <select
@@ -121,8 +109,8 @@ export function EmoteBehaviorCard({
               toast.success(`Emotes will travel ${direction}`);
             }}
             title={
-              props.chatEmoteSettings.motion === "parade"
-                ? "Choose whether the parade travels left or right"
+              props.chatEmoteSettings.motion !== "corners"
+                ? "Choose whether the emotes travel left or right"
                 : "Start left: bottom-left → top-left → top-right → bottom-right. Start right mirrors that route."
             }
           >
