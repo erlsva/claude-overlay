@@ -152,3 +152,10 @@
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
+
+/* Stream player mode: layers and their handles ignore the mouse so the player gets every click. */
+[data-player-mode="true"] [data-id],
+[data-player-mode="true"] [data-id] *,
+[data-player-mode="true"] .group-rotation-handle {
+  pointer-events: none !important;
+}

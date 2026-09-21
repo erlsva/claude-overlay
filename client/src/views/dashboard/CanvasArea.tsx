@@ -127,7 +127,8 @@ export function CanvasArea({
             height={WORKSPACE_H}
             strokes={strokes}
             liveStrokes={liveStrokes}
-            drawMode={drawMode}
+            // Editing is paused while the stream player is in use.
+            drawMode={drawMode && !(twitchInteraction && showTwitchEmbed)}
             toolMode={toolMode}
             color={drawColor}
             size={drawSize}

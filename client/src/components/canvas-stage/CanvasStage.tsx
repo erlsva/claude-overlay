@@ -53,6 +53,7 @@ export function CanvasStage(props: CanvasStageProps) {
       ref={wrapperRef}
       data-media-drop-target
       className="canvas-stage-drop-target"
+      data-player-mode={twitchInteractionEnabled ? "true" : undefined}
       style={{
         position: "relative",
         width: "100%",

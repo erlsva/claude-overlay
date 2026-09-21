@@ -8,7 +8,7 @@ export function useStageViewport(
   props: CanvasStageProps,
   deps: Pick<ReturnType<typeof useStageRefs>, "selectedIdsRef" | "workspaceRef" | "wrapperRef">,
 ) {
-  const { onElementDelete, onCursorMove } = props;
+  const { onElementDelete, onCursorMove, twitchInteractionEnabled = false } = props;
   const { selectedIdsRef, workspaceRef, wrapperRef } = deps;
   const panRef = useRef({ x: 0, y: 0 });
   const zoomRef = useRef(1);
@@ -103,13 +103,18 @@ export function useStageViewport(
     const onKey = (e: KeyboardEvent) => {
       const inInput =
         e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
-      if ((e.code === "Delete" || e.code === "Backspace") && !inInput) {
+      // Editing is paused while the stream player is in use.
+      if (
+        (e.code === "Delete" || e.code === "Backspace") &&
+        !inInput &&
+        !twitchInteractionEnabled
+      ) {
         selectedIdsRef.current.forEach((id) => onElementDelete(id));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onElementDelete]);
+  }, [onElementDelete, twitchInteractionEnabled]);
   // Cursor broadcast
   useEffect(() => {
     if (!onCursorMove) return;
