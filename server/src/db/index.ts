@@ -182,11 +182,42 @@ export async function initializeChatEmoteSettingsStore(): Promise<ChatEmoteSetti
   return db.data.chatEmoteSettings;
 }
 
+/**
+ * Neon (Postgres) and Render both suspend after idling, so the first query after a
+ * spin-down can fail while the database wakes back up. Retry a few times before
+ * giving up, instead of treating one slow query as "nothing was ever saved".
+ */
+async function loadStoredFeatureFlags(): Promise<Partial<FeatureFlags> | undefined> {
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await ensureAppSettingsTable();
+      const result = await postgres!.query(
+        "SELECT value FROM app_settings WHERE key = 'feature_flags'",
+      );
+      return result.rows[0]?.value as Partial<FeatureFlags> | undefined;
+    } catch (error) {
+      console.error(`Could not load feature flags (attempt ${attempt}/${attempts})`, error);
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+      else throw error;
+    }
+  }
+  throw new Error("unreachable");
+}
+
 export async function initializeFeatureFlagsStore(): Promise<FeatureFlags> {
   if (!postgres) return featureFlagsCache;
-  await ensureAppSettingsTable();
-  const result = await postgres.query("SELECT value FROM app_settings WHERE key = 'feature_flags'");
-  const stored = result.rows[0]?.value as Partial<FeatureFlags> | undefined;
+  let stored: Partial<FeatureFlags> | undefined;
+  try {
+    stored = await loadStoredFeatureFlags();
+  } catch (error) {
+    // Could not confirm what was saved. Never guess TTS is on: a streamer who
+    // turned it off does not want it switching back on just because the database
+    // was still waking up. Other flags keep their normal (on-by-default) fallback.
+    console.error("Feature flags unavailable at startup, forcing TTS off until confirmed", error);
+    featureFlagsCache = { ...DEFAULT_FEATURE_FLAGS, tts: false };
+    return featureFlagsCache;
+  }
   featureFlagsCache = {
     ...DEFAULT_FEATURE_FLAGS,
     ...(stored && typeof stored === "object" ? stored : {}),
