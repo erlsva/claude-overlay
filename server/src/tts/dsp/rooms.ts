@@ -120,7 +120,19 @@ export function effectTail(
   // Ignore tiny encoder/alignment drift. It is not actionable and previously
   // produced a warning for virtually every generated scene.
   const overrunTolerance = Math.max(0.35, requestedSeconds * 0.05);
-  const seconds = natural > requestedSeconds + 0.05 ? natural : requestedSeconds;
+  // Padding out to the requested length only has something to fill it with when
+  // there is a room or echo to decay. With no effect, a duration meaningfully
+  // longer than the natural audio has nothing to fill the gap but dead silence,
+  // so it is left at its natural length instead. A near-exact match still snaps
+  // to the precise duration, and an overrun still compresses/keeps exactly as it
+  // does with an effect - only the "shorter than asked, nothing to fill it" case
+  // changes.
+  const seconds =
+    natural > requestedSeconds + 0.05
+      ? natural
+      : scene.effect === "none" && natural < requestedSeconds - 0.05
+        ? natural
+        : requestedSeconds;
   if (natural > requestedSeconds + overrunTolerance)
     onDurationExpanded?.(natural, requestedSeconds);
   const output = new Float32Array(Math.round(seconds * RATE));

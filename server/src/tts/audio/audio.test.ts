@@ -52,7 +52,7 @@ function assertClean(samples: Float32Array, minSeconds = 0.3) {
   assert.ok(peak <= 0.99, `expected no clipping, got a peak of ${peak}`);
 }
 
-test("every new voice effect renders end to end without credits, cleanly and at its requested duration", async () => {
+test("every new voice effect renders end to end without credits, cleanly and never past its requested duration", async () => {
   for (const prompt of [
     '((chipmunk voice says "This is a test line";4s))',
     '((slow motion voice says "This is a test line";5s))',
@@ -63,11 +63,24 @@ test("every new voice effect renders end to end without credits, cleanly and at 
     const samples = await renderDemo(prompt);
     assertClean(samples);
     const expected = Number(prompt.match(/;(\d+)s/)![1]);
+    // No room/echo is requested, so a duration longer than the line takes to say
+    // is not padded with silence - only an actual overrun is still honored.
     assert.ok(
-      Math.abs(samples.length / RATE - expected) < 0.05,
-      `${prompt}: expected ~${expected}s, got ${(samples.length / RATE).toFixed(2)}s`,
+      samples.length / RATE <= expected + 0.05,
+      `${prompt}: expected at most ~${expected}s, got ${(samples.length / RATE).toFixed(2)}s`,
     );
   }
+});
+
+test("a plain duration with no room or echo is not padded with trailing silence", async () => {
+  // The demo tone for a short line is well under a second; asking for far longer
+  // than that, with no effect to fill the gap, should play at its natural length.
+  const samples = await renderDemo('((man says "Hi there";10s))');
+  assertClean(samples);
+  assert.ok(
+    samples.length / RATE < 2,
+    `expected the natural (short) length, got ${(samples.length / RATE).toFixed(2)}s of a requested 10s`,
+  );
 });
 
 test("every new transmission channel renders end to end, for both speech and a sound effect", async () => {
@@ -83,10 +96,14 @@ test("every new transmission channel renders end to end, for both speech and a s
 });
 
 test("chipmunk and slowmo still fit an explicit duration, same as ordinary speech does", async () => {
-  const samples = await renderDemo(
-    '((chipmunk voice says "A much longer line that needs to be sped up to fit in time";3s))',
+  // Chipmunk itself already shortens the line (~1.55x), so the dialogue has to be
+  // long enough that it still overruns 3s afterward, and by less than the 1.25x
+  // compression cap, so it is genuinely sped up to fit rather than kept in full.
+  const samples = await renderDemo(`((chipmunk voice says "${"word ".repeat(17).trim()}";3s))`);
+  assert.ok(
+    Math.abs(samples.length / RATE - 3) < 0.1,
+    `expected ~3s, got ${(samples.length / RATE).toFixed(2)}s`,
   );
-  assert.ok(Math.abs(samples.length / RATE - 3) < 0.05);
 });
 
 test("voice effects and a transmission channel combine in one scene without crashing", async () => {

@@ -52,7 +52,9 @@ Use at most ten ordered sections in one prompt.
 
 Put a duration at the end of a directed scene, such as `;8s`. It describes the
 complete scene, including the source audio and any echo or reverb decay. It is
-not additional tail time.
+not additional tail time. Without a room or echo to fill the rest with, a
+duration longer than the line takes to say is not padded with silence — it
+just plays at its natural length, the same as leaving the duration off.
 
 ```text
 ((thunder in a cave;6s))
