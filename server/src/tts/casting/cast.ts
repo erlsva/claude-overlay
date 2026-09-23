@@ -102,7 +102,8 @@ function describeCharacter(key: string, scenes: Scene[]): Character {
     explicitGender: gender(key),
     accent: detectAccent(key),
     needsIntensity,
-    wantsOld: /\b(elderly|old|senior|aged)\b/.test(key),
+    wantsOld:
+      /\b(elderly|old|senior|aged|grandpa|grandma|granny|grandmother|granddad|gramps)\b/.test(key),
     wantsYoung: /\b(young|youthful)\b/.test(key),
     terms: [...new Set(tokens.flatMap((t) => [t, ...(RELATED_WORDS[t] || [])]))],
   };

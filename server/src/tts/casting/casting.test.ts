@@ -69,6 +69,34 @@ test("studio character aliases pin their deliberately created voices", () => {
   assert.equal(casting[1].voiceId, "troll");
 });
 
+test("a voice named after generic words is still reachable by a synonym", () => {
+  const catalog: AccountVoice[] = [
+    { voice_id: "oldwoman", name: "Old Woman", category: "generated" },
+    { voice_id: "witch", name: "Witch", category: "generated" },
+    { voice_id: "bill", name: "Bill", category: "premade", labels: { gender: "male", age: "old" } },
+  ];
+  for (const character of [
+    "old woman",
+    "grandma",
+    "granny",
+    "grandmother",
+    "old lady",
+    "elderly woman",
+  ]) {
+    const [casting] = castScenes([scene({ character })], catalog);
+    assert.equal(casting.voiceId, "oldwoman", character);
+    assert.equal(casting.pinned, true, character);
+  }
+  for (const character of ["witch", "evil witch", "hag", "crone", "sorceress", "wicked witch"]) {
+    const [casting] = castScenes([scene({ character })], catalog);
+    assert.equal(casting.voiceId, "witch", character);
+  }
+  // "old man" is not a synonym for "Old Woman"; it still reaches the generic old-labelled voice.
+  assert.equal(castScenes([scene({ character: "old man" })], catalog)[0].voiceId, "bill");
+  // Nor is a grandfather word one; wantsOld now recognises it too, via the age label.
+  assert.equal(castScenes([scene({ character: "grandpa" })], catalog)[0].voiceId, "bill");
+});
+
 test("prepared dialogue is sent without duplicating performance tags", () => {
   assert.deepEqual(
     speechRequest(scene({ dialogue: "[whispers] hello", prepared: true, stability: 0.5 })),

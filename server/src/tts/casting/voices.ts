@@ -73,14 +73,23 @@ export function pinnedCharacterVoice(
   }
   if (best) return best.voice;
 
-  // Older accounts whose voices do not report a category keep the two known characters.
-  const aliases: Array<{ requested: RegExp; voiceNames: string[] }> = [
+  // A synonym for a voice whose name shares no literal word with how people actually ask for
+  // it. "old" and "woman" are deliberately generic above (any old character, any woman, must
+  // not lock onto one specific voice), so "grandma" can never fuzzy-match a voice named "Old
+  // Woman" by word overlap; list it here instead. Also keeps pirate/troll working for older
+  // accounts whose voices do not report a category at all.
+  const synonyms: Array<{ requested: RegExp; voiceNames: string[] }> = [
     { requested: /\bpirate\b/, voiceNames: ["angry pirate"] },
     { requested: /\b(?:troll|ogre)\b/, voiceNames: ["troll ogre"] },
+    {
+      requested: /\b(?:grandma|granny|grandmother|old lady|elderly woman)\b/,
+      voiceNames: ["old woman"],
+    },
+    { requested: /\b(?:hag|crone|sorceress|wicked witch)\b/, voiceNames: ["witch"] },
   ];
-  const alias = aliases.find(({ requested }) => requested.test(normalizedCharacter));
-  if (!alias) return undefined;
-  return voices.find((voice) => alias.voiceNames.includes(normalizedVoiceName(voice.name)));
+  const synonym = synonyms.find(({ requested }) => requested.test(normalizedCharacter));
+  if (!synonym) return undefined;
+  return voices.find((voice) => synonym.voiceNames.includes(normalizedVoiceName(voice.name)));
 }
 
 /** Finds voices by ID, exact name or partial name, from a comma-separated setting. */
