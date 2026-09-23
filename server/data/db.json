@@ -22,12 +22,6 @@
   "scenes": [],
   "presets": [],
   "sounds": [
-    {
-      "id": "d1c7566b-e513-4773-aa19-0979e27ae817",
-      "name": "audio-0 (1)",
-      "url": "http://localhost:3001/files/5a5abc74dccff964638282bfdeb2a9fe?name=audio-0%20(1).mp3&type=audio%2Fmpeg",
-      "volume": 0.1
-    }
   ],
   "chatEmoteSettings": {
     "enabled": true,
