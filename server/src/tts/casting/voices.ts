@@ -61,7 +61,7 @@ export function pinnedCharacterVoice(
   const characterWords = new Set(words(character));
   let best: { voice: AccountVoice; hits: number } | undefined;
   for (const voice of voices) {
-    if (!voice.category || voice.category === "premade") continue;
+    if (!isCharacterVoice(voice)) continue;
     const keywords = new Set(
       voice.name
         .split(/[/|&,]|\band\b|\bor\b/i)
@@ -112,6 +112,12 @@ export function voicesFromSetting(
 export const configuredShoutVoices = (voices: AccountVoice[]) =>
   voicesFromSetting(process.env.TTS_SHOUT_VOICES, voices);
 
-/** Voices made in this account for a specific character, as opposed to ElevenLabs' general library. */
+/**
+ * Voices made in this account for a specific character: designed from scratch (Voice Design,
+ * category "generated") or cloned from a recording (category "cloned"). A voice merely added
+ * to the account from ElevenLabs' Voice Library (category "professional", or any other
+ * non-premade category) was not created for a character here and behaves like a premade voice:
+ * it stays in the general pool and is never reserved or name-pinned by a stray descriptive word.
+ */
 export const isCharacterVoice = (voice: AccountVoice) =>
-  !!voice.category && voice.category !== "premade";
+  voice.category === "generated" || voice.category === "cloned";

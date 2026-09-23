@@ -450,6 +450,88 @@ test("a demon with no stated gender is cast as a man, never the screaming woman"
   }
 });
 
+test("a name-pinned character voice does not override a gender the request itself named", () => {
+  const catalog: AccountVoice[] = [
+    {
+      voice_id: "demon",
+      name: "Demon",
+      category: "generated",
+      description: "A deep, monstrous demonic voice. Male, dry and rasping, no warmth.",
+    },
+    { voice_id: "woman", name: "Screaming woman", category: "generated" },
+    { voice_id: "man", name: "Screaming man clone", category: "generated" },
+  ];
+  process.env.TTS_SHOUT_VOICES = "Screaming man clone, Screaming woman";
+  try {
+    // "demon" alone still deterministically pins to the bespoke Demon voice.
+    assert.equal(
+      castScenes([scene({ character: "demon", intensity: "scream" })], catalog)[0].voiceId,
+      "demon",
+    );
+    // "demon woman" names an explicit gender the Demon voice's own description contradicts,
+    // so the pin is skipped in favour of the shout voice that actually fits.
+    const [casting] = castScenes(
+      [scene({ character: "demon woman", delivery: "demon woman", intensity: "scream" })],
+      catalog,
+    );
+    assert.equal(casting.voiceId, "woman");
+    assert.equal(casting.pinned, false);
+  } finally {
+    delete process.env.TTS_SHOUT_VOICES;
+  }
+});
+
+test("a Voice Library voice added to the account is not reserved or pinned by a stray word in its name", () => {
+  const catalog: AccountVoice[] = [
+    {
+      voice_id: "niraj",
+      name: "Niraj - Romantic and Smooth",
+      category: "professional",
+      labels: { gender: "male" },
+    },
+    {
+      voice_id: "lily",
+      name: "Lily - Velvety Actress",
+      category: "premade",
+      labels: { gender: "female" },
+    },
+  ];
+  // A generic descriptive word in the voice's own name ("smooth") must not hijack an
+  // unrelated request, especially one that explicitly names a different gender.
+  const [casting] = castScenes(
+    [scene({ character: "smooth british woman", delivery: "smooth british woman" })],
+    catalog,
+  );
+  assert.equal(casting.voiceId, "lily");
+  assert.equal(casting.pinned, false);
+  // It is still in the general pool (not reserved like a bespoke character voice), so a
+  // request with nothing better to match on can still use it.
+  assert.equal(castScenes([scene({ character: "smooth talker" })], catalog)[0].voiceId, "niraj");
+});
+
+test("common archetypes lean toward the catalogue voice that actually describes itself that way", () => {
+  const catalog: AccountVoice[] = [
+    { voice_id: "default", name: "Default", labels: { gender: "male" } },
+    {
+      voice_id: "teacher",
+      name: "Alice - Clear, Engaging Educator",
+      labels: { gender: "female" },
+    },
+    { voice_id: "king", name: "Adam - Dominant, Firm", labels: { gender: "male" } },
+    { voice_id: "robot", name: "Daniel - Steady Broadcaster", labels: { gender: "male" } },
+  ];
+  assert.equal(castScenes([scene({ character: "teacher" })], catalog)[0].voiceId, "teacher");
+  assert.equal(castScenes([scene({ character: "king" })], catalog)[0].voiceId, "king");
+  assert.equal(castScenes([scene({ character: "robot" })], catalog)[0].voiceId, "robot");
+});
+
+test("cowboy gets a Southern American accent tag like redneck or texan does", () => {
+  assert.match(
+    speechRequest(scene({ character: "cowboy", delivery: "cowboy", dialogue: "Howdy" })).text,
+    /^\[strong Southern American accent] Howdy$/,
+  );
+});
+
 test("welshman and frenchman are men, and their accent is a tag on the line", () => {
   const catalog: AccountVoice[] = [
     { voice_id: "f", name: "Bright", labels: { gender: "female" } },

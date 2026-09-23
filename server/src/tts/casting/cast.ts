@@ -30,6 +30,22 @@ const RELATED_WORDS: Record<string, string[]> = {
   ogre: ["deep", "rough", "gravelly", "monster", "creature"],
   monster: ["deep", "rough", "gravelly", "creature", "powerful"],
   demon: ["deep", "rough", "gravelly", "dark", "powerful"],
+  // Common archetypes that are not screams or accents, mapped to the performance words a
+  // catalogue voice actually describes itself with, so they land on more than one default voice.
+  wizard: ["wise", "mature", "warm"],
+  sage: ["wise", "mature"],
+  king: ["classy", "formal", "confident", "dominant"],
+  queen: ["classy", "formal", "confident"],
+  villain: ["dominant", "smooth", "classy"],
+  vampire: ["smooth", "classy", "velvety"],
+  seductive: ["smooth", "velvety", "charming"],
+  robot: ["neutral", "steady", "formal"],
+  android: ["neutral", "steady", "formal"],
+  teacher: ["clear", "engaging", "educator"],
+  professor: ["clear", "engaging", "educator", "knowledgable"],
+  dj: ["hyped", "energetic", "confident", "upbeat"],
+  auctioneer: ["hyped", "energetic"],
+  host: ["hyped", "energetic", "confident"],
 };
 
 /** How much a word in a voice's description says it can deliver a shout or scream. */
@@ -62,6 +78,8 @@ const characterKey = (scene: Scene) =>
 type Character = {
   key: string;
   requestedGender: string | null;
+  /** Gender the request itself named ("woman", "man"...), as opposed to one only implied by a word like "demon". */
+  explicitGender: string | null;
   accent: ReturnType<typeof detectAccent>;
   /** They shout or scream somewhere in the script, so a calm voice will not do. */
   needsIntensity: boolean;
@@ -81,6 +99,7 @@ function describeCharacter(key: string, scenes: Scene[]): Character {
   return {
     key,
     requestedGender: gender(key) || impliedGender(key),
+    explicitGender: gender(key),
     accent: detectAccent(key),
     needsIntensity,
     wantsOld: /\b(elderly|old|senior|aged)\b/.test(key),
@@ -110,6 +129,15 @@ function genderScore(character: Character, voiceGender: string | null | undefine
   return voiceGender ? -100 : 0;
 }
 
+/** The gender a voice itself sounds like, from its label or its own name and description. */
+function voiceGenderOf(voice: AccountVoice): string | null {
+  if (voice.labels?.gender) return voice.labels.gender;
+  const text = [voice.name, voice.description, ...Object.values(voice.labels || {})]
+    .join(" ")
+    .toLowerCase();
+  return gender(text);
+}
+
 function scoreVoice(voice: AccountVoice, character: Character, reserveCharacterVoices: boolean) {
   const description = [voice.name, voice.description, ...Object.values(voice.labels || {})]
     .join(" ")
@@ -131,7 +159,7 @@ function scoreVoice(voice: AccountVoice, character: Character, reserveCharacterV
   )
     ? 40
     : 0;
-  const voiceGender = voice.labels?.gender || gender(description);
+  const voiceGender = voiceGenderOf(voice);
   return {
     voice,
     matches,
@@ -179,7 +207,15 @@ type Choice = {
 function chooseVoice(scene: Scene, character: Character, choice: Choice): Ranked {
   const { ranked, pinnedVoice, shoutVoices, defaultVoice, reserveCharacterVoices } = choice;
   const pinned = ranked.find((r) => r.voice.voice_id === pinnedVoice?.voice_id);
-  if (pinned) return pinned;
+  // A pin, by exact or partial name match, is not allowed to override a gender the request
+  // itself named: "demon woman" must not still get a voice whose own name and description say
+  // male just because "demon" matched. An unknown or merely implied gender does not veto it.
+  const pinnedFits =
+    pinned &&
+    (!character.explicitGender ||
+      !voiceGenderOf(pinned.voice) ||
+      voiceGenderOf(pinned.voice) === character.explicitGender);
+  if (pinnedFits) return pinned;
   if (character.needsIntensity && shoutVoices.length) {
     // The owner named voices that can scream. Take the one that fits this character
     // best (a woman gets the woman's voice), and spread characters across the rest.
@@ -188,11 +224,15 @@ function chooseVoice(scene: Scene, character: Character, choice: Choice): Ranked
   }
   const preferred = ranked.find((r) => r.voice.voice_id === scene.preferredVoiceId);
   // The planner's pick is a suggestion. For a scream it must actually suit screaming,
-  // otherwise a relaxed narrator is cast because a model liked its name.
+  // otherwise a relaxed narrator is cast because a model liked its name. It must also not
+  // contradict a gender the request itself named.
   const preferredFits =
     preferred &&
     !(reserveCharacterVoices && isCharacterVoice(preferred.voice)) &&
-    (!character.needsIntensity || preferred.intensityScore > 0);
+    (!character.needsIntensity || preferred.intensityScore > 0) &&
+    (!character.explicitGender ||
+      !voiceGenderOf(preferred.voice) ||
+      voiceGenderOf(preferred.voice) === character.explicitGender);
   if (preferredFits) return preferred;
   // A character with nothing to match on gets the owner's default voice, if set.
   const nothingToMatch =

@@ -22,7 +22,7 @@ const accents: Array<{ pattern: RegExp; tag: string; labels: string[] }> = [
   },
   { pattern: /australian|aussie/, tag: "strong Australian accent", labels: ["australian"] },
   {
-    pattern: /southern|texan|redneck|hillbilly/,
+    pattern: /southern|texan|redneck|hillbilly|cowboy|cowgirl/,
     tag: "strong Southern American accent",
     labels: ["american"],
   },
