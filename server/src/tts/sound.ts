@@ -7,6 +7,9 @@
  * handled locally, so they must never reach the provider.
  */
 
+import { channelBandpass, pitchTempoRatio, RATE } from "./dsp/index.js";
+import type { Scene } from "./scene/index.js";
+
 const durationPhrase =
   /\b(?:for|lasting|over|about|around)?\s*\d+(?:[.,]\d+)?\s*(?:seconds?|secs?|s)\b/gi;
 const roomWords =
@@ -198,10 +201,19 @@ export const isSharpSound = (sound: string) => sharpSounds.test(sound);
  * - Sharp sounds (shrieks, animal screams) are compressed, so their spikes do not
  *   jump out, and taken down harder in the painful 3-8 kHz band.
  * - Oversized sounds are slowed down: lower and longer, like something bigger.
+ * - channel/voiceEffect apply the same transmission bandpass and chipmunk/slowmo warp a
+ *   sound effect gets as speech does, so "a gunshot through a walkie-talkie" actually sounds
+ *   like one. Robot/underwater are applied afterward, in Float32Array form, by the caller.
  */
-export function soundDecodeFilter(sound: string): string {
+export function soundDecodeFilter(
+  sound: string,
+  options: { channel?: Scene["channel"]; voiceEffect?: Scene["voiceEffect"] } = {},
+): string {
   const filters = ["aresample=44100"];
   if (isHugeSound(sound)) filters.push("asetrate=30870", "aresample=44100");
+  const warpRatio = pitchTempoRatio(options.voiceEffect);
+  if (warpRatio) filters.push(`asetrate=${Math.round(RATE * warpRatio)}`, "aresample=44100");
+  filters.push(...channelBandpass(options.channel));
   filters.push("treble=g=-3:f=4500");
   if (isSharpSound(sound)) {
     filters.push(

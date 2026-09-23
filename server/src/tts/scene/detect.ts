@@ -45,6 +45,45 @@ export const detectRoom = (text: string): Scene["room"] =>
         ? "indoor"
         : undefined;
 
+/**
+ * What the voice or sound is transmitted through. Checked in this order so "walkie-talkie"
+ * does not fall into the plainer "intercom" bucket. "radio" requires an "old"/"vintage" word
+ * so it never fires for an unrelated character like "radio dj".
+ */
+export function detectChannel(text: string): Scene["channel"] {
+  if (/\bwalkie[ -]?talkie\b/i.test(text)) return "walkie";
+  if (/\btin can\b|\bstring phone\b|\btwo cans? and a string\b/i.test(text)) return "tincan";
+  if (
+    /\b(?:old|vintage|antique|1920s|1930s|old[- ]timey)\s+radio\b|\bradio broadcast\b/i.test(text)
+  )
+    return "radio";
+  if (/\b(?:intercom|megaphone|telephone)\b/i.test(text)) return "intercom";
+  return "clean";
+}
+
+// A funny, deliberate transformation of the voice or sound, distinct from where it is heard
+// (room/channel/muffle) so they can combine: an underwater voice can still be in a cave.
+const voiceEffects = (
+  [
+    { value: "chipmunk", pattern: /chipmunk|helium|sucked helium|munchkin/ },
+    { value: "slowmo", pattern: /slow[ -]?mo(?:tion)?|slowed voice|wrong speed/ },
+    { value: "robot", pattern: /robot(?:ic)?|vocoder|cyborg|android/ },
+    { value: "reversed", pattern: /backwards?|reversed?|in reverse|played backward/ },
+    { value: "underwater", pattern: /underwater|under water|drowning|submerged/ },
+  ] satisfies Array<{ value: NonNullable<Scene["voiceEffect"]>; pattern: RegExp }>
+).map((entry) => ({ ...entry, pattern: new RegExp(`\\b(?:${entry.pattern.source})\\b`, "i") }));
+
+export function detectVoiceEffect(text: string): Scene["voiceEffect"] {
+  return voiceEffects.find((entry) => entry.pattern.test(text))?.value;
+}
+
+/** Removes voice-effect trigger words, so a fallback performance tag never becomes "[underwater]". */
+export const stripVoiceEffectWords = (text: string) =>
+  voiceEffects.reduce(
+    (rest, entry) => rest.replace(new RegExp(entry.pattern.source, "gi"), " "),
+    text,
+  );
+
 /** "behind a door", "from outside", "muffled": heard through something, not in the room. */
 export const detectMuffled = (text: string): boolean =>
   /\b(?:muffled|(?:behind|through)\s+(?:a|the)\s+(?:(?:closed|thick|locked|heavy)\s+)*(?:door|wall)|from\s+(?:the\s+)?(?:outside|other\s+side|another\s+room|next\s+door)|from\s+the\s+other\s+room|(?:on\s+)?the\s+other\s+side\s+of\s+(?:a|the)\s+(?:door|wall))\b/i.test(

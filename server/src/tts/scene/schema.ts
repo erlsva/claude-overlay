@@ -8,8 +8,10 @@ export const sceneSchema = z
     sound: z.string().max(1000),
     character: z.string().max(500).optional(),
     delivery: z.string().max(1000).optional(),
-    channel: z.enum(["clean", "intercom"]).optional(),
+    channel: z.enum(["clean", "intercom", "walkie", "tincan", "radio"]).optional(),
     distant: z.boolean().optional(),
+    /** A funny, request-only transformation. Independent of room/channel, so they can combine. */
+    voiceEffect: z.enum(["chipmunk", "slowmo", "robot", "reversed", "underwater"]).optional(),
     effectStrength: z.enum(["normal", "extreme"]).optional(),
     /** Heard through a door or wall, or from another room. */
     muffled: z.boolean().optional(),

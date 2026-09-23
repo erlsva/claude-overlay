@@ -8,7 +8,15 @@ import {
   stripSpeechRateDirective,
 } from "./directives.js";
 import { Scene, scenesSchema } from "./schema.js";
-import { detectEffect, detectIntensity, detectMuffled, detectRoom, isExtreme } from "./detect.js";
+import {
+  detectChannel,
+  detectEffect,
+  detectIntensity,
+  detectMuffled,
+  detectRoom,
+  detectVoiceEffect,
+  isExtreme,
+} from "./detect.js";
 
 export type PromptSegment = { text: string; explicitBlock: boolean };
 
@@ -136,13 +144,13 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
         timing?.seconds ?? null,
         detectEffect(direction),
       );
-      scene.channel = /\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i.test(direction)
-        ? "intercom"
-        : "clean";
+      scene.channel = detectChannel(direction);
       scene.distant = /\b(distant|far away|faraway)\b/i.test(direction);
       scene.effectStrength = isExtreme(direction) ? "extreme" : "normal";
       scene.room = detectRoom(direction);
       if (detectMuffled(direction)) scene.muffled = true;
+      const voiceEffect = detectVoiceEffect(direction);
+      if (voiceEffect) scene.voiceEffect = voiceEffect;
       if (dialogue && speechRate !== undefined) scene.speechRate = speechRate;
       if (dialogue) scene.intensity = detectIntensity(direction);
       if (dialogue) {

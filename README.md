@@ -85,16 +85,16 @@ How the code is organised, how to add a feature, and the file-size rules are in
 
 The application intentionally uses more than one kind of state:
 
-| Data | Storage | Survives a Render restart? |
-| --- | --- | --- |
-| Broadcaster OAuth tokens | Neon PostgreSQL, encrypted with AES-256-GCM | Yes |
-| Dashboard whitelist and admin roles | Neon PostgreSQL when `DATABASE_URL` is set | Yes |
-| Elements, drawings, cursor presence, history, playback | Server memory | No |
-| Soundboard, commands, emote settings, scenes, presets | `DATA_DIR/db.json` through LowDB | Only with a persistent disk |
-| Uploaded media | `UPLOAD_DIR` | Only with a persistent disk/object storage |
-| Shared media library (defaults) | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes |
-| Saved TTS metadata | Neon PostgreSQL (local JSON fallback outside production) | Yes in production |
-| Saved TTS MP3 audio | Discord webhook message attachments | Yes while the webhook message remains available |
+| Data                                                   | Storage                                                                     | Survives a Render restart?                      |
+| ------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| Broadcaster OAuth tokens                               | Neon PostgreSQL, encrypted with AES-256-GCM                                 | Yes                                             |
+| Dashboard whitelist and admin roles                    | Neon PostgreSQL when `DATABASE_URL` is set                                  | Yes                                             |
+| Elements, drawings, cursor presence, history, playback | Server memory                                                               | No                                              |
+| Soundboard, commands, emote settings, scenes, presets  | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
+| Uploaded media                                         | `UPLOAD_DIR`                                                                | Only with a persistent disk/object storage      |
+| Shared media library (defaults)                        | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes                                             |
+| Saved TTS metadata                                     | Neon PostgreSQL (local JSON fallback outside production)                    | Yes in production                               |
+| Saved TTS MP3 audio                                    | Discord webhook message attachments                                         | Yes while the webhook message remains available |
 
 On Render's free tier, the filesystem is ephemeral. Neon keeps authorization
 and whitelist records, but uploaded files and LowDB studio configuration can be
@@ -142,38 +142,40 @@ Open:
 
 Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `PORT` | Render supplies it | HTTP and Socket.IO port; local default is `3001`. |
-| `CLIENT_URL` | Yes | Exact frontend origin, without a trailing path. Used by CORS and OAuth redirects. |
-| `PUBLIC_SERVER_URL` | Production | Public server origin. Falls back to Render's `RENDER_EXTERNAL_URL`. |
-| `NODE_ENV` | Production | Set to `production` on Render. |
-| `SESSION_SECRET` | Yes | Signs dashboard sessions and Twitch Event OAuth state. |
-| `OWNER_TWITCH_USERNAME` | Yes | Twitch login with owner privileges. |
-| `TWITCH_CLIENT_ID` | Yes | Twitch Developer Console application ID. |
-| `TWITCH_CLIENT_SECRET` | Yes | Twitch Developer Console application secret. |
-| `TWITCH_REDIRECT_URI` | Recommended | Dashboard-login callback, ending in `/auth/callback`. |
-| `TWITCH_EVENTS_REDIRECT_URI` | Recommended | Broadcaster callback, ending in `/auth/events/callback`. |
-| `EVENT_CHANNELS` | Yes | Comma-separated broadcaster logins; currently `vicksy,wixels`. |
-| `STREAMER_LOGINS` | Optional | Accounts shown with the purple Streamer badge (label only, no permissions). Defaults to `vicksy,wixels`; channels in `EVENT_CHANNELS` are always included. |
-| `CHAT_BOT_USERNAME` | For chat messages | Dedicated Twitch account used to send automated messages; defaults to `dankchapbot`. |
-| `DATABASE_URL` | Production | Neon pooled PostgreSQL connection URL with TLS enabled. |
-| `TWITCH_TOKEN_ENCRYPTION_KEY` | Yes for Events | Base64-encoded 32-byte key used to encrypt stored broadcaster tokens. |
-| `TWITCH_EVENTSUB_CALLBACK_URL` | Yes for Events | Public HTTPS webhook URL ending in `/twitch/eventsub`. |
-| `TWITCH_EVENTSUB_SECRET` | Yes for Events | Independent random secret used to verify Twitch webhook signatures. |
-| `DATA_DIR` | Optional | LowDB directory; defaults to `server/data` locally. |
-| `UPLOAD_DIR` | Optional | Media directory; defaults to `/tmp/obs-uploads`. |
-| `OPENAI_API_KEY` | For TTS generation | Interprets free-form TTS scene prompts into structured scenes. |
-| `OPENAI_MODEL` | Optional | Structured-output model used by TTS; defaults to `gpt-4.1-mini`. |
-| `ELEVENLABS_API_KEY` | For TTS generation | Generates speech and sound-effect audio. |
-| `TTS_SHOUT_VOICES` | Optional | Comma-separated ElevenLabs voice names or IDs used for shouting and screaming, e.g. `Harry, Angry Pirate`. Without it the most intense-sounding voice is used. |
-| `TTS_MUFFLE` | Optional | How heavily a voice "behind a door" or "from outside" is muffled: `1` is the default (a thick door), `2` heavier still, `0.6` a thin wall, `off` skips it. |
-| `TTS_SCREAM_TONE` | Optional | Clean spectral shaping that makes shouted and screamed speech sound like a scream: `off` skips it, `1` is the default, `2` is double. |
-| `TTS_SCREAM_STRAIN` | Optional | Off by default. `1` pushes shouted and screamed speech into a saturator (crunchy, walkie-talkie-like); `0.5` half, `2` double. |
-| `TTS_SCREAM_LAYER` | Optional | Off by default. `1` mixes a generated wordless scream under shouted lines (one extra sound-effect request each); `2` is louder. |
-| `TTS_DEFAULT_VOICE` | Optional | Voice name or ID for characters that nothing else matches. |
-| `DISCORD_TTS_WEBHOOK_URL` | For TTS save/replay | Private webhook whose message attachments hold saved MP3 clips. |
-| `FFMPEG_PATH` | Optional | Explicit FFmpeg executable; otherwise `ffmpeg` must be available on `PATH`. |
+| Variable                       | Required            | Purpose                                                                                                                                                        |
+| ------------------------------ | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                         | Render supplies it  | HTTP and Socket.IO port; local default is `3001`.                                                                                                              |
+| `CLIENT_URL`                   | Yes                 | Exact frontend origin, without a trailing path. Used by CORS and OAuth redirects.                                                                              |
+| `PUBLIC_SERVER_URL`            | Production          | Public server origin. Falls back to Render's `RENDER_EXTERNAL_URL`.                                                                                            |
+| `NODE_ENV`                     | Production          | Set to `production` on Render.                                                                                                                                 |
+| `SESSION_SECRET`               | Yes                 | Signs dashboard sessions and Twitch Event OAuth state.                                                                                                         |
+| `OWNER_TWITCH_USERNAME`        | Yes                 | Twitch login with owner privileges.                                                                                                                            |
+| `TWITCH_CLIENT_ID`             | Yes                 | Twitch Developer Console application ID.                                                                                                                       |
+| `TWITCH_CLIENT_SECRET`         | Yes                 | Twitch Developer Console application secret.                                                                                                                   |
+| `TWITCH_REDIRECT_URI`          | Recommended         | Dashboard-login callback, ending in `/auth/callback`.                                                                                                          |
+| `TWITCH_EVENTS_REDIRECT_URI`   | Recommended         | Broadcaster callback, ending in `/auth/events/callback`.                                                                                                       |
+| `EVENT_CHANNELS`               | Yes                 | Comma-separated broadcaster logins; currently `vicksy,wixels`.                                                                                                 |
+| `STREAMER_LOGINS`              | Optional            | Accounts shown with the purple Streamer badge (label only, no permissions). Defaults to `vicksy,wixels`; channels in `EVENT_CHANNELS` are always included.     |
+| `CHAT_BOT_USERNAME`            | For chat messages   | Dedicated Twitch account used to send automated messages; defaults to `dankchapbot`.                                                                           |
+| `DATABASE_URL`                 | Production          | Neon pooled PostgreSQL connection URL with TLS enabled.                                                                                                        |
+| `TWITCH_TOKEN_ENCRYPTION_KEY`  | Yes for Events      | Base64-encoded 32-byte key used to encrypt stored broadcaster tokens.                                                                                          |
+| `TWITCH_EVENTSUB_CALLBACK_URL` | Yes for Events      | Public HTTPS webhook URL ending in `/twitch/eventsub`.                                                                                                         |
+| `TWITCH_EVENTSUB_SECRET`       | Yes for Events      | Independent random secret used to verify Twitch webhook signatures.                                                                                            |
+| `DATA_DIR`                     | Optional            | LowDB directory; defaults to `server/data` locally.                                                                                                            |
+| `UPLOAD_DIR`                   | Optional            | Media directory; defaults to `/tmp/obs-uploads`.                                                                                                               |
+| `OPENAI_API_KEY`               | For TTS generation  | Interprets free-form TTS scene prompts into structured scenes.                                                                                                 |
+| `OPENAI_MODEL`                 | Optional            | Structured-output model used by TTS; defaults to `gpt-4.1-mini`.                                                                                               |
+| `ELEVENLABS_API_KEY`           | For TTS generation  | Generates speech and sound-effect audio.                                                                                                                       |
+| `TTS_SHOUT_VOICES`             | Optional            | Comma-separated ElevenLabs voice names or IDs used for shouting and screaming, e.g. `Harry, Angry Pirate`. Without it the most intense-sounding voice is used. |
+| `TTS_MUFFLE`                   | Optional            | How heavily a voice "behind a door" or "from outside" is muffled: `1` is the default (a thick door), `2` heavier still, `0.6` a thin wall, `off` skips it.     |
+| `TTS_SCREAM_TONE`              | Optional            | Clean spectral shaping that makes shouted and screamed speech sound like a scream: `off` skips it, `1` is the default, `2` is double.                          |
+| `TTS_SCREAM_STRAIN`            | Optional            | Off by default. `1` pushes shouted and screamed speech into a saturator (crunchy, walkie-talkie-like); `0.5` half, `2` double.                                 |
+| `TTS_SCREAM_LAYER`             | Optional            | Off by default. `1` mixes a generated wordless scream under shouted lines (one extra sound-effect request each); `2` is louder.                                |
+| `TTS_DEFAULT_VOICE`            | Optional            | Voice name or ID for characters that nothing else matches.                                                                                                     |
+| `TTS_ROBOT_AMOUNT`             | Optional            | Strength of the ring-modulated "robot voice" effect: `1` is the default, `2` is double, `off` skips it.                                                        |
+| `TTS_UNDERWATER_AMOUNT`        | Optional            | Strength of the "underwater voice" low-pass and pitch wobble: `1` is the default, `2` is double, `off` skips it.                                               |
+| `DISCORD_TTS_WEBHOOK_URL`      | For TTS save/replay | Private webhook whose message attachments hold saved MP3 clips.                                                                                                |
+| `FFMPEG_PATH`                  | Optional            | Explicit FFmpeg executable; otherwise `ffmpeg` must be available on `PATH`.                                                                                    |
 
 Generate independent secrets with Node.js:
 
@@ -228,12 +230,12 @@ and are refreshed automatically.
 
 Roles are labels shown next to names; they do not add new permissions.
 
-| Role | Who | Notes |
-| --- | --- | --- |
-| Owner | `OWNER_TWITCH_USERNAME` | Also controls feature flags, the chatbot connection and who is a super moderator. |
-| Streamer | Logins in `STREAMER_LOGINS` (default `vicksy,wixels`) and `EVENT_CHANNELS` | The channel accounts the overlay is for. Label only, so it is the same in development. Shown next to the access level. |
-| Super moderator | Whitelisted user with the admin flag | Can add and remove people from the whitelist. |
-| Moderator | Any other whitelisted user | Full dashboard access except managing the whitelist. |
+| Role            | Who                                                                        | Notes                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Owner           | `OWNER_TWITCH_USERNAME`                                                    | Also controls feature flags, the chatbot connection and who is a super moderator.                                      |
+| Streamer        | Logins in `STREAMER_LOGINS` (default `vicksy,wixels`) and `EVENT_CHANNELS` | The channel accounts the overlay is for. Label only, so it is the same in development. Shown next to the access level. |
+| Super moderator | Whitelisted user with the admin flag                                       | Can add and remove people from the whitelist.                                                                          |
+| Moderator       | Any other whitelisted user                                                 | Full dashboard access except managing the whitelist.                                                                   |
 
 A person can hold more than one label. A streamer is also a moderator, and the
 owner can star them as a super moderator too, so they show both badges.
@@ -322,26 +324,26 @@ remain protected by Twitch login and server-side authorization.
 The in-app **?** guide is the canonical quick reference. The current workspace
 controls are:
 
-| Input | Action |
-| --- | --- |
-| Left-drag an element | Move it; selected grouped elements move together |
-| Alt + drag | Temporarily disable edge and center snapping |
-| Drag a resize handle | Resize from that edge or corner |
-| Drag the round handle | Rotate around the element center; hold Shift for 15° increments |
-| Shift/Ctrl/Cmd + click | Add or remove an element from the selection |
-| Drag empty background | Marquee-select multiple elements |
-| Middle-mouse drag | Pan the workspace, including over the Twitch preview |
-| Mouse wheel | Zoom toward or away from the pointer |
-| Double-click text | Edit the text element |
-| Ctrl/Cmd + Enter in the text editor | Save the text layer |
-| Escape in the text editor | Close without saving |
-| Delete / Backspace | Delete selected unlocked elements |
-| Ctrl/Cmd + Z | Undo the latest shared canvas change |
-| Ctrl/Cmd + Shift + Z | Redo the latest undone change |
-| Ctrl/Cmd + Y | Redo on Windows |
-| Ctrl/Cmd + C / V | Copy and paste selected elements |
-| Shift while drawing a line/arrow | Snap the shape to 45° angles |
-| Shift while drawing a box/oval | Constrain it to a square/circle |
+| Input                               | Action                                                          |
+| ----------------------------------- | --------------------------------------------------------------- |
+| Left-drag an element                | Move it; selected grouped elements move together                |
+| Alt + drag                          | Temporarily disable edge and center snapping                    |
+| Drag a resize handle                | Resize from that edge or corner                                 |
+| Drag the round handle               | Rotate around the element center; hold Shift for 15° increments |
+| Shift/Ctrl/Cmd + click              | Add or remove an element from the selection                     |
+| Drag empty background               | Marquee-select multiple elements                                |
+| Middle-mouse drag                   | Pan the workspace, including over the Twitch preview            |
+| Mouse wheel                         | Zoom toward or away from the pointer                            |
+| Double-click text                   | Edit the text element                                           |
+| Ctrl/Cmd + Enter in the text editor | Save the text layer                                             |
+| Escape in the text editor           | Close without saving                                            |
+| Delete / Backspace                  | Delete selected unlocked elements                               |
+| Ctrl/Cmd + Z                        | Undo the latest shared canvas change                            |
+| Ctrl/Cmd + Shift + Z                | Redo the latest undone change                                   |
+| Ctrl/Cmd + Y                        | Redo on Windows                                                 |
+| Ctrl/Cmd + C / V                    | Copy and paste selected elements                                |
+| Shift while drawing a line/arrow    | Snap the shape to 45° angles                                    |
+| Shift while drawing a box/oval      | Constrain it to a square/circle                                 |
 
 Dashboard buttons use labels or icons with explanatory tooltips. Keep this
 section and `HelpGuide.tsx` synchronized when adding a gesture or shortcut.

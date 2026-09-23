@@ -4,8 +4,44 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { renderAudio } from "../audio/index.js";
-import { channelFilter, characterPitch, effectTail, finalWordTiming, RATE } from "./index.js";
+import {
+  channelBandpass,
+  channelFilter,
+  characterPitch,
+  effectTail,
+  finalWordTiming,
+  pitchTempoRatio,
+  RATE,
+  resampleRatio,
+  reverseSamples,
+  robotize,
+  submerge,
+  walkieClick,
+} from "./index.js";
 import { parsePrompt } from "../scene/index.js";
+
+/** A single-bin DFT (Goertzel): how strongly `samples` contains `hz`, for testing without ears. */
+function magnitudeAt(samples: Float32Array, hz: number, rate = RATE): number {
+  const k = Math.round((samples.length * hz) / rate);
+  const w = (2 * Math.PI * k) / samples.length;
+  const coeff = 2 * Math.cos(w);
+  let q1 = 0,
+    q2 = 0;
+  for (const sample of samples) {
+    const q0 = coeff * q1 - q2 + sample;
+    q2 = q1;
+    q1 = q0;
+  }
+  const real = q1 - q2 * Math.cos(w);
+  const imag = q2 * Math.sin(w);
+  return Math.sqrt(real * real + imag * imag) / (samples.length / 2);
+}
+
+function sine(hz: number, seconds: number, amplitude = 0.4, rate = RATE): Float32Array {
+  const out = new Float32Array(Math.round(seconds * rate));
+  for (let i = 0; i < out.length; i++) out[i] = amplitude * Math.sin((2 * Math.PI * hz * i) / rate);
+  return out;
+}
 
 test("TTS echo repeats only the final word within the total scene duration", () => {
   const dry = new Float32Array(RATE * 2);
@@ -137,6 +173,82 @@ test("ElevenLabs alignment isolates the final spoken word", () => {
     }),
     { start: 0.3, end: 0.6 },
   );
+});
+
+test("resampleRatio moves pitch and length together, like a tape at the wrong speed", () => {
+  const input = sine(440, 1);
+  const faster = resampleRatio(input, 1.5);
+  const slower = resampleRatio(input, 0.7);
+  // Length: fewer samples to play faster, more to play slower.
+  assert.ok(Math.abs(faster.length - input.length / 1.5) <= 1);
+  assert.ok(Math.abs(slower.length - input.length / 0.7) <= 1);
+  // Pitch: read back at the same rate, the shorter clip now sounds like 440*1.5 = 660 Hz.
+  assert.ok(magnitudeAt(faster, 660) > magnitudeAt(faster, 440) * 3, "chipmunk pitches up");
+  assert.ok(magnitudeAt(slower, 308) > magnitudeAt(slower, 440) * 3, "slowmo pitches down");
+  // ratio 1 (or invalid) is a no-op, never a copy that silently breaks identity checks upstream.
+  assert.equal(resampleRatio(input, 1), input);
+  assert.equal(resampleRatio(input, 0), input);
+});
+
+test("pitchTempoRatio only fires for chipmunk and slowmo", () => {
+  assert.equal(pitchTempoRatio("chipmunk"), 1.55);
+  assert.equal(pitchTempoRatio("slowmo"), 0.68);
+  assert.equal(pitchTempoRatio("robot"), undefined);
+  assert.equal(pitchTempoRatio(undefined), undefined);
+});
+
+test("robotize adds real ring-modulation sidebands, not just distortion", () => {
+  const input = sine(1000, 0.5, 0.3);
+  const robot = robotize(input, 1);
+  assert.equal(robot.length, input.length);
+  // A 45 Hz carrier ring-modulated onto 1000 Hz puts new energy at 1000±45 Hz that a plain
+  // tone never has.
+  assert.ok(magnitudeAt(input, 955) < 0.01 && magnitudeAt(input, 1045) < 0.01);
+  assert.ok(magnitudeAt(robot, 955) > 0.02);
+  assert.ok(magnitudeAt(robot, 1045) > 0.02);
+  // amount 0 leaves the voice alone.
+  assert.equal(robotize(input, 0), input);
+});
+
+test("submerge cuts high frequencies far more than low ones, and drifts the pitch a little", () => {
+  const mixed = new Float32Array(RATE);
+  const low = sine(250, 1, 0.3);
+  const high = sine(5000, 1, 0.3);
+  for (let i = 0; i < mixed.length; i++) mixed[i] = low[i] + high[i];
+  const wet = submerge(mixed, 1);
+  const lowBefore = magnitudeAt(mixed, 250),
+    highBefore = magnitudeAt(mixed, 5000);
+  const lowAfter = magnitudeAt(wet, 250),
+    highAfter = magnitudeAt(wet, 5000);
+  assert.ok(highAfter / highBefore < 0.15, "the high tone is heavily cut");
+  assert.ok(lowAfter / lowBefore > 0.6, "the low tone mostly survives");
+  assert.equal(submerge(mixed, 0), mixed);
+});
+
+test("reverseSamples plays a scene, including its tail, end to end", () => {
+  const input = Float32Array.from([0, 0.1, 0.2, 0.3, 0.4]);
+  assert.deepEqual(reverseSamples(input), Float32Array.from([0.4, 0.3, 0.2, 0.1, 0]));
+  assert.deepEqual(input, Float32Array.from([0, 0.1, 0.2, 0.3, 0.4]), "the input is not mutated");
+});
+
+test("a walkie-talkie click is short, bounded, and different rising vs. falling", () => {
+  for (const click of [walkieClick(true), walkieClick(false)]) {
+    assert.ok(click.length > 0 && click.length < RATE * 0.2);
+    assert.ok(click.every((sample) => Number.isFinite(sample) && Math.abs(sample) <= 1));
+  }
+  assert.notDeepEqual(walkieClick(true), walkieClick(false));
+  // Deterministic: the same click every time, not dependent on Math.random.
+  assert.deepEqual(walkieClick(true), walkieClick(true));
+});
+
+test("each transmission channel narrows the band, and clean adds nothing", () => {
+  assert.deepEqual(channelBandpass("clean"), []);
+  assert.deepEqual(channelBandpass(undefined), []);
+  for (const channel of ["intercom", "walkie", "tincan", "radio"] as const) {
+    const filters = channelBandpass(channel).join(",");
+    assert.match(filters, /highpass=f=\d+/, channel);
+    assert.match(filters, /lowpass=f=\d+/, channel);
+  }
 });
 
 test("custom pause scenes render locally without a provider request", async () => {

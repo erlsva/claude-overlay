@@ -70,7 +70,10 @@ Supported room/effect directions include:
 - **Both together**: say both, such as `Reverb Echo` or `in a cave with echo`. Speech
   gets the repeated last word inside the room; a sound effect gets a longer, fuller
   tail. Putting something `down a well` means both, in a narrow, hollow room.
-- `through an intercom`, `telephone`, `megaphone`, or `walkie-talkie`
+- `through an intercom`, `telephone`, or `megaphone`
+- A walkie-talkie, tin can or old radio is its own separate sound, not the
+  same as an intercom — see
+  [Funny voice and sound effects](#funny-voice-and-sound-effects)
 - `distant` or `far away`
 
 Effects can also be listed after a comma or semicolon, so these all work:
@@ -233,6 +236,43 @@ little quieter than a voice in the room while keeping it clear enough to underst
 It works on sound effects too (`((music from another room))`). The wording is applied
 by the overlay and is never sent to ElevenLabs. `TTS_MUFFLE` sets how heavy it is:
 `1` is the default (a thick door), `2` is heavier still, `0.6` a thin wall, and `off` skips it.
+
+## Funny voice and sound effects
+
+Say the word and the voice or sound gets a deliberate, funny transformation. Each
+one works on both speech and a generated sound effect, and combines with a room or
+channel: an underwater voice can still be in a cave.
+
+```text
+((chipmunk voice says "Where did everybody go?"))
+((slow motion voice says "Nooooo"))
+((robot voice says "Systems online"))
+((voice played backwards says "Welcome to the stream"))
+((underwater voice says "Can anybody hear me?"))
+((gunshot over a walkie-talkie;3s))
+```
+
+- **Chipmunk / helium**: `chipmunk`, `helium`, `sucked helium`. Pitch and speed rise
+  together, like a tape played too fast.
+- **Slow motion**: `slow motion`, `slow-mo`, `slowed voice`, `wrong speed`. The
+  opposite: pitch and speed both drop, like a record at the wrong speed. This is a
+  different, deeper effect than just asking someone to talk `slowly`
+  ([speech speed](#speech-speed) only changes pace, never pitch).
+- **Robot / vocoder**: `robot`, `robotic`, `vocoder`, `cyborg`, `android`. A clean,
+  metallic ring-modulated voice — the classic robot buzz, not distortion.
+  `TTS_ROBOT_AMOUNT` scales it: `1` is the default, `2` is double, `off` skips it.
+- **Reversed**: `reversed`, `backwards`, `played backward`. The whole clip plays
+  end to end in reverse, including any room or echo tail, so the tail is heard
+  first — deliberate backmasking.
+- **Underwater**: `underwater`, `submerged`, `drowning`. A heavy, drifting low-pass
+  with a slow wavering pitch. `TTS_UNDERWATER_AMOUNT` scales it the same way as
+  `TTS_ROBOT_AMOUNT`.
+
+Two of the room/channel words from the previous section are novelty transmissions
+rather than a place: `over a walkie-talkie` narrows the band and adds a brief key
+click before and after the line; `through a tin can` (or `string phone`) is a very
+narrow, resonant honk; `on an old radio` (or `vintage radio`) is a warmer, wider
+broadcast band. All are applied locally and never sent to ElevenLabs.
 
 ## Pauses
 

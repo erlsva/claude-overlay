@@ -2,7 +2,16 @@
 
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { RATE, effectTail, finish, softLimit, tameSpikes, writeWav } from "../dsp/index.js";
+import {
+  RATE,
+  effectTail,
+  finish,
+  reverseSamples,
+  softLimit,
+  tameSpikes,
+  walkieClick,
+  writeWav,
+} from "../dsp/index.js";
 import type { Scene } from "../scene/index.js";
 import { isSharpSound } from "../sound.js";
 import {
@@ -15,6 +24,24 @@ import {
 import { renderSound } from "./soundEffect.js";
 import { renderSpeech, type RenderedSpeech } from "./speech.js";
 import { SHARP_SOUND_SPIKE_LU, SOUND_SPIKE_LU } from "./tuning.js";
+
+/**
+ * A walkie-talkie key click just before and after the scene, mixed in rather than appended,
+ * so the exact requested duration never changes.
+ */
+function applyWalkieClicks(segment: Float32Array, scene: Scene): Float32Array {
+  if (scene.channel !== "walkie" || segment.length < RATE * 0.3) return segment;
+  const out = segment.slice();
+  const rising = walkieClick(true);
+  for (let i = 0; i < rising.length && i < out.length; i++) out[i] += rising[i] * 0.6;
+  const falling = walkieClick(false);
+  const offset = out.length - falling.length;
+  for (let i = 0; i < falling.length; i++) {
+    const at = offset + i;
+    if (at >= 0 && at < out.length) out[at] += falling[i] * 0.6;
+  }
+  return out;
+}
 
 /** Applies the scene's echo/reverb to its speech or sound, then lays any sound under the speech. */
 function mixScene(
@@ -57,6 +84,11 @@ function mixScene(
     const limit = isSharpSound(scene.sound) ? SHARP_SOUND_SPIKE_LU : SOUND_SPIKE_LU;
     segment = softLimit(tameSpikes(segment, limit), 0.72, 0.5);
   }
+  // Applied last, on the complete mixed scene, so a "reversed" line reverses its own room/echo
+  // tail too (the tail plays before the words - a deliberate backmasking effect) and a walkie
+  // click always bookends whatever is actually in the segment.
+  if (scene.voiceEffect === "reversed") segment = reverseSamples(segment);
+  segment = applyWalkieClicks(segment, scene);
   return finish(segment);
 }
 

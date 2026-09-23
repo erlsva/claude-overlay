@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -10,11 +10,90 @@ import {
   FINAL_SOUND_EFFECT_FILTER,
   FINAL_TTS_FILTER,
   MAX_AUTO_SPEECH_TEMPO,
+  renderAudio,
   run,
   speechTempo,
 } from "./index.js";
 import { parsePrompt } from "../scene/index.js";
-import { readWav } from "../dsp/index.js";
+import { readWav, RATE } from "../dsp/index.js";
+
+/** Renders one prompt in credit-free demo mode and returns the finished clip's samples. */
+async function renderDemo(prompt: string) {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), "overlay-tts-novelty-"));
+  try {
+    await mkdir(path.join(dataDir, "clips"));
+    const { scenes } = parsePrompt(prompt);
+    const id = "clip";
+    await renderAudio({
+      id,
+      scenes,
+      mode: "demo",
+      key: "unused",
+      voices: {},
+      dataDir,
+      progress: () => {},
+    });
+    return readWav(await readFile(path.join(dataDir, "clips", `${id}.wav`)));
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+}
+
+function assertClean(samples: Float32Array, minSeconds = 0.3) {
+  assert.ok(samples.length >= minSeconds * RATE, `expected at least ${minSeconds}s of audio`);
+  let peak = 0,
+    audible = false;
+  for (const sample of samples) {
+    assert.ok(Number.isFinite(sample), "no NaN/Infinity in the rendered audio");
+    peak = Math.max(peak, Math.abs(sample));
+    if (Math.abs(sample) > 0.01) audible = true;
+  }
+  assert.ok(audible, "the clip is not silent");
+  assert.ok(peak <= 0.99, `expected no clipping, got a peak of ${peak}`);
+}
+
+test("every new voice effect renders end to end without credits, cleanly and at its requested duration", async () => {
+  for (const prompt of [
+    '((chipmunk voice says "This is a test line";4s))',
+    '((slow motion voice says "This is a test line";5s))',
+    '((robot voice says "This is a test line";4s))',
+    '((voice played backwards says "This is a test line";4s))',
+    '((underwater voice says "This is a test line";4s))',
+  ]) {
+    const samples = await renderDemo(prompt);
+    assertClean(samples);
+    const expected = Number(prompt.match(/;(\d+)s/)![1]);
+    assert.ok(
+      Math.abs(samples.length / RATE - expected) < 0.05,
+      `${prompt}: expected ~${expected}s, got ${(samples.length / RATE).toFixed(2)}s`,
+    );
+  }
+});
+
+test("every new transmission channel renders end to end, for both speech and a sound effect", async () => {
+  for (const channelPrompt of [
+    '((man over a walkie-talkie says "This is a test line";4s))',
+    '((man through a tin can says "This is a test line";4s))',
+    '((man on an old radio says "This is a test line";4s))',
+  ]) {
+    assertClean(await renderDemo(channelPrompt));
+  }
+  // scene.channel now reaches sound effects too, not only speech.
+  assertClean(await renderDemo("((a gunshot over a walkie-talkie;3s))"), 0.2);
+});
+
+test("chipmunk and slowmo still fit an explicit duration, same as ordinary speech does", async () => {
+  const samples = await renderDemo(
+    '((chipmunk voice says "A much longer line that needs to be sped up to fit in time";3s))',
+  );
+  assert.ok(Math.abs(samples.length / RATE - 3) < 0.05);
+});
+
+test("voice effects and a transmission channel combine in one scene without crashing", async () => {
+  assertClean(
+    await renderDemo('((robot voice over a walkie-talkie says "This is a test line";4s))'),
+  );
+});
 
 test("final TTS encoding normalizes loud input below the true-peak ceiling", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "tts-limiter-test-"));

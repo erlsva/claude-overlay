@@ -144,6 +144,39 @@ test("sound direction flags survive deterministic fallback", () => {
   assert.equal(scene.duration, 4);
 });
 
+test("the new transmission channels are recognised alongside the existing ones", () => {
+  const channelOf = (text: string) => parsePrompt(`((${text} says "hi"))`).scenes[0].channel;
+  assert.equal(channelOf("man over a walkie-talkie"), "walkie");
+  assert.equal(channelOf("man over a walkie talkie"), "walkie");
+  assert.equal(channelOf("man through a tin can"), "tincan");
+  assert.equal(channelOf("man through a string phone"), "tincan");
+  assert.equal(channelOf("man on an old radio"), "radio");
+  assert.equal(channelOf("man on a vintage radio"), "radio");
+  assert.equal(channelOf("man on the radio"), "clean", "a bare 'radio' is not the effect");
+  assert.equal(channelOf("man through a telephone"), "intercom");
+  assert.equal(channelOf("man on a megaphone"), "intercom");
+  assert.equal(channelOf("man"), "clean");
+});
+
+test("novelty voice effects are recognised from the user's own words", () => {
+  const effectOf = (text: string) => parsePrompt(`((${text} says "hi"))`).scenes[0].voiceEffect;
+  assert.equal(effectOf("chipmunk voice"), "chipmunk");
+  assert.equal(effectOf("helium voice"), "chipmunk");
+  assert.equal(effectOf("slow motion voice"), "slowmo");
+  assert.equal(effectOf("slow-mo voice"), "slowmo");
+  assert.equal(effectOf("robot voice"), "robot");
+  assert.equal(effectOf("vocoder voice"), "robot");
+  assert.equal(effectOf("voice played backwards"), "reversed");
+  assert.equal(effectOf("reversed voice"), "reversed");
+  assert.equal(effectOf("underwater voice"), "underwater");
+  assert.equal(effectOf("man drowning"), "underwater");
+  assert.equal(effectOf("man"), undefined);
+  // Independent of room/channel: an underwater voice can still be in a cave.
+  const scene = parsePrompt('((underwater voice in a cave says "hi";4s))').scenes[0];
+  assert.equal(scene.voiceEffect, "underwater");
+  assert.equal(scene.effect, "reverb");
+});
+
 test("background sound and speech can share a scene", () => {
   const scene = parsePrompt('((rain in the background while a voice says "Welcome home";6s))')
     .scenes[0];

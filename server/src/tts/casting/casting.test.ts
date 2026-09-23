@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { castScenes, speechRequest, type AccountVoice } from "./index.js";
-import type { Scene } from "../scene/index.js";
+import { parsePrompt, type Scene } from "../scene/index.js";
 
 const scene = (overrides: Partial<Scene> = {}): Scene => ({
   dialogue: "Hello, chat!",
@@ -600,6 +600,22 @@ test("the accent tag sits after the intensity tag and replaces the planner's own
   );
   assert.match(request.text, /^\[screaming\] \[strong Scottish accent\] \[angry\] /);
   assert.equal((request.text.match(/accent/g) || []).length, 1);
+});
+
+test("a voice effect word never becomes an invented tag like [underwater] or [robotic]", () => {
+  const cases: Array<[string, string]> = [
+    ['((man says "help me" underwater))', "help me"],
+    ['((woman reversed says "hello"))', "hello"],
+    ['((chipmunk voice says "hi"))', "hi"],
+    ['((man talking through a robot says "beep boop"))', "beep boop"],
+    ['((man talking like a robot says "beep boop"))', "beep boop"],
+    ['((man on a tin can says "hey"))', "hey"],
+    ['((man on an old radio says "hey"))', "hey"],
+  ];
+  for (const [prompt, expected] of cases) {
+    const scene = parsePrompt(prompt).scenes[0];
+    assert.equal(speechRequest(scene).text, expected, prompt);
+  }
 });
 
 test("plain speech is untouched: no accent tag and no nationality guesswork", () => {

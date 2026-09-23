@@ -10,9 +10,14 @@ import {
   layerUnderSpeech,
   muffle,
   normalizeLoudness,
+  pitchTempoRatio,
   readWav,
+  resampleRatio,
+  robotize,
   screamTone,
+  submerge,
   tameSpikes,
+  writeWav,
   type Alignment,
 } from "../dsp/index.js";
 import type { Scene } from "../scene/index.js";
@@ -28,9 +33,11 @@ import {
   SHOUT_LAYER_GAIN,
   SPEECH_TARGET_LUFS,
   muffleScale,
+  robotScale,
   screamLayerScale,
   strainDbFor,
   toneAmountFor,
+  underwaterScale,
 } from "./tuning.js";
 
 export type RenderedSpeech = { samples: Float32Array; timing: WordTiming | null };
@@ -73,6 +80,32 @@ async function elevenSpeechFile(job: RenderJob, scene: Scene, index: number, fil
   if (!payload.audio_base64) throw new Error("ElevenLabs returned no speech audio.");
   await writeFile(file, Buffer.from(payload.audio_base64, "base64"));
   return finalWordTiming(payload.normalized_alignment) || finalWordTiming(payload.alignment);
+}
+
+/**
+ * chipmunk/slowmo: resamples the decoded speech by a fixed pitch+tempo ratio, like a tape
+ * played at the wrong speed. Applied before duration-fitting, so the fit (if any) works on
+ * the already-warped length; the alignment timing is scaled the same way so echo/reverb still
+ * lands on the true end of the (now faster or slower) words.
+ */
+async function warpedSpeech(
+  job: RenderJob,
+  index: number,
+  decoded: string,
+  samples: Float32Array,
+  timing: WordTiming | null,
+  scene: Scene,
+): Promise<{ path: string; samples: Float32Array; timing: WordTiming | null }> {
+  const ratio = pitchTempoRatio(scene.voiceEffect);
+  if (!ratio) return { path: decoded, samples, timing };
+  const warped = resampleRatio(samples, ratio);
+  const warpedPath = path.join(job.temp, `${index}-speech-warped.wav`);
+  await writeFile(warpedPath, writeWav(warped));
+  return {
+    path: warpedPath,
+    samples: warped,
+    timing: timing && { start: timing.start / ratio, end: timing.end / ratio },
+  };
 }
 
 /**
@@ -159,14 +192,15 @@ export async function renderSpeech(
     decoded,
     channelFilter(scene, { pitchShift: !pinned, strainDb: strainDbFor(sceneIntensity(scene)) }),
   );
-  const fitted = await fitToDuration(
+  const warped = await warpedSpeech(
     job,
-    scene,
     index,
     decoded,
     readWav(await readFile(decoded)),
     generatedTiming,
+    scene,
   );
+  const fitted = await fitToDuration(job, scene, index, warped.path, warped.samples, warped.timing);
 
   const intensity = sceneIntensity(scene);
   let samples = normalizeLoudness(
@@ -174,6 +208,8 @@ export async function renderSpeech(
     SPEECH_TARGET_LUFS,
   );
   samples = await addScreamLayer(job, scene, index, samples);
+  if (scene.voiceEffect === "robot") samples = robotize(samples, robotScale());
+  if (scene.voiceEffect === "underwater") samples = submerge(samples, underwaterScale());
   if (scene.muffled && muffleScale() > 0) {
     samples = tameSpikes(
       normalizeLoudness(muffle(samples, muffleScale()), SPEECH_TARGET_LUFS - MUFFLED_LEVEL_LU),

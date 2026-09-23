@@ -1,6 +1,11 @@
 /** The text and settings sent to Eleven v3 for one scene: audio tags, emphasis and stability. */
 
-import { type Scene, stripAccentWords, detectAccent } from "../scene/index.js";
+import {
+  type Scene,
+  stripAccentWords,
+  stripVoiceEffectWords,
+  detectAccent,
+} from "../scene/index.js";
 import { regexEscape } from "./text.js";
 import { intensityTag, sceneIntensity } from "./intensity.js";
 
@@ -16,9 +21,9 @@ function generalPerformanceCue(scene: Scene): string {
   if (character) cue = cue.replace(new RegExp(`^${regexEscape(character)}\\b`, "i"), "");
   cue = cue
     .replace(/"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g, "")
-    .replace(/\b(?:says?|saying|speaks?|speaking)\b/gi, "")
+    .replace(/\b(?:says?|saying|speaks?|speaking|talks?|talking)\b/gi, "")
     .replace(
-      /\b(?:in|inside|into|through|over)\s+(?:a\s+|an\s+|the\s+)?(?:cave|church|cathedral|mountain|mountains|void|intercom|megaphone|walkie[ -]?talkie|telephone)\b/gi,
+      /\b(?:in|inside|into|through|over|on|like|as)\s+(?:a\s+|an\s+|the\s+)?(?:cave|church|cathedral|mountain|mountains|void|intercom|megaphone|walkie[ -]?talkie|telephone|tin can|string phone|(?:old|vintage|antique)\s+radio|robot|vocoder|cyborg|android)\b/gi,
       "",
     )
     .replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi, "")
@@ -33,6 +38,9 @@ function generalPerformanceCue(scene: Scene): string {
     .trim();
   // The accent becomes its own tag, so "angry welshman" keeps just "angry" here.
   cue = stripAccentWords(cue).replace(/\s+/g, " ").trim();
+  // A voice effect (robot, underwater...) is applied to the audio directly; ElevenLabs has no
+  // matching tag for it, so it must never end up quoted back as one.
+  cue = stripVoiceEffectWords(cue).replace(/\s+/g, " ").trim();
   if (!cue || /^(?:neutral|natural|normal|default)(?: speech| delivery| voice)?$/i.test(cue))
     return "";
   // A long sentence is an explanation, and Eleven may read it aloud as speech.

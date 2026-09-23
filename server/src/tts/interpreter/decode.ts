@@ -6,10 +6,12 @@
 import { z } from "zod";
 import type { AccountVoice } from "../casting/index.js";
 import {
+  detectChannel,
   detectEffect,
   detectIntensity,
   detectMuffled,
   detectRoom,
+  detectVoiceEffect,
   isExtreme,
   parsePauseSeconds,
   parseSpeechRate,
@@ -23,7 +25,6 @@ import { sanitizeSoundPrompt } from "../sound.js";
 type RawScene = Record<string, unknown>;
 type RawPlan = { scenes: RawScene[]; warnings: string[] };
 
-const INTERCOM_WORDS = /\b(intercom|megaphone|walkie[ -]?talkie|telephone)\b/i;
 const DISTANT_WORDS = /\b(distant|far away|faraway)\b/i;
 const HAS_QUOTED_SPEECH = /"(?:\\.|[^"\\])+"|“[^”]+”|‘[^’]+’/;
 const QUOTED_SPEECH = /"(?:\\.|[^"\\])*"|“[^”]*”|‘[^’]*’/g;
@@ -136,11 +137,12 @@ function applySoundBlock(scene: RawScene, segment: PromptSegment, index: number,
   const timing = parseTrailingDuration(segment.text);
   scene.duration = timing ? timing.seconds : null;
   scene.effect = detectEffect(segment.text);
-  scene.channel = INTERCOM_WORDS.test(segment.text) ? "intercom" : "clean";
+  scene.channel = detectChannel(segment.text);
   scene.distant = DISTANT_WORDS.test(segment.text);
   scene.effectStrength = isExtreme(segment.text) ? "extreme" : "normal";
   scene.room = detectRoom(segment.text);
   scene.muffled = detectMuffled(segment.text) || undefined;
+  scene.voiceEffect = detectVoiceEffect(segment.text);
 }
 
 /** A block with quoted words is speech; its directions outside the quotes are the user's. */
@@ -158,11 +160,14 @@ function applyDialogueBlock(scene: RawScene, segment: PromptSegment) {
   // omission must not silently turn "in a cave" into dry studio speech.
   const authoredEffect = detectEffect(outsideQuotes);
   if (authoredEffect !== "none") scene.effect = authoredEffect;
-  if (INTERCOM_WORDS.test(outsideQuotes)) scene.channel = "intercom";
+  const authoredChannel = detectChannel(outsideQuotes);
+  if (authoredChannel !== "clean") scene.channel = authoredChannel;
   if (DISTANT_WORDS.test(outsideQuotes)) scene.distant = true;
   if (isExtreme(outsideQuotes)) scene.effectStrength = "extreme";
   scene.room = detectRoom(outsideQuotes);
   scene.muffled = detectMuffled(outsideQuotes) || undefined;
+  const authoredVoiceEffect = detectVoiceEffect(outsideQuotes);
+  if (authoredVoiceEffect) scene.voiceEffect = authoredVoiceEffect;
   const speechRate = parseSpeechRate(segment.text);
   if (speechRate !== undefined) scene.speechRate = speechRate;
 }

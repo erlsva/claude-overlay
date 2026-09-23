@@ -77,6 +77,12 @@ export const screamToneScale = () => dial("TTS_SCREAM_TONE", 1, 2);
 /** TTS_MUFFLE: how heavily a voice behind a door is muffled. 1 is the default (a thick door), 2 is heavier, 0.6 a thin wall, off skips it. */
 export const muffleScale = () => dial("TTS_MUFFLE", 1, 3);
 
+/** TTS_ROBOT_AMOUNT: strength of the ring-modulated robot voice effect. 1 is the default, off skips it. */
+export const robotScale = () => dial("TTS_ROBOT_AMOUNT", 1, 2);
+
+/** TTS_UNDERWATER_AMOUNT: strength of the underwater low-pass and wobble. 1 is the default, off skips it. */
+export const underwaterScale = () => dial("TTS_UNDERWATER_AMOUNT", 1, 2);
+
 /** A yell is shaped as fully as a scream: at a lower amount it just sounded like a raised voice. */
 export const toneAmountFor = (intensity: Intensity): number =>
   intensity === "normal" ? 0 : screamToneScale();

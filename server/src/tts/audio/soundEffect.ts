@@ -2,7 +2,14 @@
 
 import { writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
-import { muffle, normalizeLoudness, readWav, tameSpikes } from "../dsp/index.js";
+import {
+  muffle,
+  normalizeLoudness,
+  readWav,
+  robotize,
+  submerge,
+  tameSpikes,
+} from "../dsp/index.js";
 import type { Scene } from "../scene/index.js";
 import { buildSoundPrompt, isSharpSound, soundDecodeFilter } from "../sound.js";
 import { eleven } from "./elevenlabs.js";
@@ -16,6 +23,8 @@ import {
   SOUND_SPIKE_LU,
   SPEECH_TARGET_LUFS,
   muffleScale,
+  robotScale,
+  underwaterScale,
 } from "./tuning.js";
 
 /** Pink noise standing in for a sound effect, so the pipeline can be tried without credits. */
@@ -61,7 +70,11 @@ export async function renderSound(
   const seconds = activeSoundDuration(scene, hasSpeech);
   if (job.opts.mode === "demo") await demoSoundFile(seconds, raw);
   else await elevenSoundFile(job, scene, index, seconds, raw);
-  await decodeToWav(raw, decoded, soundDecodeFilter(scene.sound));
+  await decodeToWav(
+    raw,
+    decoded,
+    soundDecodeFilter(scene.sound, { channel: scene.channel, voiceEffect: scene.voiceEffect }),
+  );
 
   // Sharp effects keep extra headroom: their spikes, not their average, are what hurts.
   const sharp = isSharpSound(scene.sound);
@@ -72,6 +85,8 @@ export async function renderSound(
     sharp ? 0.45 : 0.6,
   );
   sound = tameSpikes(sound, sharp ? SHARP_SOUND_SPIKE_LU : SOUND_SPIKE_LU);
+  if (scene.voiceEffect === "robot") sound = robotize(sound, robotScale());
+  if (scene.voiceEffect === "underwater") sound = submerge(sound, underwaterScale());
   if (scene.muffled && !hasSpeech && muffleScale() > 0) {
     sound = normalizeLoudness(
       muffle(sound, muffleScale()),
