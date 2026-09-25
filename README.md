@@ -17,9 +17,10 @@ Konva is not used by the current application code.
 - Supports dragging, resizing, rotation, snapping, fit/fill placement,
   horizontal and vertical flips, grouping, duplication, visibility, locking,
   opacity, and undo/redo.
-- Includes first-run onboarding, a complete controls guide, stream-readiness
-  checks, persistent session notification history, and privacy-safe copyable
-  support diagnostics.
+- Opens a setup guide and then a short welcome tour on each visit (tick "Don't
+  show this again" to stop), and includes a complete controls guide,
+  stream-readiness checks, persistent session notification history, and
+  privacy-safe copyable support diagnostics.
 - Animates media with adjustable DVD movement, corner celebrations, sound, and
   a shared corner-hit counter.
 - Provides a Soundboard and chained commands for showing, hiding, playing, or
@@ -29,9 +30,12 @@ Konva is not used by the current application code.
   FFmpeg, with private dashboard previews, OBS playback, reusable clip tokens,
   deletion, job feedback, and trigger-chain support.
 - Listens anonymously to public Vicksy or Wixels chat commands through `tmi.js`.
-- Displays Twitch and 7TV chat emotes as an ordered bottom parade or with one of sixteen movements (parade, bounces, rain, snow, balloons, orbit, fireworks, pile-up, conga line and more),
-- Plays one-shot Pop, Pulse, Spin, Shake, and directional slide animations on selected media,
-  configurable physics, sender labels, limits, and a chatter blacklist.
+- Displays Twitch and 7TV chat emotes as an ordered bottom parade or with one of
+  sixteen movements (parade, bounces, rain, snow, balloons, orbit, fireworks,
+  pile-up, conga line and more), with configurable physics, sender labels,
+  limits, and a chatter blacklist.
+- Plays one-shot Pop, Pulse, Spin, Shake, and directional slide animations on
+  selected media.
 - Receives authenticated Twitch follows, subscriptions, gift subscriptions,
   Bits, raids, custom channel-point redemptions, bans, timeouts, and new predictions
   through EventSub webhooks.
@@ -90,7 +94,8 @@ The application intentionally uses more than one kind of state:
 | Broadcaster OAuth tokens                               | Neon PostgreSQL, encrypted with AES-256-GCM                                 | Yes                                             |
 | Dashboard whitelist and admin roles                    | Neon PostgreSQL when `DATABASE_URL` is set                                  | Yes                                             |
 | Elements, drawings, cursor presence, history, playback | Server memory                                                               | No                                              |
-| Soundboard, commands, emote settings, scenes, presets  | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
+| Chat emote settings, feature flags (TTS, Scenes)       | Neon PostgreSQL, `app_settings` table                                       | Yes                                             |
+| Soundboard, commands, scenes, presets                  | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
 | Uploaded media                                         | `UPLOAD_DIR`                                                                | Only with a persistent disk/object storage      |
 | Shared media library (defaults)                        | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes                                             |
 | Saved TTS metadata                                     | Neon PostgreSQL (local JSON fallback outside production)                    | Yes in production                               |
@@ -100,6 +105,16 @@ On Render's free tier, the filesystem is ephemeral. Neon keeps authorization
 and whitelist records, but uploaded files and LowDB studio configuration can be
 lost when the service is replaced or restarted. Do not treat `/tmp` as durable
 storage.
+
+`server/data/db.json` is committed to this (public) repository and is what the
+soundboard, commands, scenes and presets fall back to after a restart, so edit
+it there to change those defaults. It lists the dashboard whitelist and command
+names in the clear, and must never hold a token or secret.
+
+Feature flags are read from Neon when the server starts. If Neon is still waking
+up, the read is retried a few times; if it still cannot confirm what was saved,
+TTS starts switched **off** rather than guessing, and the owner can switch it
+back on from the account menu.
 
 ## Local development
 
@@ -148,7 +163,7 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `CLIENT_URL`                   | Yes                 | Exact frontend origin, without a trailing path. Used by CORS and OAuth redirects.                                                                              |
 | `PUBLIC_SERVER_URL`            | Production          | Public server origin. Falls back to Render's `RENDER_EXTERNAL_URL`.                                                                                            |
 | `NODE_ENV`                     | Production          | Set to `production` on Render.                                                                                                                                 |
-| `SESSION_SECRET`               | Yes                 | Signs dashboard sessions and Twitch Event OAuth state.                                                                                                         |
+| `SESSION_SECRET`               | Yes                 | Signs dashboard sessions and Twitch Event OAuth state. A deployed server (`NODE_ENV=production`, or any Render service) will not start without it.             |
 | `OWNER_TWITCH_USERNAME`        | Yes                 | Twitch login with owner privileges.                                                                                                                            |
 | `TWITCH_CLIENT_ID`             | Yes                 | Twitch Developer Console application ID.                                                                                                                       |
 | `TWITCH_CLIENT_SECRET`         | Yes                 | Twitch Developer Console application secret.                                                                                                                   |
@@ -234,16 +249,18 @@ Roles are labels shown next to names; they do not add new permissions.
 | --------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Owner           | `OWNER_TWITCH_USERNAME`                                                    | Also controls feature flags, the chatbot connection and who is a super moderator.                                      |
 | Streamer        | Logins in `STREAMER_LOGINS` (default `vicksy,wixels`) and `EVENT_CHANNELS` | The channel accounts the overlay is for. Label only, so it is the same in development. Shown next to the access level. |
-| Super moderator | Whitelisted user with the admin flag                                       | Can add and remove people from the whitelist.                                                                          |
+| Super moderator | Whitelisted user with the admin flag                                       | Can add and remove moderators. Only the owner can make or remove a super moderator.                                    |
 | Moderator       | Any other whitelisted user                                                 | Full dashboard access except managing the whitelist.                                                                   |
 
 A person can hold more than one label. A streamer is also a moderator, and the
 owner can star them as a super moderator too, so they show both badges.
 
-The **Setup guide** (account menu, help guide, or the welcome tour) has separate
-"I'm the streamer" and "I'm a moderator" tabs. The streamer tab shows the
-overlay URL, the browser-source size, the OBS settings to use and a
-**Test overlay audio** button. The same test is in the Go-live check. It
+The **Setup guide** opens on its own at the start of each visit, followed by the
+welcome tour (tick **Don't show this again** in the tour to stop both from
+opening; they stay in the account menu and the help guide). It has separate "I'm
+the streamer" and "I'm a moderator" tabs. The streamer tab shows the overlay URL,
+the browser-source size, the OBS settings to use and a **Play test chime**
+button; the Go-live check has the same test as **Test overlay audio**. It
 confirms the overlay page produced sound; watch the source's meter in OBS to
 confirm the audio reaches the stream.
 
@@ -420,7 +437,13 @@ After deploying:
 ## Security notes
 
 - Dashboard mutations are authenticated and sensitive management routes enforce
-  owner/admin permissions on the server.
+  owner/admin permissions on the server. Sessions are re-checked against the
+  whitelist on every request, so removing someone locks them out at once even
+  though their signed token lasts 7 days.
+- The session secret has no built-in fallback on a deployed server. Because this
+  repository is public, a default value would let anyone forge an owner session.
+- The sign-in token is returned in the URL fragment (`#token=`), which browsers
+  never send to a server, and the dashboard removes it from the address bar.
 - Twitch EventSub messages are checked with HMAC signatures, timestamp limits,
   and message-ID deduplication.
 - Broadcaster tokens are encrypted at rest; encryption keys and OAuth secrets
@@ -439,6 +462,9 @@ After deploying:
 ## Known operational limitations
 
 - This is a private Vicksy/Wixels overlay, not a general multi-tenant service.
+- The overlay page needs no login, so anyone who knows its URL can open it. A
+  stranger's browser tab would show as an "Overlay Online" connection, but it
+  can never change anything on the canvas.
 - The free Render filesystem does not provide durable media or LowDB storage.
 - Canvas state is intentionally runtime state and resets when the server does.
 - The Twitch embed is cross-origin and sensitive to pointer-blocking layers;

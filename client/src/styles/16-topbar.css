@@ -111,7 +111,8 @@
 
 /* Layer list: padded so rows line up with the control cards above it. */
 .layers-list {
-  flex: 1;
+  /* Always leaves room for a few rows, even beside a selected layer's control cards. */
+  flex: 1 0 160px;
   overflow-y: auto;
   padding: var(--space-3) var(--space-3) var(--space-4);
   display: flex;

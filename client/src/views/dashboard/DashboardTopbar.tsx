@@ -5,7 +5,7 @@ import {
   Repeat2,
   MonitorPlay,
   RotateCcw,
-  Settings,
+  UserCog,
   PanelRightOpen,
 } from "lucide-react";
 import { CAN_SWITCH_TWITCH_CHANNEL, TWITCH_CHANNELS } from "../../config/twitchChannels";
@@ -167,10 +167,10 @@ export function DashboardTopbar({
           <button
             className="ui-icon-button topbar-icon"
             onClick={() => setShowWhitelist(true)}
-            aria-label="Whitelist settings"
-            title="Whitelist settings"
+            aria-label="Manage who can use the dashboard"
+            title="Manage who can use the dashboard"
           >
-            <Settings size={16} />
+            <UserCog size={16} />
           </button>
         )}
         <button

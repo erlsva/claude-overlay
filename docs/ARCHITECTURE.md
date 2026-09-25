@@ -27,7 +27,7 @@ instead of raising the limit.
 | `config/` | Environment variables (`env.ts`) and canvas geometry constants |
 | `runtime.ts` | The single `app`, HTTP server, Socket.IO server and the live user/overlay registries |
 | `app.ts` | Mounts middleware and routes, in the order that matters |
-| `auth/` | Twitch dashboard login, signed sessions, whitelist and roles |
+| `auth/` | Twitch dashboard login, signed sessions, whitelist and roles. `secret.ts` is the one place the session secret is read, and it refuses to start a deployed server without one |
 | `middleware/` | Auth checks and rate limits shared by routes |
 | `socket/` | One file per realtime area: `elements`, `drawing`, `history`, `presence`, `settings`, `studio`; `validation*.ts` checks every payload |
 | `realtime/` | Connection lifecycle and the activity feed |

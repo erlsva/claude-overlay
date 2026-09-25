@@ -35,7 +35,10 @@ export function ElementPanel(props: ElementPanelProps) {
         borderRight: "1px solid var(--line)",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflowX: "hidden",
+        // A layer's control cards and the footer can be taller than a short window; scroll
+        // rather than clip them out of reach.
+        overflowY: "auto",
         flexShrink: 0,
       }}
     >

@@ -55,6 +55,10 @@ const sections = [
     items: [
       ["Add media", "Upload an image, GIF, video, or audio file."],
       [
+        "Library",
+        "Shared default videos, images and sounds that stay available after restarts. Add one to the canvas, or a sound to the Soundboard. Anyone can add or delete.",
+      ],
+      [
         "Text",
         "Create centered overlay text with font, weight, alignment, color, outline, shadow, background, spacing, and size controls.",
       ],
@@ -117,6 +121,10 @@ const sections = [
         "Switch preview",
         "When multiple production channels are configured, switch both the preview and chat command listener. Local development is locked to EPLE7.",
       ],
+      [
+        "Overlay preview (monitor icon)",
+        "A floating, silent live copy of what the overlay shows, including chat emotes. Drag its header to move it, drag the corner to resize, double-click the header to reset.",
+      ],
       ["Refresh overlay", "Ask connected overlay browser sources to reload."],
       [
         "Go-live check",
@@ -126,7 +134,11 @@ const sections = [
         "Lifebuoy support button",
         "Review notifications from this browser session and copy a safe diagnostic report containing build and connection details when asking for help.",
       ],
-      ["Studio", "Open Sounds, commands, Twitch events, TTS scenes, and chat emotes."],
+      ["Studio", "Open Sounds, commands, Twitch events, TTS, saved scenes, and chat emotes."],
+      [
+        "Manage who can use the dashboard",
+        "The people icon beside Studio (owner and super moderators) adds or removes approved Twitch accounts. Only the owner can make someone a super moderator, or remove one.",
+      ],
       [
         "Dashboard / overlay badges",
         "Dashboard only is a private local preview; Plays on overlay reaches the stream; Dashboard + overlay runs in both places.",
@@ -173,6 +185,10 @@ const sections = [
         "Write a scene, review the interpreted plan, then generate and save it or play it on the overlay. Plain text is spoken. Inside ((…)), quoted words are speech and unquoted descriptions are sound effects; every part plays in sequence.",
       ],
       [
+        "TTS voices and effects",
+        "Describe a voice or effect in plain words: an angry pirate, underwater, robot, chipmunk, slow motion, backwards, over a walkie-talkie, through a tin can, on an old radio, in a cave, behind a door, with echo. Effects can be combined.",
+      ],
+      [
         "Saved TTS tokens",
         "Copy a (TTS:…) token to replay the exact saved audio later without paying generation credits again. You can preview saved clips privately on the dashboard or delete them permanently.",
       ],
@@ -207,6 +223,10 @@ const sections = [
       [
         "Selected media animation",
         "Select an image, GIF, or video in Layers, choose a reaction or travel animation, set its duration with the slider or presets, and press Play. It runs on the dashboard and overlay; travel animations restore the previous position afterward.",
+      ],
+      [
+        "Studio · Scenes",
+        "Save the complete layout and drawing under a name and load it later. Loading replaces the canvas, and Undo brings it back. The owner turns Scenes on in the account menu.",
       ],
       [
         "Studio · Emotes",
