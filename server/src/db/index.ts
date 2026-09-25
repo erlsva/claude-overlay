@@ -30,12 +30,6 @@ interface DbSchema {
   triggers: OverlayTrigger[];
   chatEmoteSettings?: ChatEmoteSettings;
   featureFlags?: FeatureFlags;
-  twitchAuth?: {
-    encryptedAccessToken: string;
-    encryptedRefreshToken: string;
-    expiresAt: number;
-    userId: string;
-  };
 }
 
 const adapter = new JSONFile<DbSchema>(path.join(DATA_DIR, "db.json"));
@@ -272,13 +266,5 @@ export async function saveStudioData(
   if (data.presets) db.data.presets = data.presets;
   if (data.sounds) db.data.sounds = data.sounds;
   if (data.triggers) db.data.triggers = data.triggers;
-  await db.write();
-}
-
-export function getStoredTwitchAuth() {
-  return db.data.twitchAuth;
-}
-export async function setStoredTwitchAuth(value: DbSchema["twitchAuth"]): Promise<void> {
-  db.data.twitchAuth = value;
   await db.write();
 }
