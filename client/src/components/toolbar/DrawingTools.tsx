@@ -55,14 +55,14 @@ export function DrawingTools({
           <Pencil size={ICON_SIZE} /> Pen
         </>,
         "pen",
-        "Freehand pen",
+        "Draw freehand lines",
       )}
       {toolBtn(
         <>
           <Eraser size={ICON_SIZE} /> Erase
         </>,
         "eraser",
-        "Eraser",
+        "Rub out parts of the drawing",
       )}
       {toolBtn(
         <>

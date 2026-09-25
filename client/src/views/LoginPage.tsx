@@ -54,11 +54,7 @@ export function LoginPage({ onLogin, error, connectionError, onRetry }: LoginPag
             </button>
           </div>
         )}
-        <button
-          onClick={onLogin}
-          title="Authenticate with Twitch to open the dashboard"
-          className="ui-button login-twitch-button"
-        >
+        <button onClick={onLogin} className="ui-button login-twitch-button">
           <TwitchIcon />
           Continue with Twitch
         </button>

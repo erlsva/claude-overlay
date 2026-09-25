@@ -61,7 +61,6 @@ export function ElementPanel(props: ElementPanelProps) {
       )}
       <LayersList props={props} s={s} />
       {footer}
-      {/* OVER HERE SHOULD BE FINE I THINK */}
     </div>
   );
 }

@@ -14,6 +14,8 @@ const TOOLTIP_ID = "app-control-tooltip";
 const EDGE_GAP = 10;
 
 function convertTitle(element: Element) {
+  // An iframe's title is its accessible name, and the page inside it takes the pointer anyway.
+  if (element instanceof HTMLIFrameElement) return;
   const title = element.getAttribute("title")?.trim();
   if (!title) return;
   element.setAttribute("data-app-tooltip", title);
