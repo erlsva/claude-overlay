@@ -3,6 +3,7 @@ import { usePresence } from "../../hooks/usePresence";
 import { SERVER_URL } from "../../config/server";
 import { authHeaders } from "../../hooks/useAuth";
 import type { DashboardProps } from "./types";
+import { isOnboardingHidden } from "./useOnboarding";
 import type { useDashboardSocket } from "./useDashboardSocket";
 import type { useDashboardServices } from "./useDashboardServices";
 
@@ -18,7 +19,8 @@ export function useDashboardPanels(
   const { user } = props;
   const { dvdCelebrationSettings, setDvdCelebrationSettings, toast } = deps;
   const [showWhitelist, setShowWhitelist] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
+  // The setup guide opens first on every visit, until the tour's "don't show again" is ticked.
+  const [showSetup, setShowSetup] = useState(() => !isOnboardingHidden(user.login));
   const [showMirror, setShowMirror] = useState(() => {
     try {
       return localStorage.getItem("overlay_mirror") === "on";

@@ -2,6 +2,7 @@ import type { useDashboardServices } from "./useDashboardServices";
 import type { useDashboardSocket } from "./useDashboardSocket";
 import type { useAppearance } from "./useAppearance";
 import type { useDashboardPanels } from "./useDashboardPanels";
+import type { useOnboarding } from "./useOnboarding";
 import type { useCanvasSelection } from "./useCanvasSelection";
 import type { useDrawingTools } from "./useDrawingTools";
 import type { useTextEditing } from "./useTextEditing";
@@ -11,6 +12,7 @@ export type DashboardContext = ReturnType<typeof useDashboardServices> &
   ReturnType<typeof useDashboardSocket> &
   ReturnType<typeof useAppearance> &
   ReturnType<typeof useDashboardPanels> &
+  ReturnType<typeof useOnboarding> &
   ReturnType<typeof useCanvasSelection> &
   ReturnType<typeof useDrawingTools> &
   ReturnType<typeof useTextEditing>;

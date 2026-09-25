@@ -78,9 +78,9 @@ const steps = [
   },
   {
     eyebrow: "One last thing",
-    title: "Finish with the setup guide",
+    title: "Ready when you are",
     description:
-      "It has the overlay URL and OBS settings, a sound test and what each role can do. Streamers should go through it once before going live.",
+      "Add your first layer and make sure OBS can see the overlay. The setup guide and this tour are always under Controls & shortcuts if you want them again.",
     Icon: Rocket,
     checklist: true,
     points: [],
@@ -91,6 +91,8 @@ export function OnboardingTour({
   open,
   userName,
   onClose,
+  dontShowAgain,
+  onDontShowAgainChange,
   hasLayers,
   overlayConnected,
   onStartText,
@@ -99,6 +101,8 @@ export function OnboardingTour({
   open: boolean;
   userName: string;
   onClose: () => void;
+  dontShowAgain: boolean;
+  onDontShowAgainChange: (value: boolean) => void;
   hasLayers: boolean;
   overlayConnected: boolean;
   onStartText: () => void;
@@ -196,16 +200,26 @@ export function OnboardingTour({
         </div>
 
         <footer>
-          <div className="onboarding-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>
-            {steps.map((item, index) => (
-              <button
-                key={item.title}
-                className={index === step ? "active" : ""}
-                onClick={() => setStep(index)}
-                aria-label={`Open step ${index + 1}: ${item.title}`}
-                aria-current={index === step ? "step" : undefined}
+          <div className="onboarding-footer-start">
+            <div className="onboarding-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>
+              {steps.map((item, index) => (
+                <button
+                  key={item.title}
+                  className={index === step ? "active" : ""}
+                  onClick={() => setStep(index)}
+                  aria-label={`Open step ${index + 1}: ${item.title}`}
+                  aria-current={index === step ? "step" : undefined}
+                />
+              ))}
+            </div>
+            <label className="onboarding-optout">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(event) => onDontShowAgainChange(event.target.checked)}
               />
-            ))}
+              <span>Don’t show this again</span>
+            </label>
           </div>
           <div className="onboarding-actions">
             {step > 0 && (
@@ -215,11 +229,11 @@ export function OnboardingTour({
             )}
             {lastStep ? (
               <>
-                <button className="ui-button" onClick={onClose}>
-                  Skip for now
-                </button>
-                <button className="ui-button studio-primary" onClick={onOpenSetup}>
+                <button className="ui-button" onClick={onOpenSetup}>
                   <Rocket size={14} /> Open setup guide
+                </button>
+                <button className="ui-button studio-primary" onClick={onClose}>
+                  Get started
                 </button>
               </>
             ) : (

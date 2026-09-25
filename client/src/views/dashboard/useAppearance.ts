@@ -6,36 +6,18 @@ import {
   THEME_STORAGE_KEY,
   CUSTOM_ACCENT_STORAGE_KEY,
 } from "../../theme";
-import {
-  type DashboardUiScale,
-  loadDashboardUiScale,
-  ONBOARDING_VERSION,
-  UI_SCALE_STORAGE_KEY,
-} from "./constants";
+import { type DashboardUiScale, loadDashboardUiScale, UI_SCALE_STORAGE_KEY } from "./constants";
 import { SERVER_URL } from "../../config/server";
 import { authHeaders } from "../../hooks/useAuth";
-import type { DashboardProps } from "./types";
 import type { useDashboardServices } from "./useDashboardServices";
 
-/** Theme, accent colour, UI scale, feature switches and the first-run tour. */
-export function useAppearance(
-  props: DashboardProps,
-  deps: Pick<ReturnType<typeof useDashboardServices>, "toast">,
-) {
-  const { user } = props;
+/** Theme, accent colour, UI scale and feature switches. */
+export function useAppearance(deps: Pick<ReturnType<typeof useDashboardServices>, "toast">) {
   const { toast } = deps;
   const [theme, setTheme] = useState<DashboardTheme>(loadStoredTheme);
   const [customAccent, setCustomAccent] = useState(loadStoredAccent);
   const [uiScale, setUiScale] = useState<DashboardUiScale>(loadDashboardUiScale);
   const [featureSaving, setFeatureSaving] = useState(false);
-  const onboardingStorageKey = `overlay_onboarding_${ONBOARDING_VERSION}_${user.login.toLowerCase()}`;
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => localStorage.getItem(onboardingStorageKey) !== "complete",
-  );
-  const closeOnboarding = useCallback(() => {
-    localStorage.setItem(onboardingStorageKey, "complete");
-    setShowOnboarding(false);
-  }, [onboardingStorageKey]);
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
@@ -79,10 +61,6 @@ export function useAppearance(
     setUiScale,
     featureSaving,
     setFeatureSaving,
-    onboardingStorageKey,
-    showOnboarding,
-    setShowOnboarding,
-    closeOnboarding,
     setFeatureEnabled,
   };
 }

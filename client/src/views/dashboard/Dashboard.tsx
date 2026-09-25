@@ -16,6 +16,7 @@ import { useDashboardServices } from "./useDashboardServices";
 import { useDashboardSocket } from "./useDashboardSocket";
 import { useAppearance } from "./useAppearance";
 import { useDashboardPanels } from "./useDashboardPanels";
+import { useOnboarding } from "./useOnboarding";
 import { useCanvasSelection } from "./useCanvasSelection";
 import { useDrawingTools } from "./useDrawingTools";
 import { useTextEditing } from "./useTextEditing";
@@ -28,8 +29,9 @@ const StudioPanel = lazy(() =>
 export function Dashboard(props: DashboardProps) {
   const dashboardServices = useDashboardServices();
   const dashboardSocket = useDashboardSocket(props, { ...dashboardServices });
-  const appearance = useAppearance(props, { ...dashboardServices });
+  const appearance = useAppearance({ ...dashboardServices });
   const dashboardPanels = useDashboardPanels(props, { ...dashboardSocket, ...dashboardServices });
+  const onboarding = useOnboarding(props.user, dashboardPanels);
   const canvasSelection = useCanvasSelection({ ...dashboardSocket, ...dashboardServices });
   const drawingTools = useDrawingTools({ ...dashboardSocket, ...dashboardServices });
   const textEditing = useTextEditing({ ...dashboardSocket, ...dashboardServices });
@@ -38,6 +40,7 @@ export function Dashboard(props: DashboardProps) {
     ...dashboardSocket,
     ...appearance,
     ...dashboardPanels,
+    ...onboarding,
     ...canvasSelection,
     ...drawingTools,
     ...textEditing,
@@ -119,6 +122,9 @@ export function Dashboard(props: DashboardProps) {
     showSetup,
     showOnboarding,
     closeOnboarding,
+    skipQueuedTour,
+    dontShowOnboardingAgain,
+    setDontShowOnboardingAgain,
   } = s;
 
   return (
@@ -291,20 +297,24 @@ export function Dashboard(props: DashboardProps) {
         roles={user.roles}
         overlayConnected={overlayConnected}
         onTestAudio={testOverlayAudio}
-        onOpenReadiness={() =>
+        onOpenReadiness={() => {
+          // They went straight on to the Go-live check, so the tour does not cover it.
+          skipQueuedTour();
           window.setTimeout(
             () =>
               document
                 .querySelector<HTMLButtonElement>('[data-onboarding-action="readiness"]')
                 ?.click(),
             0,
-          )
-        }
+          );
+        }}
       />
       <OnboardingTour
         open={showOnboarding}
         userName={user.displayName}
         onClose={closeOnboarding}
+        dontShowAgain={dontShowOnboardingAgain}
+        onDontShowAgainChange={setDontShowOnboardingAgain}
         hasLayers={elements.length > 0}
         overlayConnected={overlayConnected}
         onStartText={() => {

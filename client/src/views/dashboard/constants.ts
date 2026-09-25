@@ -2,7 +2,8 @@
 
 export const OVERLAY_CLIPBOARD_TYPE = "application/x-vicksy-overlay-elements";
 
-export const ONBOARDING_VERSION = "v2";
+/** Bumped when the startup flow changes meaning, so an old "seen it" choice is not carried over. */
+export const ONBOARDING_VERSION = "v3";
 
 export const APP_VERSION =
   import.meta.env.VITE_BUILD_ID ?? import.meta.env.VITE_APP_VERSION ?? "local";
