@@ -1,6 +1,12 @@
 import { Router } from "express";
 import type { Server } from "socket.io";
-import { getWhitelist, addToWhitelist, removeFromWhitelist, setAdmin } from "../db/index.js";
+import {
+  getWhitelist,
+  getWhitelistEntry,
+  addToWhitelist,
+  removeFromWhitelist,
+  setAdmin,
+} from "../db/index.js";
 import { lookupTwitchUser } from "../auth/twitch.js";
 import { requireAdmin, requireOwner } from "../middleware/auth.js";
 import { rolesFor } from "./routes.js";
@@ -88,6 +94,11 @@ export function createWhitelistRouter(
     const username = req.params.username.toLowerCase();
     if (username === req.authUser!.login.toLowerCase()) {
       res.status(400).json({ error: "You cannot remove your own dashboard access" });
+      return;
+    }
+    // Only the owner manages super moderators, so an admin cannot lock another one out.
+    if (!req.authUser!.isOwner && getWhitelistEntry(username)?.isAdmin) {
+      res.status(403).json({ error: "Only the owner can remove a super moderator" });
       return;
     }
     try {

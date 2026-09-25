@@ -17,6 +17,12 @@ import { setUploadedMediaHeaders, uploadRouter, UPLOAD_DIR } from "./uploads/rou
 /** Mounts middleware and every HTTP route. The order matters: the raw-body webhook comes before JSON parsing. */
 export function configureApp() {
   app.set("trust proxy", 1);
+  app.disable("x-powered-by");
+  app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    next();
+  });
   app.use(cors({ origin: CLIENT_URL, credentials: true }));
   app.use(
     "/twitch/eventsub",

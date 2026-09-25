@@ -9,6 +9,7 @@ import {
 } from "./twitch.js";
 import { getWhitelistEntry } from "../db/index.js";
 import { signToken, verifyToken } from "./jwt.js";
+import { SESSION_SECRET } from "./secret.js";
 import { loginRateLimit } from "../middleware/rateLimits.js";
 import {
   getConfiguredTwitchChannels,
@@ -22,10 +23,6 @@ import { holdPendingLogin, readCookie } from "./pendingLogin.js";
 
 const OWNER = (process.env.OWNER_TWITCH_USERNAME ?? "vicksy").toLowerCase();
 const IS_PROD = process.env.NODE_ENV === "production";
-if (IS_PROD && !process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET is required in production");
-}
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "development-only-secret";
 
 export const authRouter = Router();
 
@@ -157,7 +154,8 @@ authRouter.get("/callback", async (req, res) => {
       res.redirect(eventsUrl);
       return;
     }
-    res.redirect(`${CLIENT_URL}/?token=${token}`);
+    // In the fragment, which browsers never send to a server, so it stays out of request logs.
+    res.redirect(`${CLIENT_URL}/#token=${token}`);
   } catch (err) {
     console.error("OAuth callback error:", err);
     res.redirect(`${CLIENT_URL}/login?error=server_error`);
@@ -186,13 +184,24 @@ authRouter.post("/logout", (_req, res) => {
   res.sendStatus(200);
 });
 
+// Anyone can call /live, so answers are shared for a short while instead of each call spending
+// Twitch API quota that logins and whitelist lookups also need.
+const LIVE_CACHE_MS = 20_000;
+const liveCache = new Map<string, { live: boolean; at: number }>();
+
 authRouter.get("/live", async (req, res) => {
   try {
     const requestedChannel = String(req.query.channel ?? getDefaultTwitchChannel()).toLowerCase();
     const channel = getConfiguredTwitchChannels().includes(requestedChannel)
       ? requestedChannel
       : getDefaultTwitchChannel();
+    const cached = liveCache.get(channel);
+    if (cached && Date.now() - cached.at < LIVE_CACHE_MS) {
+      res.json({ live: cached.live });
+      return;
+    }
     const live = await isStreamerLive(channel);
+    liveCache.set(channel, { live, at: Date.now() });
     res.json({ live });
   } catch (err) {
     console.error(err);

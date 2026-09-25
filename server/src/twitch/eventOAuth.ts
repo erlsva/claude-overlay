@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { SESSION_SECRET } from "../auth/secret.js";
 import { getTwitchEventsAuthUrl } from "../auth/twitch.js";
 import {
   eventDatabaseConfigured,
@@ -7,8 +8,6 @@ import {
   type StoredEventAuth,
 } from "./eventAuthStore.js";
 import { getConfiguredTwitchChannels } from "./channels.js";
-
-const sessionSecret = process.env.SESSION_SECRET ?? "development-only-secret";
 
 // Broadcasters only authorize the read permissions needed by EventSub. Outgoing
 // chat uses the independently-authorized chatbot account below.
@@ -41,12 +40,12 @@ export function createState(channel: AuthTarget) {
       nonce: randomBytes(16).toString("hex"),
     }),
   ).toString("base64url");
-  return `${payload}.${createHmac("sha256", sessionSecret).update(payload).digest("base64url")}`;
+  return `${payload}.${createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url")}`;
 }
 export function parseState(state: string): AuthTarget | null {
   try {
     const [payload, signature] = state.split(".");
-    const expected = createHmac("sha256", sessionSecret).update(payload).digest();
+    const expected = createHmac("sha256", SESSION_SECRET).update(payload).digest();
     const actual = Buffer.from(signature, "base64url");
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
     const value = JSON.parse(Buffer.from(payload, "base64url").toString()) as {

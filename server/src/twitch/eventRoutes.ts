@@ -2,6 +2,7 @@ import { CLIENT_URL } from "../config/env.js";
 import { Router, type Request, type Response } from "express";
 import { takePendingLogin } from "../auth/pendingLogin.js";
 import { getUserFromRequest } from "../auth/routes.js";
+import { SESSION_SECRET } from "../auth/secret.js";
 import {
   exchangeCodeForRedirect,
   getTwitchEventsAuthUrl,
@@ -35,12 +36,14 @@ function canManageEventChannel(
   return !!user && (user.isOwner || user.login.toLowerCase() === channel);
 }
 const redirectUri = twitchEventsRedirectUri;
-const sessionSecret = process.env.SESSION_SECRET ?? "development-only-secret";
 
-/** Sends the browser back to the dashboard, signing the streamer in too if she came here from logging in. */
+/**
+ * Sends the browser back to the dashboard, signing the streamer in too if she came here from
+ * logging in. The session goes in the URL fragment, which browsers never send to a server.
+ */
 function returnToDashboard(req: Request, res: Response, query: string) {
-  const pending = takePendingLogin(req, res, sessionSecret);
-  res.redirect(`${CLIENT_URL}/?${pending ? `token=${pending}&` : ""}${query}`);
+  const pending = takePendingLogin(req, res, SESSION_SECRET);
+  res.redirect(`${CLIENT_URL}/?${query}${pending ? `#token=${pending}` : ""}`);
 }
 const chatbotLogin = (process.env.CHAT_BOT_USERNAME ?? "dankchapbot").trim().toLowerCase();
 

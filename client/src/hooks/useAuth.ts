@@ -32,12 +32,19 @@ export function useAuth() {
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    // Pick up token from OAuth redirect
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    // The sign-in redirect carries the session in the URL fragment, which is never sent to a
+    // server. Keep reading ?token= too, for a redirect that was already in flight.
+    const fromFragment = new URLSearchParams(window.location.hash.slice(1)).get("token");
+    const fromQuery = new URLSearchParams(window.location.search).get("token");
+    const token = fromFragment ?? fromQuery;
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      window.history.replaceState({}, "", "/");
+      // Only the token is dropped from the address; ?events_connected= and friends are still read.
+      window.history.replaceState(
+        {},
+        "",
+        fromFragment ? window.location.pathname + window.location.search : "/",
+      );
     }
 
     setConnectionError(false);
