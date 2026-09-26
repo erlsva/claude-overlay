@@ -26,13 +26,13 @@ const clip = (n: number, prompt: string, extra: Record<string, unknown> = {}) =>
   };
 };
 
-async function get(query = "") {
+async function get(query = "", path = "/clips") {
   const app = express();
   app.use("/tts/public", publicClipsRouter);
   const server = app.listen(0);
   try {
     const { port } = server.address() as AddressInfo;
-    const response = await fetch(`http://127.0.0.1:${port}/tts/public/clips${query}`);
+    const response = await fetch(`http://127.0.0.1:${port}/tts/public${path}${query}`);
     return { status: response.status, body: (await response.json()) as any };
   } finally {
     server.close();
@@ -105,4 +105,30 @@ test("a very long prompt is shortened and odd searches are refused", async () =>
   assert.equal((await get("?offset=-1")).status, 400);
   assert.equal((await get(`?q=${"a".repeat(200)}`)).status, 400);
   assert.equal((await get("?q=a&q=b")).status, 400);
+});
+
+test("one clip can be opened by its address, on the same terms as the list", async () => {
+  const id = clip(2, "").id;
+  await saveFeatureFlags({ tts: true, scenes: false, publicClips: false });
+  const off = await get("", `/clips/${id}`);
+  assert.equal(off.status, 503);
+  assert.equal(off.body.disabled, true);
+
+  await saveFeatureFlags({ tts: true, scenes: false, publicClips: true });
+  const found = await get("", `/clips/${id}`);
+  assert.equal(found.status, 200);
+  assert.equal(found.body.prompt, "a pirate says arr");
+  assert.equal(found.body.token, `(TTS:${id})`);
+  assert.deepEqual(Object.keys(found.body).sort(), [
+    "createdAt",
+    "duration",
+    "id",
+    "prompt",
+    "token",
+  ]);
+  assert.doesNotMatch(JSON.stringify(found.body), /Viewerd|message-d|discord/i);
+
+  assert.equal((await get("", `/clips/${"e".repeat(32)}`)).status, 404);
+  assert.equal((await get("", "/clips/not-an-id")).status, 400);
+  assert.equal((await get("", `/clips/${"A".repeat(32)}`)).status, 400);
 });

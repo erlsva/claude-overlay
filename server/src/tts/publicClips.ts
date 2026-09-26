@@ -1,13 +1,14 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { getFeatureFlags } from "../db/index.js";
-import { searchClips, type TtsClip } from "./store.js";
+import { getClip, searchClips, type TtsClip } from "./store.js";
 
 /**
- * The public clip list at /tts/public/clips. It needs no login, so it answers only when the owner
- * has switched it on, and it hands out nothing but what a visitor needs to find a clip and replay
- * it: never who asked for it, and never where the audio is stored.
+ * The public clip list at /tts/public/clips, and one clip of it at /tts/public/clips/:id (what a
+ * shared link opens). They need no login, so they answer only when the owner has switched the
+ * list on, and they hand out nothing but what a visitor needs to find a clip and replay it: never
+ * who asked for it, and never where the audio is stored.
  */
 const PROMPT_LIMIT = 600;
 
@@ -41,12 +42,16 @@ const limiter = rateLimit({
   message: { error: "Too many requests. Try again in a minute." },
 });
 
-publicClipsRouter.get("/clips", limiter, async (req, res) => {
+/** Answers 503 and returns false while the owner has the public clips switched off. */
+function listIsOn(res: Response): boolean {
   const flags = getFeatureFlags();
-  if (!flags.tts || !flags.publicClips) {
-    res.status(503).json({ error: "The public clip list is switched off.", disabled: true });
-    return;
-  }
+  if (flags.tts && flags.publicClips) return true;
+  res.status(503).json({ error: "The public clip list is switched off.", disabled: true });
+  return false;
+}
+
+publicClipsRouter.get("/clips", limiter, async (req, res) => {
+  if (!listIsOn(res)) return;
   const parsed = search.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "That search is not valid." });
@@ -60,5 +65,25 @@ publicClipsRouter.get("/clips", limiter, async (req, res) => {
   } catch (error) {
     console.error("Public clip list failed", error);
     res.status(503).json({ error: "The clip list is unavailable right now." });
+  }
+});
+
+publicClipsRouter.get("/clips/:id", limiter, async (req, res) => {
+  if (!listIsOn(res)) return;
+  if (!/^[a-f0-9]{32}$/.test(req.params.id)) {
+    res.status(400).json({ error: "That is not a clip address." });
+    return;
+  }
+  try {
+    const clip = await getClip(req.params.id);
+    if (!clip) {
+      res.status(404).json({ error: "That clip does not exist any more." });
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=10");
+    res.json(toPublicClip(clip));
+  } catch (error) {
+    console.error("Public clip lookup failed", error);
+    res.status(503).json({ error: "That clip is unavailable right now." });
   }
 });
