@@ -156,7 +156,7 @@ export function TtsClips() {
       )}
       {phase === "off" && (
         <p className="tts-clips__notice" role="status">
-          The clip list is not available right now. The <a href="/tts">cheat sheet</a> still is.
+          The clip list is switched off right now. The <a href="/tts">cheat sheet</a> is still here.
         </p>
       )}
       {phase === "error" && (

@@ -299,7 +299,8 @@ streamers and show live if either is. The check (`GET /auth/live`, cached on the
 server for 20 seconds) runs in the background every minute and never holds a page
 up. The catch is that every page now talks to the server, so on a quiet day even
 the cheat sheet can wake it, in the background. If the server cannot be reached the
-tab just shows the normal icon.
+tab just shows the normal icon. `/favicon.ico` is served too, for browsers, link
+previews and crawlers that ask for it by convention.
 
 Studio → TTS turns expressive prompts into reusable overlay audio:
 

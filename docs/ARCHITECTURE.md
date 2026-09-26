@@ -124,7 +124,10 @@ in the order where it should apply.
   dashboard and overlay, `TileController`), which calls `useTabIdentity`. It sets the title and
   icon and adds `(LIVE)` and the live icon while a stream is on, checked in the background by
   `useLiveStatus`. A new page should use it too. `index.html` points at the plain icon so the tab
-  is right before any script runs.
+  is right before any script runs. Keep exactly one `<link rel="icon">` (the `#favicon` one the
+  hook changes): a second would let the browser pick it instead and the live icon would never
+  show. `client/public/favicon.ico` (16, 32 and 48 px, made from the same picture) exists only
+  for tools that ask for `/favicon.ico` by convention; without it they get the app's HTML.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
   `/tts` renders without waiting for the server (its only request is the background live check).
   Do not import `useAuth` or `useSocket` into one. The one

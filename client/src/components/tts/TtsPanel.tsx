@@ -59,7 +59,12 @@ export function TtsPanel(props: TtsPanelProps) {
             <a href="/tts" target="_blank" rel="noopener noreferrer">
               public cheat sheet
             </a>{" "}
-            with viewers. It lists what is possible, with examples they can copy.
+            with viewers. It lists what is possible, with examples they can copy. The{" "}
+            <a href="/tts/clips" target="_blank" rel="noopener noreferrer">
+              clip list
+            </a>{" "}
+            shows every saved clip, but stays hidden until the owner switches on{" "}
+            <strong>Public clip list</strong> in the account menu (bottom left).
           </p>
         </div>
       </details>
