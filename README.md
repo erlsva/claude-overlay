@@ -271,7 +271,9 @@ For prompt syntax, timing rules, speech-speed controls, storage, playback, and
 failure behavior, see the complete [TTS Scene Studio guide](docs/TTS.md).
 
 Viewers get two public pages, neither needing a login and both asking search
-engines to skip them:
+engines to skip them. They are themed after the streamers: a warm orange palette
+(dark, or cream for visitors whose system prefers light), rounded type bundled with
+the app, and the fox emotes from `client/src/assets`.
 
 - **Cheat sheet, `https://<frontend-host>/tts`.** A short guide to what is
   possible, with copyable examples and a warning that results can be unstable or

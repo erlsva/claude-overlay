@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Play, Search, Square } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { CalendarDays, Clock, Play, Search, Square } from "lucide-react";
 import { SERVER_URL } from "../config/server";
 import { CopyButton } from "./tts-guide/CopyButton";
+import { Emote } from "./tts-guide/Emote";
+import { AVATARS, DANCERS, pickFor, type EmoteName } from "./tts-guide/emotes";
 import { PublicShell } from "./tts-guide/PublicShell";
 
 /** What the server shares about a clip: never who asked for it. */
@@ -15,6 +24,16 @@ interface PublicClip {
 
 const PAGE_SIZE = 20;
 const PLAYBACK_VOLUME = 0.5;
+const CLIP_COLORS = [
+  "var(--tp-orange)",
+  "var(--tp-pink)",
+  "var(--tp-sky)",
+  "var(--tp-mint)",
+  "var(--tp-yellow)",
+  "var(--tp-lavender)",
+  "var(--tp-coral)",
+  "var(--tp-lime)",
+];
 
 /** One page of matches, or "off" when the owner has switched the public list off. */
 async function fetchClips(
@@ -31,7 +50,7 @@ async function fetchClips(
   return body;
 }
 
-const seconds = (value: number) =>
+const length = (value: number) =>
   value >= 60
     ? `${Math.floor(value / 60)}:${String(Math.round(value % 60)).padStart(2, "0")}`
     : `${Math.round(value)}s`;
@@ -133,10 +152,35 @@ export function TtsClips() {
     <PublicShell
       active="clips"
       title="All TTS clips"
-      lead="Every clip that has been made. Search what was said, listen to it, and copy its (TTS:…) token to replay it."
+      heading={
+        <>
+          Every <span className="tts-public__gradient">TTS clip</span>
+        </>
+      }
+      lead="Everything that has ever been said. Search it, listen to it, and copy its (TTS:…) token to replay a good one."
+      hero={
+        <>
+          <Emote name="binoculars" size={132} eager className="tts-public__hero-main" />
+          <Emote name="peek" size={62} eager className="tts-public__float tts-public__float--a" />
+          <Emote name="bork" size={58} eager className="tts-public__float tts-public__float--b" />
+          <Emote name="insane" size={60} eager className="tts-public__float tts-public__float--c" />
+        </>
+      }
+      actions={
+        <a className="tts-public__button tts-public__button--ghost" href="/tts">
+          How to make your own
+        </a>
+      }
+      note={
+        <>
+          Clips are listed only while the streamer has this page switched on, and who asked for each
+          one is never shown. Want to make your own? The <a href="/tts">cheat sheet</a> has examples
+          to copy.
+        </>
+      }
     >
-      <label className="tts-clips__search">
-        <Search size={15} aria-hidden="true" />
+      <label className="tts-public__search">
+        <Search size={20} aria-hidden="true" />
         <input
           type="search"
           value={typed}
@@ -148,36 +192,54 @@ export function TtsClips() {
       </label>
 
       {phase === "loading" && (
-        <p className="tts-clips__notice" role="status">
-          Loading clips…
-          {slow &&
-            " The server sleeps when nobody has used it for a while, so the first load can take up to a minute. Hang tight."}
-        </p>
+        <State emote="spin">
+          <strong>Fetching clips…</strong>
+          {slow && (
+            <p>
+              The server sleeps when nobody has used it for a while, so the first load can take up
+              to a minute. Hang tight, the fox is warming it up.
+            </p>
+          )}
+        </State>
       )}
       {phase === "off" && (
-        <p className="tts-clips__notice" role="status">
-          The clip list is switched off right now. The <a href="/tts">cheat sheet</a> is still here.
-        </p>
+        <State emote="wixelsSit">
+          <strong>The clip list is switched off right now.</strong>
+          <p>
+            The streamer has it turned off for the moment. The <a href="/tts">cheat sheet</a> is
+            still here.
+          </p>
+        </State>
       )}
       {phase === "error" && (
-        <p className="tts-clips__notice" role="alert">
-          {error}{" "}
-          <button type="button" onClick={() => setAttempt((count) => count + 1)}>
+        <State emote="bork">
+          <strong>{error}</strong>
+          <button
+            type="button"
+            className="tts-public__button tts-public__button--small"
+            onClick={() => setAttempt((count) => count + 1)}
+          >
             Try again
           </button>
-        </p>
+        </State>
       )}
 
       {phase === "ready" && (
         <>
-          <p className="tts-clips__count" aria-live="polite">
+          <p className="tts-public__count" aria-live="polite">
             {total === 0
               ? query
                 ? `No clips match “${query}”.`
                 : "No clips yet."
               : `${total} ${total === 1 ? "clip" : "clips"}${query ? ` matching “${query}”` : ""}`}
           </p>
-          <ul className="tts-clips__list">
+          {total === 0 && (
+            <State emote={query ? "binoculars" : "peek"}>
+              <strong>{query ? "Nothing matches that." : "No clips yet."}</strong>
+              <p>{query ? "Try fewer or different words." : "Check back after the next stream."}</p>
+            </State>
+          )}
+          <ul className="tts-public__clips">
             {clips.map((clip) => (
               <Clip
                 key={clip.id}
@@ -191,21 +253,26 @@ export function TtsClips() {
           {clips.length < total && (
             <button
               type="button"
-              className="tts-clips__more"
+              className="tts-public__button tts-public__more"
               onClick={() => void showMore()}
               disabled={loadingMore}
             >
+              <Emote name="pounce" size={30} />
               {loadingMore ? "Loading…" : "Show more"}
             </button>
           )}
         </>
       )}
-
-      <footer className="tts-public__footer">
-        Clips are listed only while the streamer has this page switched on, and who asked for each
-        one is never shown. To make your own, see the <a href="/tts">cheat sheet</a>.
-      </footer>
     </PublicShell>
+  );
+}
+
+function State({ emote, children }: { emote: EmoteName; children: ReactNode }) {
+  return (
+    <div className="tts-public__state" role="status">
+      <Emote name={emote} size={84} />
+      <div>{children}</div>
+    </div>
   );
 }
 
@@ -221,34 +288,48 @@ function Clip({
   onToggle: () => void;
 }) {
   const token = useRef<HTMLElement>(null);
+  const color = pickFor(clip.id, CLIP_COLORS);
   return (
-    <li className="tts-clips__item">
-      <p className="tts-clips__prompt">{clip.prompt}</p>
-      <p className="tts-clips__meta">
-        {seconds(clip.duration)} ·{" "}
-        {new Date(clip.createdAt).toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })}
-        {failed && <span className="tts-clips__failed"> · This clip could not be played.</span>}
-      </p>
-      <div className="tts-clips__actions">
-        <code ref={token}>{clip.token}</code>
-        <CopyButton text={clip.token} label={`Copy token ${clip.token}`} target={token} />
-        <button
-          type="button"
-          className="tts-public__copy"
-          onClick={onToggle}
-          aria-label={playing ? "Stop this clip" : "Play this clip"}
-        >
-          {playing ? (
-            <Square size={12} fill="currentColor" aria-hidden="true" />
-          ) : (
-            <Play size={12} fill="currentColor" aria-hidden="true" />
-          )}
-          {playing ? "Stop" : "Play"}
-        </button>
+    <li
+      className={`tts-public__clip${playing ? " is-playing" : ""}`}
+      style={{ "--sec": color } as CSSProperties}
+    >
+      <span className="tts-public__avatar">
+        <Emote name={playing ? pickFor(clip.id, DANCERS) : pickFor(clip.id, AVATARS)} size={64} />
+      </span>
+      <div className="tts-public__clip-body">
+        <p className="tts-public__clip-prompt">{clip.prompt}</p>
+        <p className="tts-public__clip-meta">
+          <span>
+            <Clock size={14} aria-hidden="true" /> {length(clip.duration)}
+          </span>
+          <span>
+            <CalendarDays size={14} aria-hidden="true" />{" "}
+            {new Date(clip.createdAt).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+          {failed && <span className="tts-public__clip-failed">Could not be played</span>}
+        </p>
+        <div className="tts-public__clip-actions">
+          <button
+            type="button"
+            className="tts-public__play"
+            onClick={onToggle}
+            aria-label={playing ? "Stop this clip" : "Play this clip"}
+          >
+            {playing ? (
+              <Square size={16} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <Play size={16} fill="currentColor" aria-hidden="true" />
+            )}
+            {playing ? "Stop" : "Play"}
+          </button>
+          <CopyButton text={clip.token} label={`Copy token ${clip.token}`} target={token} />
+          <code ref={token}>{clip.token}</code>
+        </div>
       </div>
     </li>
   );

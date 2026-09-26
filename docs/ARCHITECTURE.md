@@ -135,3 +135,12 @@ in the order where it should apply.
   (`server/src/tts/publicClips.ts`): it must stay behind the `publicClips` flag, return only fields
   picked one by one in `toPublicClip`, and stay rate-limited. Public pages use the `tts-public`
   CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.
+- **How the public pages look**: a warm fox palette defined as `--tp-*` tokens at the top of
+  `26-tts-public.css` (dark by default, cream for `prefers-color-scheme: light`), with one colour
+  per cheat-sheet section. Type is Fredoka (headings) and Nunito (text), bundled through
+  Fontsource in `views/tts-guide/fonts.ts`, so visitors make no third-party font request. The
+  emotes come from `client/src/assets`: register one in `views/tts-guide/emotes.ts` (an animated
+  one names a still one to show for people who prefer reduced motion), then draw it with
+  `<Emote name="…" size={…} />`, which is decorative unless you pass a `label`. Which colour and
+  emote each cheat-sheet section gets is in `views/tts-guide/sectionStyle.ts`, not in the shared
+  content. `vicksyClassic.gif` is deliberately unused.

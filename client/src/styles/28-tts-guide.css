@@ -1,0 +1,280 @@
+/* The cheat sheet (/tts): the warning, the section menu, and one coloured card per section. */
+.tts-public__warning {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 28px;
+  padding: 16px 24px 16px 18px;
+  border: 2px dashed color-mix(in srgb, var(--tp-yellow) 75%, transparent);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--tp-yellow) 11%, var(--tp-card));
+}
+.tts-public__warning-emote {
+  flex: none;
+  transform: rotate(-7deg);
+}
+.tts-public__warning strong {
+  display: block;
+  font-family: var(--tp-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.tts-public__warning p {
+  margin: 4px 0 0;
+  color: var(--tp-ink-2);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.tts-public__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: clamp(36px, 6vw, 60px);
+}
+.tts-public__toc a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px 5px 8px;
+  border: 2px solid color-mix(in srgb, var(--sec) 45%, var(--tp-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sec) 13%, var(--tp-card));
+  color: var(--tp-ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+.tts-public__toc a:hover,
+.tts-public__toc a:focus-visible {
+  border-color: var(--sec);
+  outline: none;
+  transform: translateY(-2px) rotate(-1.5deg);
+}
+
+.tts-public__section {
+  position: relative;
+  margin-bottom: clamp(32px, 6vw, 52px);
+  padding: clamp(20px, 4vw, 34px);
+  border: 2px solid color-mix(in srgb, var(--sec) 42%, var(--tp-line));
+  border-radius: 34px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--sec) 13%, var(--tp-card)),
+    var(--tp-card) 58%
+  );
+  box-shadow: 0 22px 44px -30px color-mix(in srgb, var(--sec) 70%, transparent);
+  scroll-margin-top: 88px;
+}
+.tts-public__section-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 3vw, 22px);
+  margin-bottom: 14px;
+}
+.tts-public__bubble {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: clamp(76px, 15vw, 96px);
+  aspect-ratio: 1;
+  border: 3px solid var(--sec);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sec) 24%, var(--tp-card));
+  transform: rotate(-5deg);
+  transition: transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.tts-public__bubble img {
+  width: 76%;
+  height: auto;
+}
+.tts-public__section:hover .tts-public__bubble {
+  transform: rotate(4deg) scale(1.06);
+}
+.tts-public__step {
+  display: block;
+  color: var(--sec);
+  font-family: var(--tp-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+}
+.tts-public__section h2 {
+  margin: 0;
+  font-family: var(--tp-display);
+  font-size: clamp(1.75rem, 4.8vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.tts-public__intro {
+  max-width: 44rem;
+  margin: 0 0 24px;
+  color: var(--tp-ink-2);
+  font-size: 1.1rem;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.tts-public__examples {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-public__example {
+  position: relative;
+  padding: 14px 16px 14px 22px;
+  border: 1.5px solid var(--tp-line);
+  border-radius: 22px;
+  background: var(--tp-bg-soft);
+  transition:
+    transform 0.15s,
+    border-color 0.15s;
+}
+.tts-public__example::before {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 0;
+  width: 6px;
+  border-radius: 0 6px 6px 0;
+  background: var(--sec);
+  content: "";
+}
+.tts-public__example:hover {
+  border-color: color-mix(in srgb, var(--sec) 65%, var(--tp-line));
+  transform: translateY(-2px);
+}
+.tts-public__example > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.tts-public__example code {
+  min-width: 0;
+  padding-top: 3px;
+  color: var(--tp-ink);
+  font-family: var(--tp-mono);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.tts-public__example p {
+  margin: 8px 0 0;
+  color: var(--tp-ink-3);
+  font-size: 0.97rem;
+}
+.tts-public__example p::before {
+  margin-right: 6px;
+  color: var(--sec);
+  font-weight: 900;
+  content: "↳";
+}
+
+/* The copy pill, shared with the clip list. */
+.tts-public__copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 2px solid color-mix(in srgb, var(--sec, var(--tp-orange)) 60%, var(--tp-line));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tp-ink);
+  font-family: var(--tp-display);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.tts-public__copy:hover,
+.tts-public__copy:focus-visible {
+  background: color-mix(in srgb, var(--sec, var(--tp-orange)) 24%, transparent);
+  outline: none;
+  transform: translateY(-1px);
+}
+.tts-public__copy.is-done {
+  border-color: var(--tp-mint);
+  background: color-mix(in srgb, var(--tp-mint) 24%, transparent);
+}
+
+.tts-public__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-public__chips li {
+  padding: 4px 14px;
+  border: 2px solid color-mix(in srgb, var(--chip, var(--sec)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chip, var(--sec)) 16%, var(--tp-card));
+  font-size: 0.93rem;
+  font-weight: 800;
+}
+.tts-public__chips li:nth-child(6n + 1) {
+  --chip: var(--tp-orange);
+}
+.tts-public__chips li:nth-child(6n + 2) {
+  --chip: var(--tp-pink);
+}
+.tts-public__chips li:nth-child(6n + 3) {
+  --chip: var(--tp-yellow);
+}
+.tts-public__chips li:nth-child(6n + 4) {
+  --chip: var(--tp-mint);
+}
+.tts-public__chips li:nth-child(6n + 5) {
+  --chip: var(--tp-lavender);
+}
+.tts-public__chips li:nth-child(6n) {
+  --chip: var(--tp-teal);
+}
+
+.tts-public__points {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-public__points li {
+  position: relative;
+  padding-left: 30px;
+  color: var(--tp-ink-2);
+  font-size: 1.03rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.tts-public__points li::before {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  color: var(--sec);
+  font-size: 1.05rem;
+  content: "★";
+}
+
+@media (max-width: 560px) {
+  .tts-public__warning {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tts-public__example > div {
+    flex-direction: column;
+  }
+}

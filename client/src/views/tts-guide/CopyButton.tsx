@@ -25,16 +25,16 @@ export function CopyButton({
   return (
     <button
       type="button"
-      className="tts-public__copy"
+      className={`tts-public__copy${status === "idle" ? "" : " is-done"}`}
       onClick={() => void copy()}
       aria-label={label}
     >
       {status === "idle" ? (
-        <Copy size={13} aria-hidden="true" />
+        <Copy size={15} aria-hidden="true" />
       ) : (
-        <Check size={13} aria-hidden="true" />
+        <Check size={15} aria-hidden="true" />
       )}
-      {status === "idle" ? "Copy" : status === "copied" ? "Copied" : "Selected"}
+      {status === "idle" ? "Copy" : status === "copied" ? "Copied!" : "Selected"}
     </button>
   );
 }

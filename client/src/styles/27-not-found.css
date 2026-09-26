@@ -16,14 +16,16 @@
 .not-found p.not-found__code {
   margin: 0;
   color: var(--accent-text);
-  font-size: 64px;
+  font-family: "Fredoka Variable", "Fredoka", ui-rounded, system-ui, sans-serif;
+  font-size: 72px;
   font-weight: var(--fw-bold);
   line-height: 1;
   letter-spacing: -0.02em;
 }
 .not-found h1 {
   margin: 0;
-  font-size: 24px;
+  font-family: "Fredoka Variable", "Fredoka", ui-rounded, system-ui, sans-serif;
+  font-size: 26px;
 }
 .not-found p {
   margin: 0;
