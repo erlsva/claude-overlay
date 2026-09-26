@@ -63,7 +63,7 @@ export function TtsPanel(props: TtsPanelProps) {
             <a href="/tts/clips" target="_blank" rel="noopener noreferrer">
               clip list
             </a>{" "}
-            shows every saved clip, but stays hidden until the owner switches on{" "}
+            lets anyone listen to every saved clip, but stays hidden until the owner switches on{" "}
             <strong>Public clip list</strong> in the account menu (bottom left).
           </p>
         </div>

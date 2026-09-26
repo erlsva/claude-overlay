@@ -186,7 +186,7 @@ export function AccountMenu({
           <div className="account-menu__row account-menu__row--switch">
             <span>
               <strong>Public clip list</strong>
-              <small>Anyone with the link can browse and search saved TTS clips</small>
+              <small>Anyone with the link can browse, search and play saved TTS clips</small>
             </span>
             <button
               type="button"

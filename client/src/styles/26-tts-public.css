@@ -330,11 +330,17 @@
   position: relative;
   z-index: 1;
   display: grid;
+  /* Without this the column grows to fit the wide campfire and the footer spills off a phone. */
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 12px;
   padding: 8px 20px 64px;
   color: var(--tp-ink-3);
   text-align: center;
+}
+.tts-public__footer img {
+  max-width: 100%;
+  height: auto;
 }
 .tts-public__footer p {
   max-width: 38rem;

@@ -131,9 +131,20 @@ in the order where it should apply.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
   `/tts` renders without waiting for the server (its only request is the background live check).
   Do not import `useAuth` or `useSocket` into one. The one
-  public page that needs the server for its content, `/tts/clips`, uses `GET /tts/public/clips`
-  (`server/src/tts/publicClips.ts`): it must stay behind the `publicClips` flag, return only fields
-  picked one by one in `toPublicClip`, and stay rate-limited. Public pages use the `tts-public`
+  public pages that need the server for their content, `/tts/clips` and `/tts/clips/<id>`, use
+  `GET /tts/public/clips` and `GET /tts/public/clips/:id` (`server/src/tts/publicClips.ts`): they
+  must stay behind the `publicClips` flag, return only fields picked one by one in
+  `toPublicClip`, and stay rate-limited. The list has no audio; a row links to the clip's page.
+  That page's player (`hooks/useClipPlayer.ts`, `views/tts-guide/ClipPlayer.tsx`) fetches the
+  audio from `GET /tts/clips/:id/file` (`server/src/tts/file.ts`) as soon as the page opens and
+  plays it from memory, so Play starts inside the click (Safari needs that), seeking is exact, and
+  the same bytes are decoded with `OfflineAudioContext` for the waveform. The server streams the
+  file instead of redirecting to the store because a browser only honours a download, and only
+  lets a page read audio, when the file comes from the same site or allows it. The route is an
+  unguessable-id capability like `/clips/:id/audio`, rate-limited and capped at 25 MB. The waveform
+  maths is in `support/waveform.ts` (tested); the bars are a CSS `mask-image` under one gradient,
+  so playing moves a single CSS variable per frame. The volume is kept in `localStorage` as
+  `tts_public_volume`. Public pages use the `tts-public`
   CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.
 - **How the public pages look**: a warm fox palette defined as `--tp-*` tokens at the top of
   `26-tts-public.css` (dark by default, cream for `prefers-color-scheme: light`), with one colour

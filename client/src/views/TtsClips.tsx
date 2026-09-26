@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { SERVER_URL } from "../config/server";
 import { pageCount, parsePage } from "../support/pagination";
-import { ClipCard, type PublicClip } from "./tts-guide/ClipCard";
+import type { PublicClip } from "./tts-guide/clipInfo";
+import { ClipRow } from "./tts-guide/ClipRow";
 import { Emote } from "./tts-guide/Emote";
-import type { EmoteName } from "./tts-guide/emotes";
 import { Pager } from "./tts-guide/Pager";
 import { PublicShell } from "./tts-guide/PublicShell";
+import { State } from "./tts-guide/State";
 
 const PAGE_SIZE = 10;
-const PLAYBACK_VOLUME = 0.5;
 
 /** One page of matches, or "off" when the owner has switched the public list off. */
 async function fetchClips(
@@ -67,9 +67,6 @@ export function TtsClips() {
   const [error, setError] = useState("");
   const [slow, setSlow] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [playing, setPlaying] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
   const top = useRef<HTMLParagraphElement>(null);
   const pages = pageCount(total, PAGE_SIZE);
 
@@ -102,8 +99,6 @@ export function TtsClips() {
     setBusy(true);
     setSlow(false);
     setPhase((current) => (current === "error" ? "loading" : current));
-    audio.current?.pause();
-    setPlaying(null);
     const slowTimer = window.setTimeout(() => setSlow(true), 4000);
     fetchClips(query, (page - 1) * PAGE_SIZE, controller.signal)
       .then((result) => {
@@ -131,40 +126,12 @@ export function TtsClips() {
     };
   }, [query, page, attempt]);
 
-  useEffect(() => () => audio.current?.pause(), []);
-
   const goTo = (next: number) => {
     if (next === page || next < 1 || next > pages) return;
     window.history.pushState({}, "", addressOf(next, query));
     setPage(next);
     top.current?.scrollIntoView({ behavior: "instant" });
   };
-
-  const toggle = useCallback(
-    (clip: PublicClip) => {
-      const player = (audio.current ??= new Audio());
-      if (playing === clip.id) {
-        player.pause();
-        setPlaying(null);
-        return;
-      }
-      player.pause();
-      player.src = `${SERVER_URL}/tts/clips/${clip.id}/audio`;
-      player.volume = PLAYBACK_VOLUME;
-      player.onended = () => setPlaying(null);
-      player.onerror = () => {
-        setPlaying(null);
-        setFailed(clip.id);
-      };
-      setFailed(null);
-      setPlaying(clip.id);
-      player.play().catch(() => {
-        setPlaying(null);
-        setFailed(clip.id);
-      });
-    },
-    [playing],
-  );
 
   return (
     <PublicShell
@@ -175,7 +142,7 @@ export function TtsClips() {
           Every <span className="tts-public__gradient">TTS clip</span>
         </>
       }
-      lead="Everything that has ever been said. Search it, listen to it, and copy its (TTS:…) token to replay a good one."
+      lead="Everything that has ever been said. Search it, open a clip to listen to it, and copy its (TTS:…) token to replay a good one."
       hero={
         <>
           <Emote name="binoculars" size={132} eager className="tts-public__hero-main" />
@@ -275,13 +242,7 @@ export function TtsClips() {
           />
           <ul className="tts-public__clips" aria-busy={busy}>
             {clips.map((clip) => (
-              <ClipCard
-                key={clip.id}
-                clip={clip}
-                playing={playing === clip.id}
-                failed={failed === clip.id}
-                onToggle={() => toggle(clip)}
-              />
+              <ClipRow key={clip.id} clip={clip} />
             ))}
           </ul>
           <Pager
@@ -295,14 +256,5 @@ export function TtsClips() {
         </>
       )}
     </PublicShell>
-  );
-}
-
-function State({ emote, children }: { emote: EmoteName; children: ReactNode }) {
-  return (
-    <div className="tts-public__state" role="status">
-      <Emote name={emote} size={84} />
-      <div>{children}</div>
-    </div>
   );
 }

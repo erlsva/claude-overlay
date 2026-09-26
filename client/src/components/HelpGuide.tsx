@@ -190,7 +190,7 @@ const sections = [
       ],
       [
         "Public TTS pages",
-        "Share /tts with viewers: a cheat sheet of what the TTS can do, with copyable examples. /tts/clips lists every saved clip with its (TTS:…) token; the owner switches it on with Public clip list in the account menu, and who asked for a clip is never shown.",
+        "Share /tts with viewers: a cheat sheet of what the TTS can do, with copyable examples. /tts/clips lists every saved clip, and each one has its own page to listen to, scrub through, turn down and download, with a link and a (TTS:…) token to copy; the owner switches it on with Public clip list in the account menu, and who asked for a clip is never shown.",
       ],
       [
         "TTS speed",

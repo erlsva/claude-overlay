@@ -1,5 +1,8 @@
 /** The pages this app has. Anything else is a 404, not a quiet fall-back to the dashboard. */
-export type Page = "dashboard" | "overlay" | "tts" | "tts-clips" | "not-found";
+export type Page = "dashboard" | "overlay" | "tts" | "tts-clips" | "tts-clip" | "not-found";
+
+/** A saved clip's id: what its page address ends in. */
+const CLIP_PAGE = /^\/tts\/clips\/([a-f0-9]{32})$/;
 
 const pages = new Map<string, Page>([
   ["/", "dashboard"],
@@ -13,5 +16,11 @@ const pages = new Map<string, Page>([
 
 /** Which page an address shows. A trailing slash is ignored; case and anything extra are not. */
 export function pageFor(pathname: string): Page {
-  return pages.get(pathname.replace(/\/+$/, "") || "/") ?? "not-found";
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return pages.get(path) ?? (CLIP_PAGE.test(path) ? "tts-clip" : "not-found");
+}
+
+/** The clip a /tts/clips/<id> address names, or null for any other address. */
+export function clipIdFor(pathname: string): string | null {
+  return CLIP_PAGE.exec(pathname.replace(/\/+$/, ""))?.[1] ?? null;
 }

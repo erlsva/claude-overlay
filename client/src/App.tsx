@@ -9,6 +9,7 @@ import { DEFAULT_TWITCH_CHANNEL } from "./config/twitchChannels";
 import { channelLabel } from "./support/liveStatus";
 import { NotFound } from "./views/NotFound";
 import { pageFor } from "./views/routes";
+import { TtsClip } from "./views/TtsClip";
 import { TtsClips } from "./views/TtsClips";
 import { TtsGuide } from "./views/TtsGuide";
 import { ToastProvider, useToast } from "./components/ToastProvider";
@@ -21,8 +22,12 @@ export default function App() {
   // render without waiting for the server; only the clip list needs it for its content.
   const page = pageFor(window.location.pathname);
   if (page === "not-found") return <NotFound />;
-  if (page === "tts" || page === "tts-clips") {
-    return <ErrorBoundary>{page === "tts" ? <TtsGuide /> : <TtsClips />}</ErrorBoundary>;
+  if (page === "tts" || page === "tts-clips" || page === "tts-clip") {
+    return (
+      <ErrorBoundary>
+        {page === "tts" ? <TtsGuide /> : page === "tts-clips" ? <TtsClips /> : <TtsClip />}
+      </ErrorBoundary>
+    );
   }
   if (page === "overlay") {
     return (

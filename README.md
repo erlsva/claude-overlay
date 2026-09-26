@@ -54,7 +54,7 @@ Konva is not used by the current application code.
 - Offers optional features behind owner-only **feature flags** (account menu):
   TTS Studio (on by default), **Scenes**, which saves and restores whole
   layouts (off by default), and the **Public clip list** (off by default), which
-  publishes the saved TTS clips at `/tts/clips`.
+  publishes the saved TTS clips at `/tts/clips`, each with a page of its own.
 - Restricts dashboard access with Twitch login, an owner account, and a
   database-backed whitelist/admin role system.
 
@@ -283,18 +283,27 @@ the app, and the fox emotes from `client/src/assets`.
   parses and does what its section claims, so a new TTS feature should be added
   there too. It never mentions providers, settings or voice names.
 - **All clips, `https://<frontend-host>/tts/clips`.** A searchable list of every
-  saved clip with its `(TTS:…)` token, a copy button and a play button, ten to a
-  page with numbered pages. The page and the search are kept in the address
-  (`/tts/clips?page=3&q=pirate`), so a page can be shared and the back button
-  works. This one
-  asks the server (`GET /tts/public/clips`), so on a quiet day the first visit
-  waits while Render wakes up, and the page says so; while the streamer is live
-  the overlay's ping keeps the server awake. It is **off until the owner switches
-  on Public clip list** in the account menu, and it also needs TTS to be on. It
-  shows the prompt, length, date and token, and never who asked for a clip or
-  where its audio is stored. Deleting a clip removes it from the list and kills its
-  token. The endpoint is rate-limited, caps a page at 40 clips, and only ever
-  returns those fields.
+  saved clip, ten to a page with numbered pages. Each row shows the prompt, the
+  date and the length, and is a link to that clip's own page. The page and the
+  search are kept in the address (`/tts/clips?page=3&q=pirate`), so a page can
+  be shared and the back button works. This one asks the server
+  (`GET /tts/public/clips`), so on a quiet day the first visit waits while
+  Render wakes up, and the page says so; while the streamer is live the overlay's
+  ping keeps the server awake.
+- **One clip, `https://<frontend-host>/tts/clips/<id>`.** The address to share a
+  clip by. It shows what was said and a player: play and pause, a waveform that
+  is also the seek bar (click or drag it, or use the arrow keys), the time and
+  length, a volume slider with mute (remembered on that device), a download
+  button for the MP3, and buttons that copy the link and the `(TTS:…)` token. The
+  waveform is the clip's real shape, drawn from the audio in the visitor's
+  browser. It asks the server for the details (`GET /tts/public/clips/<id>`) and
+  the audio (`GET /tts/clips/<id>/file`), and says so when a clip has been deleted.
+
+Both clip pages are **off until the owner switches on Public clip list** in the
+account menu, and they also need TTS to be on. They show the prompt, length, date
+and token, and never who asked for a clip or where its audio is stored. Deleting a
+clip removes it from the list and its page and kills its token. The endpoints are
+rate-limited, the list caps a page at 40 clips, and only those fields are returned.
 
 **Tab icon and live status.** Every page (dashboard, overlay, login and loading
 screens, the TTS pages and the 404) shows the same tab icon, and while a stream is
@@ -492,9 +501,12 @@ After deploying:
 - TTS generation is rate-limited and queued, but dynamic public chat-command
   prompts can still spend provider credits. Restrict them to trusted roles and
   use cooldowns; saved TTS tokens replay without generation cost.
-- The public clip list is opt-in and read-only. It shares only a clip's prompt, length,
-  date and token (never the requester or where the audio is kept), is rate-limited,
-  and closes when TTS or the Public clip list switch is turned off.
+- The public clip list and clip pages are opt-in and read-only. They share only a clip's
+  prompt, length, date and token (never the requester or where the audio is kept), are
+  rate-limited, and close when TTS or the Public clip list switch is turned off. The audio
+  itself is served from `/tts/clips/<id>/file`, an unguessable-id address like the one the
+  overlay plays from: it is rate-limited, capped at 25 MB, and only ever fetches the clip's
+  own stored file.
 - Myinstants page-link resolution is best-effort because Myinstants may reject
   requests from hosting-provider IPs. Downloading the MP3 and uploading it is
   the reliable fallback.
@@ -511,7 +523,7 @@ After deploying:
 - Canvas state is intentionally runtime state and resets when the server does.
 - The Twitch embed is cross-origin and sensitive to pointer-blocking layers;
   editor interaction uses a shield only while dashboard gestures require it.
-- Only `/`, `/login`, `/overlay`, `/tts` and `/tts/clips` exist; any other address shows
+- Only `/`, `/login`, `/overlay`, `/tts`, `/tts/clips` and `/tts/clips/<clip id>` exist; any other address shows
   the app's 404 page. Render's static site answers every path with the app, so the
   HTTP status is still 200. The 404 page asks search engines to skip it instead.
 - Myinstants can return HTTP 403 to server-side resolution requests.

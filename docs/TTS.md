@@ -6,7 +6,8 @@ combination of speech and background sound. Finished clips can play through the
 overlay and are saved with a reusable token.
 
 A short, public version for viewers lives at `/tts` on the dashboard site (no login),
-with a searchable list of saved clips at `/tts/clips` once the owner switches on
+with a searchable list of saved clips at `/tts/clips`, and a page for each clip at
+`/tts/clips/<id>` with a player (seek bar, volume, download), once the owner switches on
 **Public clip list**. The cheat sheet's content is `shared/ttsGuide.ts`; keep it in
 step with this guide when a feature is added, since a test checks that its examples
 still work.

@@ -1,0 +1,339 @@
+/* One clip on its own page (/tts/clips/<id>): the message, then the player. */
+.tts-public__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  font-family: var(--tp-display);
+  font-weight: 600;
+}
+
+.tts-public__clip-page {
+  position: relative;
+  margin: 0 0 28px;
+  padding: 24px 28px 26px 32px;
+  border: 2px solid color-mix(in srgb, var(--sec) 45%, var(--tp-line));
+  border-radius: 32px;
+  background: color-mix(in srgb, var(--sec) 8%, var(--tp-card));
+  box-shadow: 0 20px 40px -28px var(--sec);
+}
+.tts-public__clip-page::before {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 0;
+  width: 6px;
+  border-radius: 0 6px 6px 0;
+  background: var(--sec);
+  content: "";
+}
+.tts-public__clip-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--tp-ink-3);
+  font-family: var(--tp-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tts-public__clip-message {
+  margin: 0;
+  padding: 18px 20px;
+  border: 2px solid var(--tp-line);
+  border-radius: 22px;
+  background: var(--tp-bg-soft);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.tts-public__clip-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 4px 20px;
+  color: var(--tp-ink-3);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* The player */
+.tts-public__player {
+  display: grid;
+  gap: 14px;
+  padding-top: 20px;
+  border-top: 2px dashed var(--tp-line);
+}
+.tts-public__player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tts-public__round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tp-button);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--tp-button) 52%, black);
+  color: var(--tp-button-ink);
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.tts-public__round:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--tp-button) 52%, black);
+}
+.tts-public__round:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--tp-button) 52%, black);
+}
+.tts-public__round:focus-visible {
+  outline: 3px solid var(--tp-ink);
+  outline-offset: 4px;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--tp-button) 52%, black);
+}
+.tts-public__round:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.tts-public__player.is-playing .tts-public__round {
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--sec) 32%, transparent),
+    0 4px 0 color-mix(in srgb, var(--tp-button) 52%, black);
+}
+.tts-public__spin {
+  animation: tts-spin 0.9s linear infinite;
+}
+@keyframes tts-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tts-public__spin {
+    animation: none;
+  }
+}
+
+.tts-public__time {
+  flex: none;
+  min-width: 3ch;
+  color: var(--tp-ink-3);
+  font-family: var(--tp-mono);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.tts-public__time:first-of-type {
+  color: var(--sec);
+}
+
+/* The waveform. The bars are a mask, and the gradient behind it is the played part. */
+.tts-public__seek {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+}
+.tts-public__seek.is-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.tts-public__seek:focus-visible {
+  outline: 3px solid var(--sec);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+.tts-public__wave {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    var(--sec) var(--progress, 0%),
+    color-mix(in srgb, var(--tp-ink) 26%, transparent) var(--progress, 0%)
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.tts-public__icon-button,
+a.tts-public__icon-button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid var(--tp-line);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--tp-ink-2);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.tts-public__icon-button:hover,
+.tts-public__icon-button:focus-visible {
+  border-color: var(--sec);
+  background: color-mix(in srgb, var(--sec) 18%, transparent);
+  color: var(--tp-ink);
+  outline: none;
+}
+.tts-public__icon-button:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sec) 40%, transparent);
+}
+.tts-public__icon-button--plain {
+  width: 40px;
+  height: 40px;
+  border-color: transparent;
+  border-radius: 50%;
+}
+
+.tts-public__volume {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tts-public__volume input {
+  flex: 0 1 240px;
+  min-width: 0;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tts-public__volume input:focus,
+.tts-public__volume input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.tts-public__volume input::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--sec) var(--fill, 50%),
+    color-mix(in srgb, var(--tp-ink) 24%, transparent) var(--fill, 50%)
+  );
+}
+.tts-public__volume input::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--sec) var(--fill, 50%),
+    color-mix(in srgb, var(--tp-ink) 24%, transparent) var(--fill, 50%)
+  );
+}
+.tts-public__volume input::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 3px solid var(--sec);
+  border-radius: 50%;
+  background: var(--tp-card);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tts-public__volume input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--sec);
+  border-radius: 50%;
+  background: var(--tp-card);
+}
+.tts-public__volume input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sec) 38%, transparent);
+}
+.tts-public__volume input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--sec) 38%, transparent);
+}
+.tts-public__volume-value {
+  min-width: 4ch;
+  color: var(--tp-ink-3);
+  font-family: var(--tp-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.tts-public__player-failed {
+  margin: 0;
+  color: var(--tp-coral);
+  font-weight: 800;
+}
+.tts-public__player-failed button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tp-orange);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.tts-public__clip-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.tts-public__clip-links code {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin-top: 4px;
+  padding: 5px 12px;
+  border: 1.5px solid var(--tp-line);
+  border-radius: 999px;
+  background: var(--tp-bg-soft);
+  color: var(--tp-ink-2);
+  font-family: var(--tp-mono);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .tts-public__clip-page {
+    padding: 20px 16px 22px 22px;
+  }
+  .tts-public__player-row {
+    gap: 8px;
+  }
+  .tts-public__round {
+    width: 44px;
+    height: 44px;
+  }
+  .tts-public__time {
+    min-width: 0;
+    font-size: 0.85rem;
+  }
+  .tts-public__icon-button,
+  a.tts-public__icon-button {
+    width: 40px;
+    height: 40px;
+  }
+}
