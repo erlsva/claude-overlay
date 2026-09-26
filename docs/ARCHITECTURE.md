@@ -157,7 +157,10 @@ in the order where it should apply.
   per cheat-sheet section. The top bar is sticky and spans the window, while what is in it
   shares the page column's width through the `--tp-column` token (960px, of which the visible
   content is 896 after the side padding). Keep `.tts-public` at `overflow-x: clip`: `hidden` makes
-  it a scroll container and the bar silently stops sticking. Type is Fredoka (headings) and Nunito (text), bundled through
+  it a scroll container and the bar silently stops sticking. The background glow
+  (`.tts-public__glow`) is `position: absolute`, so it is as tall as the page and scrolls with it,
+  with the warm glows at the column's top corners and the cool one centred behind the campfire;
+  a `fixed` one would sit behind the sticky bar for good. Type is Fredoka (headings) and Nunito (text), bundled through
   Fontsource in `views/tts-guide/fonts.ts`, so visitors make no third-party font request. The
   emotes come from `client/src/assets`: register one in `views/tts-guide/emotes.ts` (an animated
   one names a still one to show for people who prefer reduced motion), then draw it with

@@ -69,8 +69,12 @@
 }
 
 /* Soft colour behind everything, plus a faint dot pattern. It never blocks a click. */
+/* The soft colour behind everything, and the dot grid. It belongs to the page, not the window, so
+   it scrolls with the content: a window-fixed glow would sit behind the sticky top bar for good.
+   The warm glows hug the top corners of the content column and the cool one is centred behind the
+   campfire at the bottom. Their heights are pixels because the layer is as tall as the page. */
 .tts-public__glow {
-  position: fixed;
+  position: absolute;
   z-index: 0;
   inset: 0;
   background:
@@ -81,17 +85,17 @@
       )
       0 0 / 28px 28px,
     radial-gradient(
-      60rem 36rem at 10% -8%,
+      60rem 36rem at max(10%, calc(50% - var(--tp-column) / 2)) -80px,
       color-mix(in srgb, var(--tp-orange) 24%, transparent),
       transparent 62%
     ),
     radial-gradient(
-      46rem 30rem at 96% 2%,
+      46rem 30rem at min(96%, calc(50% + var(--tp-column) / 2)) 20px,
       color-mix(in srgb, var(--tp-pink) 17%, transparent),
       transparent 62%
     ),
     radial-gradient(
-      52rem 30rem at 62% 112%,
+      52rem 30rem at 50% calc(100% - 40px),
       color-mix(in srgb, var(--tp-sky) 13%, transparent),
       transparent 62%
     );
