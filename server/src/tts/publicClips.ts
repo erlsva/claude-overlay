@@ -6,7 +6,7 @@ import { getClip, searchClips, type TtsClip } from "./store.js";
 
 /**
  * The public clip list at /tts/public/clips, and one clip of it at /tts/public/clips/:id (what a
- * shared link opens). They need no login, so they answer only when the owner has switched the
+ * shared link opens, with the clip's waveform). They need no login, so they answer only when the owner has switched the
  * list on, and they hand out nothing but what a visitor needs to find a clip and replay it: never
  * who asked for it, and never where the audio is stored.
  */
@@ -30,6 +30,16 @@ export function toPublicClip(clip: TtsClip) {
     createdAt: clip.createdAt,
     duration: clip.duration,
   };
+}
+
+/**
+ * A stored waveform, checked before it is handed out: a list of whole numbers from 0 to 100, or
+ * null when the clip has none (or something else is stored there).
+ */
+export function sanitizePeaks(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 200) return null;
+  if (!value.every((peak) => typeof peak === "number" && Number.isFinite(peak))) return null;
+  return value.map((peak) => Math.min(100, Math.max(0, Math.round(peak))));
 }
 
 export const publicClipsRouter = Router();
@@ -81,7 +91,7 @@ publicClipsRouter.get("/clips/:id", limiter, async (req, res) => {
       return;
     }
     res.setHeader("Cache-Control", "public, max-age=10");
-    res.json(toPublicClip(clip));
+    res.json({ ...toPublicClip(clip), peaks: sanitizePeaks(clip.peaks) });
   } catch (error) {
     console.error("Public clip lookup failed", error);
     res.status(503).json({ error: "That clip is unavailable right now." });

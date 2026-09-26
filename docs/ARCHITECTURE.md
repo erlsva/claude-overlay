@@ -130,21 +130,27 @@ in the order where it should apply.
   for tools that ask for `/favicon.ico` by convention; without it they get the app's HTML.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
   `/tts` renders without waiting for the server (its only request is the background live check).
-  Do not import `useAuth` or `useSocket` into one. The one
+  Do not import `useAuth` or `useSocket` into one. The
   public pages that need the server for their content, `/tts/clips` and `/tts/clips/<id>`, use
   `GET /tts/public/clips` and `GET /tts/public/clips/:id` (`server/src/tts/publicClips.ts`): they
   must stay behind the `publicClips` flag, return only fields picked one by one in
   `toPublicClip`, and stay rate-limited. The list has no audio; a row links to the clip's page.
-  That page's player (`hooks/useClipPlayer.ts`, `views/tts-guide/ClipPlayer.tsx`) fetches the
-  audio from `GET /tts/clips/:id/file` (`server/src/tts/file.ts`) as soon as the page opens and
-  plays it from memory, so Play starts inside the click (Safari needs that), seeking is exact, and
-  the same bytes are decoded with `OfflineAudioContext` for the waveform. The server streams the
-  file instead of redirecting to the store because a browser only honours a download, and only
-  lets a page read audio, when the file comes from the same site or allows it. The route is an
-  unguessable-id capability like `/clips/:id/audio`, rate-limited and capped at 25 MB. The waveform
-  maths is in `support/waveform.ts` (tested); the bars are a CSS `mask-image` under one gradient,
-  so playing moves a single CSS variable per frame. The volume is kept in `localStorage` as
-  `tts_public_volume`. Public pages use the `tts-public`
+  That page's player (`hooks/useClipPlayer.ts`, `views/tts-guide/ClipPlayer.tsx`) plays from
+  `GET /tts/clips/:id/audio`, and the download button links to the same address. That route only
+  redirects to the store (Discord's CDN), so the audio never passes through this server. Render
+  bills outbound traffic and the free allowance is small, so **do not add a proxy that streams
+  the audio through the server**: it multiplies the bandwidth by every page view. Nothing is
+  fetched until Play is pressed (`preload="none"`), and `play()` runs straight from the click,
+  which Safari requires. A proxy is tempting only for the waveform, because the store sends no
+  CORS headers, so a page can play, seek and download the audio but cannot read its bytes. So the
+  waveform is worked out on the server instead, once, when a clip is made
+  (`server/src/tts/audio/peaks.ts`: 60 whole numbers from 0 to 100, stored in the clip's metadata
+  as `peaks`), and only `GET /tts/public/clips/:id` returns it; lists and searches strip it
+  (`metadata - 'peaks'`). Clips from before it existed get theirs from `npm run backfill:peaks` in
+  `server/` (`-- --dry-run --limit=3` tries it without writing); until then the page draws a
+  stand-in shape (`fallbackPeaks`). The drawing maths is in `support/waveform.ts` (tested); the
+  bars are a CSS `mask-image` under one gradient, so playing moves a single CSS variable per
+  frame. The volume is kept in `localStorage` as `tts_public_volume`. Public pages use the `tts-public`
   CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.
 - **How the public pages look**: a warm fox palette defined as `--tp-*` tokens at the top of
   `26-tts-public.css` (dark by default, cream for `prefers-color-scheme: light`), with one colour

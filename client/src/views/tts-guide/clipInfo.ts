@@ -5,6 +5,8 @@ export interface PublicClip {
   prompt: string;
   createdAt: string;
   duration: number;
+  /** The waveform, whole numbers from 0 to 100. Only a clip's own page has it, and old clips lack it. */
+  peaks?: number[] | null;
 }
 
 const CLIP_COLORS = [

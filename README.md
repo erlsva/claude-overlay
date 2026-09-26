@@ -295,9 +295,14 @@ the app, and the fox emotes from `client/src/assets`.
   is also the seek bar (click or drag it, or use the arrow keys), the time and
   length, a volume slider with mute (remembered on that device), a download
   button for the MP3, and buttons that copy the link and the `(TTS:…)` token. The
-  waveform is the clip's real shape, drawn from the audio in the visitor's
-  browser. It asks the server for the details (`GET /tts/public/clips/<id>`) and
-  the audio (`GET /tts/clips/<id>/file`), and says so when a clip has been deleted.
+  waveform is the clip's real shape, worked out once when the clip was made and
+  stored with it; clips from before that show a stand-in shape until
+  `npm run backfill:peaks` (see [docs/TTS.md](docs/TTS.md)) has been run. The page
+  asks the server for the details (`GET /tts/public/clips/<id>`) and says so
+  when a clip has been deleted. The audio plays and downloads from
+  `GET /tts/clips/<id>/audio`, which only redirects to where the clip is stored,
+  so it never counts against Render's outbound bandwidth, and nothing is
+  downloaded until Play is pressed.
 
 Both clip pages are **off until the owner switches on Public clip list** in the
 account menu, and they also need TTS to be on. They show the prompt, length, date
@@ -504,9 +509,9 @@ After deploying:
 - The public clip list and clip pages are opt-in and read-only. They share only a clip's
   prompt, length, date and token (never the requester or where the audio is kept), are
   rate-limited, and close when TTS or the Public clip list switch is turned off. The audio
-  itself is served from `/tts/clips/<id>/file`, an unguessable-id address like the one the
-  overlay plays from: it is rate-limited, capped at 25 MB, and only ever fetches the clip's
-  own stored file.
+  plays and downloads from `/tts/clips/<id>/audio`, an unguessable-id address like the one
+  the overlay plays from. It is rate-limited and only redirects to the stored file, so it
+  sends almost no data itself.
 - Myinstants page-link resolution is best-effort because Myinstants may reject
   requests from hosting-provider IPs. Downloading the MP3 and uploading it is
   the reliable fallback.

@@ -10,7 +10,12 @@ export type TtsClip = {
   createdAt: string;
   duration: number;
   discordMessageId: string;
+  /** The clip's waveform: whole numbers 0 to 100, one per bar. Clips made before it existed lack it. */
+  peaks?: number[];
 };
+
+/** A clip without its waveform. Lists do not need it, and it adds up across many clips. */
+const withoutPeaks = ({ peaks: _peaks, ...clip }: TtsClip): TtsClip => clip;
 
 const file = path.join(process.env.DATA_DIR || "data", "tts-clips.json");
 let ready: Promise<void> | undefined;
@@ -73,10 +78,43 @@ export async function listClips(): Promise<TtsClip[]> {
   await init();
   if (postgres) {
     return (
-      await postgres.query("SELECT metadata FROM tts_clips ORDER BY created_at DESC LIMIT 100")
+      await postgres.query(
+        "SELECT metadata - 'peaks' AS metadata FROM tts_clips ORDER BY created_at DESC LIMIT 100",
+      )
     ).rows.map((row) => row.metadata as TtsClip);
   }
-  return (await local()).slice(0, 100);
+  return (await local()).slice(0, 100).map(withoutPeaks);
+}
+
+/** The ids of saved clips that have no waveform yet, newest first. */
+export async function clipIdsWithoutPeaks(): Promise<string[]> {
+  await init();
+  if (postgres) {
+    return (
+      await postgres.query(
+        "SELECT id FROM tts_clips WHERE NOT (metadata ? 'peaks') ORDER BY created_at DESC",
+      )
+    ).rows.map((row) => row.id as string);
+  }
+  return (await local()).filter((clip) => !clip.peaks).map((clip) => clip.id);
+}
+
+/** Stores a clip's waveform. False when the clip no longer exists. */
+export async function setClipPeaks(id: string, peaks: number[]): Promise<boolean> {
+  await init();
+  if (postgres) {
+    const result = await postgres.query(
+      "UPDATE tts_clips SET metadata = jsonb_set(metadata, '{peaks}', $2::jsonb) WHERE id = $1",
+      [id, JSON.stringify(peaks)],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+  const clips = await local();
+  const clip = clips.find((item) => item.id === id);
+  if (!clip) return false;
+  clip.peaks = peaks;
+  await writeLocal(clips);
+  return true;
 }
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
@@ -97,7 +135,7 @@ export async function searchClips(options: {
   const id = searchedId(query);
   if (postgres) {
     const { rows } = await postgres.query(
-      `SELECT metadata, COUNT(*) OVER() AS total FROM tts_clips
+      `SELECT metadata - 'peaks' AS metadata, COUNT(*) OVER() AS total FROM tts_clips
        WHERE $1 = '' OR metadata->>'prompt' ILIKE $2 ESCAPE '\\' OR id = $3
        ORDER BY created_at DESC LIMIT $4 OFFSET $5`,
       [query, `%${escapeLike(query)}%`, id, options.limit, options.offset],
@@ -112,7 +150,7 @@ export async function searchClips(options: {
     (clip) => !query || clip.prompt.toLowerCase().includes(words) || (!!id && clip.id === id),
   );
   return {
-    clips: matches.slice(options.offset, options.offset + options.limit),
+    clips: matches.slice(options.offset, options.offset + options.limit).map(withoutPeaks),
     total: matches.length,
   };
 }

@@ -8,6 +8,7 @@ import {
   eleven,
   FINAL_SOUND_EFFECT_FILTER,
   FINAL_TTS_FILTER,
+  peaksOfMp3,
   renderAudio,
   run,
 } from "./audio/index.js";
@@ -242,8 +243,12 @@ export function submit(input: {
           createdAt: new Date().toISOString(),
           duration,
         };
-        const discordMessageId = await uploadClip(await readFile(mp3), metadata);
-        clip = { ...metadata, discordMessageId };
+        const bytes = await readFile(mp3);
+        // The waveform is only decoration for the public clip page, so a failure here must never
+        // lose the clip; it is simply left out (and can be filled in later).
+        const peaks = await peaksOfMp3(bytes).catch(() => undefined);
+        const discordMessageId = await uploadClip(bytes, metadata);
+        clip = { ...metadata, discordMessageId, ...(peaks ? { peaks } : {}) };
         try {
           await saveClip(clip);
         } catch (error) {

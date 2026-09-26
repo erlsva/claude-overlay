@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { SERVER_URL } from "../config/server";
-import { clampFraction, peaksFrom } from "../support/waveform";
+import { clampFraction } from "../support/waveform";
 
 const VOLUME_KEY = "tts_public_volume";
 const DEFAULT_VOLUME = 0.5;
@@ -16,61 +16,43 @@ function readVolume(): number {
   return DEFAULT_VOLUME;
 }
 
-/** The waveform of the audio, or null when the browser cannot decode it (the player then still plays). */
-async function decodePeaks(bytes: ArrayBuffer): Promise<number[] | null> {
-  if (typeof OfflineAudioContext === "undefined") return null;
-  try {
-    const decoded = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(bytes);
-    return peaksFrom(decoded.getChannelData(0));
-  } catch {
-    return null;
-  }
-}
+/**
+ * Where a clip's audio is: the server answers with a redirect to the store, so the audio itself
+ * never passes through this site's server (it has a monthly bandwidth allowance). The same
+ * address downloads the clip, because the store sends it as an attachment.
+ */
+export const clipAudioUrl = (clipId: string) => `${SERVER_URL}/tts/clips/${clipId}/audio`;
 
 /**
- * One clip's audio for its own page. The file is fetched when the page opens and played from
- * memory, so Play starts at once (and inside the click, which Safari requires), seeking is exact,
- * and the same bytes give the waveform. The volume is remembered between visits.
+ * One clip's audio for its own page. Nothing is downloaded until Play is pressed
+ * (`preload="none"`), and pressing it calls `play()` straight from the click, which Safari
+ * requires. Seeking, buffering and ranges are the browser's own. The volume is remembered
+ * between visits.
  */
 export function useClipPlayer(clipId: string, expectedLength: number) {
-  const [audio] = useState(() => new Audio());
-  const [load, setLoad] = useState<"loading" | "ready" | "failed">("loading");
+  const [audio] = useState(() => {
+    const element = new Audio();
+    element.preload = "none";
+    return element;
+  });
   const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
   const [time, setTime] = useState(0);
   const [length, setLength] = useState(expectedLength);
-  const [peaks, setPeaks] = useState<number[] | null>(null);
   const [volume, setVolumeState] = useState(readVolume);
   const [muted, setMuted] = useState(false);
 
+  // Trying again sets the source afresh, which also clears the element's error.
   useEffect(() => {
-    const controller = new AbortController();
-    let url = "";
-    setLoad("loading");
-    setPeaks(null);
+    setFailed(false);
     setTime(0);
-    (async () => {
-      const response = await fetch(`${SERVER_URL}/tts/clips/${clipId}/file`, {
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error(`The server answered ${response.status}`);
-      const bytes = await response.arrayBuffer();
-      url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
-      audio.src = url;
-      setLoad("ready");
-      // The bars fill in when the decode finishes; playing does not wait for it.
-      void decodePeaks(bytes.slice(0)).then((decoded) => {
-        if (decoded && !controller.signal.aborted) setPeaks(decoded);
-      });
-    })().catch(() => {
-      if (!controller.signal.aborted) setLoad("failed");
-    });
+    audio.src = clipAudioUrl(clipId);
     return () => {
-      controller.abort();
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
-      if (url) URL.revokeObjectURL(url);
     };
   }, [audio, clipId, attempt]);
 
@@ -82,16 +64,39 @@ export function useClipPlayer(clipId: string, expectedLength: number) {
     const finished = () => {
       audio.currentTime = 0;
       setPlaying(false);
+      setBuffering(false);
       setTime(0);
     };
     const handlers: Array<[string, () => void]> = [
       ["timeupdate", sync],
       ["durationchange", sync],
       ["seeked", sync],
-      ["play", () => setPlaying(true)],
-      ["pause", () => setPlaying(false)],
+      [
+        "play",
+        () => {
+          setPlaying(true);
+          setBuffering(audio.readyState < 3);
+        },
+      ],
+      ["waiting", () => setBuffering(true)],
+      ["playing", () => setBuffering(false)],
+      [
+        "pause",
+        () => {
+          setPlaying(false);
+          setBuffering(false);
+        },
+      ],
       ["ended", finished],
-      ["error", () => audio.getAttribute("src") && setLoad("failed")],
+      [
+        "error",
+        () => {
+          if (!audio.getAttribute("src")) return;
+          setFailed(true);
+          setPlaying(false);
+          setBuffering(false);
+        },
+      ],
     ];
     for (const [name, handler] of handlers) audio.addEventListener(name, handler);
     return () => {
@@ -150,12 +155,12 @@ export function useClipPlayer(clipId: string, expectedLength: number) {
   }, [volume, setVolume]);
 
   return {
-    load,
+    failed,
     retry: () => setAttempt((count) => count + 1),
     playing,
+    buffering,
     time,
     length,
-    peaks,
     volume,
     muted,
     toggle,

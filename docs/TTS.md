@@ -359,6 +359,20 @@ original creator metadata.
 Deleting a saved clip removes both its database metadata and Discord webhook
 message. A deleted token cannot be replayed.
 
+Each clip also stores a waveform (60 loudness values, worked out from the finished MP3 when the
+clip is made) that the public clip page draws as its seek bar. It is only decoration, so a
+failure to work it out never loses the clip. Clips saved before this existed have none and show a
+stand-in shape. To give them theirs, run this from `server/` (it needs ffmpeg and the same
+`.env` as the server, and it writes into whichever database `DATABASE_URL` names):
+
+```bash
+npm run backfill:peaks -- --dry-run --limit=3   # try a few clips, storing nothing
+npm run backfill:peaks                          # every clip that has none
+```
+
+It reads each MP3 back from Discord (inbound traffic, so it does not use Render's bandwidth),
+only touches clips that have no waveform, and can safely be run again.
+
 ## Audio processing
 
 - Every scene is balanced by how loud it sounds (ITU-R BS.1770 loudness), not by

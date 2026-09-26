@@ -23,24 +23,13 @@ export function clampFraction(value: number): number {
 }
 
 /**
- * The bar heights (0 to 1) for decoded audio: how loud each equal slice of the clip is, scaled so
- * the loudest slice is full height. Loudness is the RMS of the slice, eased with a power below 1
- * so quiet speech does not vanish next to a shout.
+ * The waveform the server stored for a clip (whole numbers from 0 to 100) as bar heights from 0
+ * to 1, or null when there is none, so the caller can fall back to a stand-in shape.
  */
-export function peaksFrom(samples: ArrayLike<number>, bars: number = BARS): number[] {
-  const size = Math.max(1, Math.floor(samples.length / bars));
-  const loudness: number[] = [];
-  for (let bar = 0; bar < bars; bar++) {
-    const from = bar * size;
-    const to = Math.min(samples.length, from + size);
-    let sum = 0;
-    for (let at = from; at < to; at++) sum += samples[at] * samples[at];
-    loudness.push(to > from ? Math.sqrt(sum / (to - from)) : 0);
-  }
-  const loudest = Math.max(...loudness);
-  return loudness.map((value) =>
-    loudest > 0 ? Math.max(FLOOR, Math.pow(value / loudest, 0.6)) : FLOOR,
-  );
+export function storedPeaks(value: unknown): number[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 200) return null;
+  if (!value.every((peak) => typeof peak === "number" && Number.isFinite(peak))) return null;
+  return value.map((peak) => clampFraction(peak / 100));
 }
 
 /**

@@ -6,7 +6,7 @@ import {
   fallbackPeaks,
   formatLength,
   formatTime,
-  peaksFrom,
+  storedPeaks,
   waveMask,
 } from "../src/support/waveform.ts";
 
@@ -35,25 +35,11 @@ test("a position is held between the two ends of the bar", () => {
   assert.equal(clampFraction(NaN), 0);
 });
 
-test("peaks follow the loudness of each slice, scaled to the loudest", () => {
-  // Quiet first half, loud second half.
-  const samples = Float32Array.from({ length: 6000 }, (_, at) => (at < 3000 ? 0.1 : 0.8));
-  const peaks = peaksFrom(samples, 10);
-  assert.equal(peaks.length, 10);
-  assert.equal(Math.max(...peaks), 1);
-  assert.ok(peaks[0] < peaks[9], "the quiet start is shorter than the loud end");
-  assert.ok(peaks.every((peak) => peak > 0 && peak <= 1));
-  assert.equal(peaks[0], peaks[4], "equal loudness draws equal bars");
-});
-
-test("silence and very short audio still give a full row of visible bars", () => {
-  const silent = peaksFrom(new Float32Array(5000), 8);
-  assert.equal(silent.length, 8);
-  assert.ok(silent.every((peak) => peak > 0 && peak < 0.1));
-  const tiny = peaksFrom(Float32Array.from([0.5, -0.5, 0.25]), BARS);
-  assert.equal(tiny.length, BARS);
-  assert.ok(tiny.every((peak) => Number.isFinite(peak) && peak > 0 && peak <= 1));
-  assert.equal(peaksFrom(new Float32Array(0), 4).length, 4);
+test("a stored waveform becomes bar heights, and anything odd is refused", () => {
+  assert.deepEqual(storedPeaks([0, 50, 100]), [0, 0.5, 1]);
+  assert.deepEqual(storedPeaks([250, -20]), [1, 0], "out-of-range values are held to the bar");
+  for (const bad of [undefined, null, "12", {}, [], [1, "2"], [1, NaN], Array(201).fill(5)])
+    assert.equal(storedPeaks(bad), null, JSON.stringify(bad)?.slice(0, 30));
 });
 
 test("the stand-in shape is repeatable per clip, different between clips, and in range", () => {

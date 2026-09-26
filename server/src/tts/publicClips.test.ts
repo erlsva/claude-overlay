@@ -10,7 +10,7 @@ process.env.DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "overlay-public-clips-
 
 const { saveClip } = await import("./store.js");
 const { saveFeatureFlags } = await import("../db/index.js");
-const { publicClipsRouter, toPublicClip } = await import("./publicClips.js");
+const { publicClipsRouter, sanitizePeaks, toPublicClip } = await import("./publicClips.js");
 
 const clip = (n: number, prompt: string, extra: Record<string, unknown> = {}) => {
   const id = n.toString(16).padStart(32, "0");
@@ -123,12 +123,31 @@ test("one clip can be opened by its address, on the same terms as the list", asy
     "createdAt",
     "duration",
     "id",
+    "peaks",
     "prompt",
     "token",
   ]);
+  assert.equal(found.body.peaks, null, "a clip made before waveforms existed has none");
   assert.doesNotMatch(JSON.stringify(found.body), /Viewerd|message-d|discord/i);
 
   assert.equal((await get("", `/clips/${"e".repeat(32)}`)).status, 404);
   assert.equal((await get("", "/clips/not-an-id")).status, 400);
   assert.equal((await get("", `/clips/${"A".repeat(32)}`)).status, 400);
+});
+
+test("a clip's page carries its stored waveform, cleaned up, and the list never does", async () => {
+  await saveClip(clip(4, "with a waveform", { peaks: [0, 55.4, 100, 250, -3] }));
+  const id = clip(4, "").id;
+  const one = await get("", `/clips/${id}`);
+  assert.deepEqual(one.body.peaks, [0, 55, 100, 100, 0]);
+
+  const list = await get("?q=with a waveform");
+  assert.equal(list.body.clips.length, 1);
+  assert.equal("peaks" in list.body.clips[0], false);
+});
+
+test("only a plausible stored waveform is handed out", () => {
+  assert.deepEqual(sanitizePeaks([1, 2, 3]), [1, 2, 3]);
+  for (const bad of [undefined, null, "12", {}, [], [1, "2"], [1, NaN], Array(201).fill(5)])
+    assert.equal(sanitizePeaks(bad), null, JSON.stringify(bad)?.slice(0, 30));
 });
