@@ -1,46 +1,15 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
-import { CalendarDays, Clock, Play, Search, Square } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Search } from "lucide-react";
 import { SERVER_URL } from "../config/server";
-import { CopyButton } from "./tts-guide/CopyButton";
+import { pageCount, parsePage } from "../support/pagination";
+import { ClipCard, type PublicClip } from "./tts-guide/ClipCard";
 import { Emote } from "./tts-guide/Emote";
 import type { EmoteName } from "./tts-guide/emotes";
+import { Pager } from "./tts-guide/Pager";
 import { PublicShell } from "./tts-guide/PublicShell";
 
-/** What the server shares about a clip: never who asked for it. */
-interface PublicClip {
-  id: string;
-  token: string;
-  prompt: string;
-  createdAt: string;
-  duration: number;
-}
-
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const PLAYBACK_VOLUME = 0.5;
-const CLIP_COLORS = [
-  "var(--tp-orange)",
-  "var(--tp-pink)",
-  "var(--tp-sky)",
-  "var(--tp-mint)",
-  "var(--tp-yellow)",
-  "var(--tp-lavender)",
-  "var(--tp-coral)",
-  "var(--tp-lime)",
-];
-
-/** The same clip always gets the same colour, so the list looks familiar from one visit to the next. */
-function colorFor(id: string): string {
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return CLIP_COLORS[hash % CLIP_COLORS.length];
-}
 
 /** One page of matches, or "off" when the owner has switched the public list off. */
 async function fetchClips(
@@ -57,45 +26,98 @@ async function fetchClips(
   return body;
 }
 
-const length = (value: number) =>
-  value >= 60
-    ? `${Math.floor(value / 60)}:${String(Math.round(value % 60)).padStart(2, "0")}`
-    : `${Math.round(value)}s`;
+/** Which clips are on this page: "11–20", or just "1" when there is only one. */
+function shown(page: number, onPage: number): string {
+  const first = (page - 1) * PAGE_SIZE + 1;
+  const last = first + onPage - 1;
+  return first === last ? String(first) : `${first}–${last}`;
+}
+
+/** The address of a page of results, so a page or a search can be linked to. */
+function addressOf(page: number, query: string): string {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (page > 1) params.set("page", String(page));
+  const text = params.toString();
+  return `/tts/clips${text ? `?${text}` : ""}`;
+}
+
+/** The page and search the address bar names. */
+function readAddress() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    page: parsePage(params.get("page")),
+    query: (params.get("q") ?? "").trim().slice(0, 120),
+  };
+}
 
 /**
  * Every saved TTS clip, searchable, at /tts/clips. Unlike the cheat sheet this asks the server,
  * so on a quiet day the first visit can wait while Render wakes up. It says so.
  */
 export function TtsClips() {
-  const [typed, setTyped] = useState("");
-  const [query, setQuery] = useState("");
+  const [start] = useState(readAddress);
+  const [typed, setTyped] = useState(start.query);
+  const [query, setQuery] = useState(start.query);
+  const [page, setPage] = useState(start.page);
   const [clips, setClips] = useState<PublicClip[]>([]);
   const [total, setTotal] = useState(0);
   const [phase, setPhase] = useState<"loading" | "ready" | "off" | "error">("loading");
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [slow, setSlow] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [playing, setPlaying] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const top = useRef<HTMLParagraphElement>(null);
+  const pages = pageCount(total, PAGE_SIZE);
 
+  // Typing searches after a short pause, and a new search starts again from the first page.
   useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(typed.trim()), 350);
+    const timer = window.setTimeout(() => {
+      const next = typed.trim();
+      if (next === query) return;
+      setQuery(next);
+      setPage(1);
+      window.history.replaceState({}, "", addressOf(1, next));
+    }, 350);
     return () => window.clearTimeout(timer);
-  }, [typed]);
+  }, [typed, query]);
+
+  // The back and forward buttons move between pages and searches.
+  useEffect(() => {
+    const restore = () => {
+      const address = readAddress();
+      setPage(address.page);
+      setTyped(address.query);
+      setQuery(address.query);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    setPhase("loading");
+    setBusy(true);
     setSlow(false);
+    setPhase((current) => (current === "error" ? "loading" : current));
+    audio.current?.pause();
+    setPlaying(null);
     const slowTimer = window.setTimeout(() => setSlow(true), 4000);
-    fetchClips(query, 0, controller.signal)
+    fetchClips(query, (page - 1) * PAGE_SIZE, controller.signal)
       .then((result) => {
         if (result === "off") return setPhase("off");
+        // A page past the end (an old link, or clips deleted since) shows the last one instead.
+        if (result.clips.length === 0 && result.total > 0 && page > 1) {
+          const last = pageCount(result.total, PAGE_SIZE);
+          window.history.replaceState({}, "", addressOf(last, query));
+          return setPage(last);
+        }
         setClips(result.clips);
         setTotal(result.total);
         setPhase("ready");
+        setBusy(false);
       })
       .catch((problem: unknown) => {
         if (controller.signal.aborted) return;
@@ -107,26 +129,15 @@ export function TtsClips() {
       controller.abort();
       window.clearTimeout(slowTimer);
     };
-  }, [query, attempt]);
+  }, [query, page, attempt]);
 
   useEffect(() => () => audio.current?.pause(), []);
 
-  const showMore = async () => {
-    setLoadingMore(true);
-    try {
-      const result = await fetchClips(query, clips.length, new AbortController().signal);
-      if (result === "off") return setPhase("off");
-      setClips((current) => [
-        ...current,
-        ...result.clips.filter((clip) => !current.some((known) => known.id === clip.id)),
-      ]);
-      setTotal(result.total);
-    } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "The clip list could not be loaded.");
-      setPhase("error");
-    } finally {
-      setLoadingMore(false);
-    }
+  const goTo = (next: number) => {
+    if (next === page || next < 1 || next > pages) return;
+    window.history.pushState({}, "", addressOf(next, query));
+    setPage(next);
+    top.current?.scrollIntoView({ behavior: "instant" });
   };
 
   const toggle = useCallback(
@@ -233,22 +244,38 @@ export function TtsClips() {
 
       {phase === "ready" && (
         <>
-          <p className="tts-public__count" aria-live="polite">
-            {total === 0
-              ? query
-                ? `No clips match “${query}”.`
-                : "No clips yet."
-              : `${total} ${total === 1 ? "clip" : "clips"}${query ? ` matching “${query}”` : ""}`}
+          <p className="tts-public__count" aria-live="polite" ref={top}>
+            {busy ? (
+              <>
+                <Emote name="spin" size={26} /> Loading…
+              </>
+            ) : total === 0 ? (
+              query ? (
+                `No clips match “${query}”.`
+              ) : (
+                "No clips yet."
+              )
+            ) : (
+              `Showing ${shown(page, clips.length)} of ${total} ${total === 1 ? "clip" : "clips"}${query ? ` matching “${query}”` : ""}`
+            )}
           </p>
-          {total === 0 && (
+          {!busy && total === 0 && (
             <State emote={query ? "binoculars" : "peek"}>
               <strong>{query ? "Nothing matches that." : "No clips yet."}</strong>
               <p>{query ? "Try fewer or different words." : "Check back after the next stream."}</p>
             </State>
           )}
-          <ul className="tts-public__clips">
+          <Pager
+            page={page}
+            pages={pages}
+            hrefFor={(target) => addressOf(target, query)}
+            busy={busy}
+            label="Pages, top of the list"
+            onGo={goTo}
+          />
+          <ul className="tts-public__clips" aria-busy={busy}>
             {clips.map((clip) => (
-              <Clip
+              <ClipCard
                 key={clip.id}
                 clip={clip}
                 playing={playing === clip.id}
@@ -257,17 +284,14 @@ export function TtsClips() {
               />
             ))}
           </ul>
-          {clips.length < total && (
-            <button
-              type="button"
-              className="tts-public__button tts-public__more"
-              onClick={() => void showMore()}
-              disabled={loadingMore}
-            >
-              {loadingMore && <Emote name="spin" size={30} />}
-              {loadingMore ? "Loading…" : "Show more"}
-            </button>
-          )}
+          <Pager
+            page={page}
+            pages={pages}
+            hrefFor={(target) => addressOf(target, query)}
+            busy={busy}
+            label="Pages, bottom of the list"
+            onGo={goTo}
+          />
         </>
       )}
     </PublicShell>
@@ -280,69 +304,5 @@ function State({ emote, children }: { emote: EmoteName; children: ReactNode }) {
       <Emote name={emote} size={84} />
       <div>{children}</div>
     </div>
-  );
-}
-
-function Clip({
-  clip,
-  playing,
-  failed,
-  onToggle,
-}: {
-  clip: PublicClip;
-  playing: boolean;
-  failed: boolean;
-  onToggle: () => void;
-}) {
-  const token = useRef<HTMLElement>(null);
-  const color = colorFor(clip.id);
-  return (
-    <li
-      className={`tts-public__clip${playing ? " is-playing" : ""}`}
-      style={{ "--sec": color } as CSSProperties}
-    >
-      {playing && (
-        <span className="tts-public__eq" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
-      )}
-      <div className="tts-public__clip-body">
-        <p className="tts-public__clip-prompt">{clip.prompt}</p>
-        <p className="tts-public__clip-meta">
-          <span>
-            <Clock size={14} aria-hidden="true" /> {length(clip.duration)}
-          </span>
-          <span>
-            <CalendarDays size={14} aria-hidden="true" />{" "}
-            {new Date(clip.createdAt).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-          {failed && <span className="tts-public__clip-failed">Could not be played</span>}
-        </p>
-        <div className="tts-public__clip-actions">
-          <button
-            type="button"
-            className="tts-public__play"
-            onClick={onToggle}
-            aria-label={playing ? "Stop this clip" : "Play this clip"}
-          >
-            {playing ? (
-              <Square size={16} fill="currentColor" aria-hidden="true" />
-            ) : (
-              <Play size={16} fill="currentColor" aria-hidden="true" />
-            )}
-            {playing ? "Stop" : "Play"}
-          </button>
-          <CopyButton text={clip.token} label={`Copy token ${clip.token}`} target={token} />
-          <code ref={token}>{clip.token}</code>
-        </div>
-      </div>
-    </li>
   );
 }

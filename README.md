@@ -283,7 +283,10 @@ the app, and the fox emotes from `client/src/assets`.
   parses and does what its section claims, so a new TTS feature should be added
   there too. It never mentions providers, settings or voice names.
 - **All clips, `https://<frontend-host>/tts/clips`.** A searchable list of every
-  saved clip with its `(TTS:…)` token, a copy button and a play button. This one
+  saved clip with its `(TTS:…)` token, a copy button and a play button, ten to a
+  page with numbered pages. The page and the search are kept in the address
+  (`/tts/clips?page=3&q=pirate`), so a page can be shared and the back button
+  works. This one
   asks the server (`GET /tts/public/clips`), so on a quiet day the first visit
   waits while Render wakes up, and the page says so; while the streamer is live
   the overlay's ping keeps the server awake. It is **off until the owner switches
