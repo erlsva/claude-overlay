@@ -1,23 +1,16 @@
-import { useTwitchLive } from "../hooks/useTwitchLive";
-import vicksyWLIVE from "../assets/vicksyWLIVE.png";
-import vicksyW from "../assets/vicksyW.png";
 import { useEffect } from "react";
+import { useTabIdentity } from "../hooks/useTabIdentity";
+import { channelLabel } from "../support/liveStatus";
+import { useToast } from "./ToastProvider";
 
+/** The tab title and icon for the dashboard and the overlay: live when this channel is. */
 export default function TileController({ channel }: { channel: string }) {
-  const { isLive } = useTwitchLive(channel);
-  const channelName = channel.charAt(0).toUpperCase() + channel.slice(1);
-
-  const favicon = document.getElementById("favicon") as HTMLLinkElement;
+  const toast = useToast();
+  const { failed } = useTabIdentity(`Stream Overlay | ${channelLabel(channel)}`, [channel]);
 
   useEffect(() => {
-    if (isLive) {
-      favicon.href = vicksyWLIVE;
-      document.title = `(LIVE) Stream Overlay | ${channelName}`;
-    } else {
-      favicon.href = vicksyW;
-      document.title = `Stream Overlay | ${channelName}`;
-    }
-  }, [channelName, favicon, isLive]);
+    if (failed) toast.error("Could not check whether the Twitch stream is live");
+  }, [failed, toast]);
 
   return null;
 }

@@ -4,6 +4,9 @@ import { useAuth } from "./hooks/useAuth";
 import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
+import { TabIdentity } from "./components/TabIdentity";
+import { DEFAULT_TWITCH_CHANNEL } from "./config/twitchChannels";
+import { channelLabel } from "./support/liveStatus";
 import { NotFound } from "./views/NotFound";
 import { pageFor } from "./views/routes";
 import { TtsClips } from "./views/TtsClips";
@@ -15,7 +18,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
   // The page is chosen from the address before anything signs in. The 404 and the cheat sheet
-  // make no request to the server; only the clip list does.
+  // render without waiting for the server; only the clip list needs it for its content.
   const page = pageFor(window.location.pathname);
   if (page === "not-found") return <NotFound />;
   if (page === "tts" || page === "tts-clips") {
@@ -52,6 +55,7 @@ function DashboardApp() {
       data-theme={theme}
       style={theme === "custom" ? customAccentVariables(customAccent) : undefined}
     >
+      <TabIdentity title={`Stream Overlay | ${channelLabel(DEFAULT_TWITCH_CHANNEL)}`} />
       {screen}
     </div>
   );

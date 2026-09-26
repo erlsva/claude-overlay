@@ -275,7 +275,8 @@ engines to skip them:
 
 - **Cheat sheet, `https://<frontend-host>/tts`.** A short guide to what is
   possible, with copyable examples and a warning that results can be unstable or
-  inaccurate. It is static, so opening it never wakes the Render server. Its
+  inaccurate. It appears at once and needs nothing from the server to render
+  (its only request is the background live check described below). Its
   content is `shared/ttsGuide.ts`, and a server test checks that every example
   parses and does what its section claims, so a new TTS feature should be added
   there too. It never mentions providers, settings or voice names.
@@ -289,6 +290,16 @@ engines to skip them:
   where its audio is stored. Deleting a clip removes it from the list and kills its
   token. The endpoint is rate-limited, caps a page at 40 clips, and only ever
   returns those fields.
+
+**Tab icon and live status.** Every page (dashboard, overlay, login and loading
+screens, the TTS pages and the 404) shows the same tab icon, and while a stream is
+live the title starts with `(LIVE)` and the icon switches to the live version. The
+dashboard and overlay check their own channel; the other pages check both
+streamers and show live if either is. The check (`GET /auth/live`, cached on the
+server for 20 seconds) runs in the background every minute and never holds a page
+up. The catch is that every page now talks to the server, so on a quiet day even
+the cheat sheet can wake it, in the background. If the server cannot be reached the
+tab just shows the normal icon.
 
 Studio → TTS turns expressive prompts into reusable overlay audio:
 

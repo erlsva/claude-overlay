@@ -12,8 +12,8 @@ import {
 } from "./tts-guide/content";
 
 /**
- * The public TTS cheat sheet at /tts. It needs no login and makes no request to the server,
- * so opening it never wakes the backend.
+ * The public TTS cheat sheet at /tts. It needs no login and nothing from the server to render,
+ * so it shows at once even while the backend is asleep.
  */
 export function TtsGuide() {
   useEffect(() => {

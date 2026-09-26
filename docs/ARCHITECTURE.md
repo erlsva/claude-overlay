@@ -120,9 +120,15 @@ in the order where it should apply.
 - **A new page (any address)**: add it to the table in `client/src/views/routes.ts`. It matches
   exactly (a trailing slash is ignored), and any address not in the table shows the 404 page
   instead of the dashboard; `client/tests/routes.test.ts` covers it.
+- **The tab title and icon**: every page renders `<TabIdentity title="…" />` (or, on the
+  dashboard and overlay, `TileController`), which calls `useTabIdentity`. It sets the title and
+  icon and adds `(LIVE)` and the live icon while a stream is on, checked in the background by
+  `useLiveStatus`. A new page should use it too. `index.html` points at the plain icon so the tab
+  is right before any script runs.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
-  `/tts` makes no server request. Do not import `useAuth` or `useSocket` into one. The one
-  public page that does ask the server, `/tts/clips`, uses `GET /tts/public/clips`
+  `/tts` renders without waiting for the server (its only request is the background live check).
+  Do not import `useAuth` or `useSocket` into one. The one
+  public page that needs the server for its content, `/tts/clips`, uses `GET /tts/public/clips`
   (`server/src/tts/publicClips.ts`): it must stay behind the `publicClips` flag, return only fields
   picked one by one in `toPublicClip`, and stay rate-limited. Public pages use the `tts-public`
   CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.
