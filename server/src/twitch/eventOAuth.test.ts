@@ -6,8 +6,14 @@ process.env.SESSION_SECRET = "event-oauth-test-secret";
 process.env.TWITCH_CLIENT_ID = "client";
 process.env.TWITCH_CLIENT_SECRET = "secret";
 
-const { EVENT_SCOPES, createState, parseState, needsEventAuthorization, eventsAuthUrlForLogin } =
-  await import("./eventOAuth.js");
+const {
+  CHATBOT_AUTH_KEY,
+  EVENT_SCOPES,
+  createState,
+  parseState,
+  needsEventAuthorization,
+  eventsAuthUrlForLogin,
+} = await import("./eventOAuth.js");
 const { signToken } = await import("../auth/jwt.js");
 const { PENDING_LOGIN_COOKIE, readCookie, takePendingLogin } =
   await import("../auth/pendingLogin.js");
@@ -28,7 +34,18 @@ test("a connection made before a permission was added needs authorization again"
 test("Events state round-trips for the channel it was made for and is tamper-proof", () => {
   const state = createState("eple7");
   assert.equal(parseState(state), "eple7");
-  assert.equal(parseState(state.replace(/.$/, (c) => (c === "a" ? "b" : "a"))), null);
+  const [payload, signature] = state.split(".");
+  // Change a character in the middle of the signature. Not the last one: it carries only 4 data
+  // bits, so some replacements decode to the very same bytes and would still verify.
+  const middle = Math.floor(signature.length / 2);
+  const flipped = signature[middle] === "a" ? "b" : "a";
+  const tampered = signature.slice(0, middle) + flipped + signature.slice(middle + 1);
+  assert.equal(parseState(`${payload}.${tampered}`), null);
+  // A well-formed payload for another target, still carrying the signature of the original one.
+  const forged = Buffer.from(
+    JSON.stringify({ channel: CHATBOT_AUTH_KEY, expires: Date.now() + 600_000 }),
+  ).toString("base64url");
+  assert.equal(parseState(`${forged}.${signature}`), null);
   assert.equal(parseState("nonsense"), null);
 });
 
