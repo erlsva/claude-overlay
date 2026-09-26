@@ -4,6 +4,7 @@ import { useAuth } from "./hooks/useAuth";
 import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
+import { TtsClips } from "./views/TtsClips";
 import { TtsGuide } from "./views/TtsGuide";
 import { ToastProvider, useToast } from "./components/ToastProvider";
 import vicksySpin from "./assets/vicksySpin.gif";
@@ -11,13 +12,11 @@ import { customAccentVariables, loadStoredAccent, loadStoredTheme } from "./them
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
-  // Public and static: no login, and no request to the server.
-  if (window.location.pathname.replace(/\/$/, "") === "/tts-guide") {
-    return (
-      <ErrorBoundary>
-        <TtsGuide />
-      </ErrorBoundary>
-    );
+  // Public pages, before anything that signs in. The cheat sheet makes no request to the server;
+  // only the clip list does.
+  const publicPage = window.location.pathname.replace(/\/$/, "");
+  if (publicPage === "/tts" || publicPage === "/tts/clips") {
+    return <ErrorBoundary>{publicPage === "/tts" ? <TtsGuide /> : <TtsClips />}</ErrorBoundary>;
   }
   if (window.location.pathname === "/overlay") {
     return (

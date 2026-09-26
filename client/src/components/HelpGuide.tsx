@@ -189,6 +189,10 @@ const sections = [
         "Describe a voice or effect in plain words: an angry pirate, underwater, robot, chipmunk, slow motion, backwards, over a walkie-talkie, through a tin can, on an old radio, in a cave, behind a door, with echo. Effects can be combined.",
       ],
       [
+        "Public TTS pages",
+        "Share /tts with viewers: a cheat sheet of what the TTS can do, with copyable examples. /tts/clips lists every saved clip with its (TTS:…) token; the owner switches it on with Public clip list in the account menu, and who asked for a clip is never shown.",
+      ],
+      [
         "TTS speed",
         "Slow or speed up a line or a sound effect from half speed to double speed without changing its pitch: add ;speed=0.5x, ;speed=1.5x or ;speed=2x inside the ((…)). On a spoken line, words like slowly, very quickly or half speed work too.",
       ],

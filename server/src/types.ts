@@ -141,6 +141,8 @@ export interface TtsPlaybackState {
 export interface FeatureFlags {
   tts: boolean;
   scenes: boolean;
+  /** Anyone with the link can browse the saved TTS clips (without who asked for them). */
+  publicClips: boolean;
 }
 export interface OverlayTrigger extends TriggerStep {
   id: string;

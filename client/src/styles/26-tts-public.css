@@ -1,0 +1,329 @@
+/* The public TTS cheat sheet (/tts and /tts/clips). Standalone page: it scrolls, and works on a phone. */
+.tts-public {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(var(--accent-rgb), 0.18), transparent 45%),
+    var(--bg-app);
+  color: var(--text-primary);
+}
+.tts-public__page {
+  box-sizing: border-box;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 48px var(--space-4) 64px;
+}
+.tts-public__header {
+  margin-bottom: var(--space-5);
+}
+.tts-public__eyebrow {
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tts-public__header h1 {
+  margin: 6px 0 10px;
+  font-size: 34px;
+  line-height: 1.1;
+}
+.tts-public__header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+}
+.tts-public__warning {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid #b45309;
+  border-radius: var(--radius-lg);
+  background: rgba(245, 158, 11, 0.09);
+  color: #fcd9a0;
+}
+.tts-public__warning svg {
+  flex: none;
+  margin-top: 2px;
+  color: #fbbf24;
+}
+.tts-public__warning p {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.tts-public__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: 40px;
+}
+.tts-public__toc a {
+  padding: 5px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+}
+.tts-public__toc a:hover,
+.tts-public__toc a:focus-visible {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+  outline: none;
+}
+.tts-public__section {
+  margin-bottom: 40px;
+  scroll-margin-top: var(--space-5);
+}
+.tts-public__section h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 22px;
+}
+.tts-public__intro {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+}
+.tts-public ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-public__examples {
+  display: grid;
+  gap: var(--space-2);
+}
+.tts-public__example {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+.tts-public__example > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.tts-public__example code {
+  min-width: 0;
+  color: #f3d9bf;
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.tts-public__example p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.tts-public__copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.tts-public__copy:hover,
+.tts-public__copy:focus-visible {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+  outline: none;
+}
+.tts-public__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-4);
+}
+.tts-public__chips li {
+  padding: 3px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+}
+.tts-public__points {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.tts-public__points li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.tts-public__points li::before {
+  position: absolute;
+  top: 0.6em;
+  left: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-border);
+  content: "";
+}
+.tts-public__footer {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+.tts-public__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+.tts-public__tabs a {
+  margin-bottom: -1px;
+  padding: 8px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+.tts-public__tabs a:hover,
+.tts-public__tabs a:focus-visible {
+  color: var(--text-primary);
+  outline: none;
+}
+.tts-public__tabs a[aria-current="page"] {
+  border-bottom-color: var(--accent-border);
+  color: var(--accent-text);
+}
+.tts-public a:not(.tts-public__tabs a):not(.tts-public__toc a) {
+  color: var(--accent-text);
+}
+
+/* The clip list (/tts/clips). */
+.tts-clips__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+}
+.tts-clips__search:focus-within {
+  border-color: var(--accent-border);
+}
+.tts-clips__search input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--fs-lg);
+  outline: none;
+}
+.tts-clips__count,
+.tts-clips__notice {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.tts-clips__notice button {
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.tts-clips__list {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.tts-clips__item {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+.tts-clips__prompt {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.tts-clips__meta {
+  margin: 4px 0 10px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.tts-clips__failed {
+  color: #fca5a5;
+}
+.tts-clips__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tts-clips__actions code {
+  min-width: 0;
+  margin-right: auto;
+  color: #f3d9bf;
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.tts-clips__more {
+  display: block;
+  margin: 0 auto var(--space-5);
+  padding: 8px 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+.tts-clips__more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.tts-public) {
+    scroll-behavior: smooth;
+  }
+}
+@media (max-width: 560px) {
+  .tts-public__page {
+    padding-top: 28px;
+  }
+  .tts-public__header h1 {
+    font-size: 28px;
+  }
+  .tts-public__example > div {
+    flex-direction: column;
+  }
+}

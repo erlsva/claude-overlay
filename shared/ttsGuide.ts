@@ -1,5 +1,5 @@
 /**
- * The public TTS cheat sheet at /tts-guide. It is data so the server can test that every example
+ * The public TTS cheat sheet at /tts. It is data so the server can test that every example
  * really parses and does what its section claims. It is public: nothing here may mention how the
  * service is built, which providers it uses, its settings or its voice list.
  */

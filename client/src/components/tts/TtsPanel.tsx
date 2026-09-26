@@ -56,7 +56,7 @@ export function TtsPanel(props: TtsPanelProps) {
           </p>
           <p>
             Share the{" "}
-            <a href="/tts-guide" target="_blank" rel="noopener noreferrer">
+            <a href="/tts" target="_blank" rel="noopener noreferrer">
               public cheat sheet
             </a>{" "}
             with viewers. It lists what is possible, with examples they can copy.

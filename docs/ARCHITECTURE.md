@@ -114,8 +114,12 @@ in the order where it should apply.
   `ModeImpl` (spawn + step) in `client/src/components/chat-emotes/` and register it in
   `modeRegistry.ts`, then add it to the dropdown in `motionOptions.ts`.
 - **A TTS voice rule**: `tts/casting/` (see `docs/TTS.md` for the tuning knobs).
-- **A new thing TTS can do**: also add an example to `shared/ttsGuide.ts` (the public `/tts-guide`
+- **A new thing TTS can do**: also add an example to `shared/ttsGuide.ts` (the public `/tts`
   cheat sheet), then run `node scripts/sync-shared.mjs`. `tts/guide.test.ts` fails if an example
   stops parsing or stops doing what its section says. Keep it free of provider names and settings.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
-  `/tts-guide` makes no server request. Do not import `useAuth` or `useSocket` into one.
+  `/tts` makes no server request. Do not import `useAuth` or `useSocket` into one. The one
+  public page that does ask the server, `/tts/clips`, uses `GET /tts/public/clips`
+  (`server/src/tts/publicClips.ts`): it must stay behind the `publicClips` flag, return only fields
+  picked one by one in `toPublicClip`, and stay rate-limited. Public pages use the `tts-public`
+  CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.

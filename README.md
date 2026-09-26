@@ -52,8 +52,9 @@ Konva is not used by the current application code.
   development server falls back to a folder under `DATA_DIR`; production
   requires Neon.
 - Offers optional features behind owner-only **feature flags** (account menu):
-  TTS Studio (on by default) and **Scenes**, which saves and restores whole
-  layouts (off by default).
+  TTS Studio (on by default), **Scenes**, which saves and restores whole
+  layouts (off by default), and the **Public clip list** (off by default), which
+  publishes the saved TTS clips at `/tts/clips`.
 - Restricts dashboard access with Twitch login, an owner account, and a
   database-backed whitelist/admin role system.
 
@@ -89,17 +90,17 @@ How the code is organised, how to add a feature, and the file-size rules are in
 
 The application intentionally uses more than one kind of state:
 
-| Data                                                   | Storage                                                                     | Survives a Render restart?                      |
-| ------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------- |
-| Broadcaster OAuth tokens                               | Neon PostgreSQL, encrypted with AES-256-GCM                                 | Yes                                             |
-| Dashboard whitelist and admin roles                    | Neon PostgreSQL when `DATABASE_URL` is set                                  | Yes                                             |
-| Elements, drawings, cursor presence, history, playback | Server memory                                                               | No                                              |
-| Chat emote settings, feature flags (TTS, Scenes)       | Neon PostgreSQL, `app_settings` table                                       | Yes                                             |
-| Soundboard, commands, scenes, presets                  | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
-| Uploaded media                                         | `UPLOAD_DIR`                                                                | Only with a persistent disk/object storage      |
-| Shared media library (defaults)                        | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes                                             |
-| Saved TTS metadata                                     | Neon PostgreSQL (local JSON fallback outside production)                    | Yes in production                               |
-| Saved TTS MP3 audio                                    | Discord webhook message attachments                                         | Yes while the webhook message remains available |
+| Data                                                    | Storage                                                                     | Survives a Render restart?                      |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| Broadcaster OAuth tokens                                | Neon PostgreSQL, encrypted with AES-256-GCM                                 | Yes                                             |
+| Dashboard whitelist and admin roles                     | Neon PostgreSQL when `DATABASE_URL` is set                                  | Yes                                             |
+| Elements, drawings, cursor presence, history, playback  | Server memory                                                               | No                                              |
+| Chat emote settings, feature flags (TTS, Scenes, clips) | Neon PostgreSQL, `app_settings` table                                       | Yes                                             |
+| Soundboard, commands, scenes, presets                   | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
+| Uploaded media                                          | `UPLOAD_DIR`                                                                | Only with a persistent disk/object storage      |
+| Shared media library (defaults)                         | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes                                             |
+| Saved TTS metadata                                      | Neon PostgreSQL (local JSON fallback outside production)                    | Yes in production                               |
+| Saved TTS MP3 audio                                     | Discord webhook message attachments                                         | Yes while the webhook message remains available |
 
 On Render's free tier, the filesystem is ephemeral. Neon keeps authorization
 and whitelist records, but uploaded files and LowDB studio configuration can be
@@ -269,12 +270,25 @@ confirm the audio reaches the stream.
 For prompt syntax, timing rules, speech-speed controls, storage, playback, and
 failure behavior, see the complete [TTS Scene Studio guide](docs/TTS.md).
 
-Viewers get a shorter, public cheat sheet at `https://<frontend-host>/tts-guide`.
-It needs no login, is static (opening it never wakes the Render server), asks
-search engines to skip it, and carries a warning that results can be unstable or
-inaccurate. Its content is `shared/ttsGuide.ts`, and a server test checks that
-every example on it parses and does what its section claims, so a new TTS feature
-should be added there too. It never mentions providers, settings or voice names.
+Viewers get two public pages, neither needing a login and both asking search
+engines to skip them:
+
+- **Cheat sheet, `https://<frontend-host>/tts`.** A short guide to what is
+  possible, with copyable examples and a warning that results can be unstable or
+  inaccurate. It is static, so opening it never wakes the Render server. Its
+  content is `shared/ttsGuide.ts`, and a server test checks that every example
+  parses and does what its section claims, so a new TTS feature should be added
+  there too. It never mentions providers, settings or voice names.
+- **All clips, `https://<frontend-host>/tts/clips`.** A searchable list of every
+  saved clip with its `(TTS:…)` token, a copy button and a play button. This one
+  asks the server (`GET /tts/public/clips`), so on a quiet day the first visit
+  waits while Render wakes up, and the page says so; while the streamer is live
+  the overlay's ping keeps the server awake. It is **off until the owner switches
+  on Public clip list** in the account menu, and it also needs TTS to be on. It
+  shows the prompt, length, date and token, and never who asked for a clip or
+  where its audio is stored. Deleting a clip removes it from the list and kills its
+  token. The endpoint is rate-limited, caps a page at 40 clips, and only ever
+  returns those fields.
 
 Studio → TTS turns expressive prompts into reusable overlay audio:
 
@@ -461,6 +475,9 @@ After deploying:
 - TTS generation is rate-limited and queued, but dynamic public chat-command
   prompts can still spend provider credits. Restrict them to trusted roles and
   use cooldowns; saved TTS tokens replay without generation cost.
+- The public clip list is opt-in and read-only. It shares only a clip's prompt, length,
+  date and token (never the requester or where the audio is kept), is rate-limited,
+  and closes when TTS or the Public clip list switch is turned off.
 - Myinstants page-link resolution is best-effort because Myinstants may reject
   requests from hosting-provider IPs. Downloading the MP3 and uploading it is
   the reliable fallback.

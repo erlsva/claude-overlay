@@ -13,13 +13,18 @@ export function createFeatureRouter(onUpdated: (flags: FeatureFlags) => void) {
     try {
       // Only the flags that were sent change, so flipping one never resets another.
       const changes = z
-        .object({ tts: z.boolean().optional(), scenes: z.boolean().optional() })
+        .object({
+          tts: z.boolean().optional(),
+          scenes: z.boolean().optional(),
+          publicClips: z.boolean().optional(),
+        })
         .strict()
         .parse(req.body);
       const previous = getFeatureFlags();
       const flags: FeatureFlags = {
         tts: changes.tts ?? previous.tts,
         scenes: changes.scenes ?? previous.scenes,
+        publicClips: changes.publicClips ?? previous.publicClips,
       };
       await saveFeatureFlags(flags);
       if (flags.tts !== previous.tts) {

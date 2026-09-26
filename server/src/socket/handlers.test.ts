@@ -346,10 +346,10 @@ test("chat emote settings are validated, stored and shared", async () => {
 
 test("scenes need the scenes feature, then save, load and delete", async () => {
   const c = connect();
-  await saveFeatureFlags({ tts: true, scenes: false });
+  await saveFeatureFlags({ tts: true, scenes: false, publicClips: false });
   await c.fire("scene:save", { id: "sc1", name: "Scene" });
   assert.equal(canvasStore.scenes.length, 0, "feature off");
-  await saveFeatureFlags({ tts: true, scenes: true });
+  await saveFeatureFlags({ tts: true, scenes: true, publicClips: false });
   await c.fire("element:add", { element: element() });
   await c.fire("scene:save", { id: "sc1", name: "  Scene one  " });
   assert.equal(canvasStore.scenes.length, 1);
@@ -362,7 +362,7 @@ test("scenes need the scenes feature, then save, load and delete", async () => {
   assert.equal(canvasStore.scenes.length, 1, "invalid ids are refused");
   await c.fire("scene:delete", { id: "sc1" });
   assert.equal(canvasStore.scenes.length, 0);
-  await saveFeatureFlags({ tts: true, scenes: false });
+  await saveFeatureFlags({ tts: true, scenes: false, publicClips: false });
 });
 
 test("presets save the chosen elements and insert offset copies with fresh ids", async () => {

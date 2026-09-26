@@ -72,7 +72,11 @@ export function useSocketState() {
     active: false,
     paused: false,
   });
-  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({ tts: true, scenes: false });
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
+    tts: true,
+    scenes: false,
+    publicClips: false,
+  });
   const [previewingSoundIds, setPreviewingSoundIds] = useState<string[]>([]);
 
   return {

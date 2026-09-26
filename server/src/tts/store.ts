@@ -79,6 +79,44 @@ export async function listClips(): Promise<TtsClip[]> {
   return (await local()).slice(0, 100);
 }
 
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+
+/** The clip a search names when it is a saved token, "(TTS:<id>)" or just the id. */
+function searchedId(query: string): string {
+  return query.match(/^\(?\s*(?:TTS:)?([a-f0-9]{32})\s*\)?$/i)?.[1]?.toLowerCase() ?? "";
+}
+
+/** Every saved clip whose prompt contains the words searched for (or whose token was pasted), newest first. */
+export async function searchClips(options: {
+  query: string;
+  limit: number;
+  offset: number;
+}): Promise<{ clips: TtsClip[]; total: number }> {
+  await init();
+  const query = options.query.trim();
+  const id = searchedId(query);
+  if (postgres) {
+    const { rows } = await postgres.query(
+      `SELECT metadata, COUNT(*) OVER() AS total FROM tts_clips
+       WHERE $1 = '' OR metadata->>'prompt' ILIKE $2 ESCAPE '\\' OR id = $3
+       ORDER BY created_at DESC LIMIT $4 OFFSET $5`,
+      [query, `%${escapeLike(query)}%`, id, options.limit, options.offset],
+    );
+    return {
+      clips: rows.map((row) => row.metadata as TtsClip),
+      total: rows.length ? Number(rows[0].total) : 0,
+    };
+  }
+  const words = query.toLowerCase();
+  const matches = (await local()).filter(
+    (clip) => !query || clip.prompt.toLowerCase().includes(words) || (!!id && clip.id === id),
+  );
+  return {
+    clips: matches.slice(options.offset, options.offset + options.limit),
+    total: matches.length,
+  };
+}
+
 export async function deleteClip(id: string): Promise<TtsClip | undefined> {
   await init();
   if (postgres) {

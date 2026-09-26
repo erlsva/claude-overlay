@@ -48,7 +48,7 @@ db.data.sounds ??= [];
 db.data.triggers ??= [];
 
 let whitelistCache: WhitelistEntry[] = [...db.data.whitelist];
-const DEFAULT_FEATURE_FLAGS: FeatureFlags = { tts: true, scenes: false };
+const DEFAULT_FEATURE_FLAGS: FeatureFlags = { tts: true, scenes: false, publicClips: false };
 let featureFlagsCache: FeatureFlags = { ...DEFAULT_FEATURE_FLAGS, ...db.data.featureFlags };
 
 async function ensureAppSettingsTable(): Promise<void> {

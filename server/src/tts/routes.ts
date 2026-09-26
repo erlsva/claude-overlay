@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
 import { getFeatureFlags } from "../db/index.js";
 import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
+import { publicClipsRouter } from "./publicClips.js";
 import { ffmpegAvailable } from "./audio/index.js";
 import {
   getTtsPlaybackState,
@@ -61,6 +62,8 @@ ttsRouter.get("/clips/:id/audio", audioAccess, async (req, res) => {
     res.status(502).json({ error: "Saved audio could not be loaded from Discord." });
   }
 });
+// Public, and off until the owner switches it on; see publicClips.ts.
+ttsRouter.use("/public", publicClipsRouter);
 ttsRouter.use(requireAuth);
 ttsRouter.use((_req, res, next) => {
   if (!getFeatureFlags().tts) {

@@ -183,6 +183,26 @@ export function AccountMenu({
               onClick={() => void setFeatureEnabled("scenes", !featureFlags.scenes)}
             />
           </div>
+          <div className="account-menu__row account-menu__row--switch">
+            <span>
+              <strong>Public clip list</strong>
+              <small>Anyone with the link can browse and search saved TTS clips</small>
+            </span>
+            <button
+              type="button"
+              className="ui-switch"
+              role="switch"
+              aria-checked={featureFlags.publicClips}
+              aria-label="Public clip list"
+              disabled={featureSaving}
+              title={
+                featureFlags.publicClips
+                  ? "Hide the public TTS clip list"
+                  : "Show every saved TTS clip on the public /tts/clips page (without who asked for it)"
+              }
+              onClick={() => void setFeatureEnabled("publicClips", !featureFlags.publicClips)}
+            />
+          </div>
         </section>
       )}
 

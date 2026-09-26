@@ -28,7 +28,7 @@ export function useAppearance(deps: Pick<ReturnType<typeof useDashboardServices>
     localStorage.setItem(UI_SCALE_STORAGE_KEY, String(uiScale));
   }, [uiScale]);
   const setFeatureEnabled = useCallback(
-    async (key: "tts" | "scenes", enabled: boolean) => {
+    async (key: "tts" | "scenes" | "publicClips", enabled: boolean) => {
       setFeatureSaving(true);
       try {
         const response = await fetch(`${SERVER_URL}/features`, {
@@ -40,9 +40,8 @@ export function useAppearance(deps: Pick<ReturnType<typeof useDashboardServices>
         });
         const body = (await response.json().catch(() => ({}))) as { error?: string };
         if (!response.ok) throw new Error(body.error || "Could not update feature flags");
-        toast.success(
-          `${key === "tts" ? "TTS Studio" : "Scenes"} ${enabled ? "enabled" : "disabled"}`,
-        );
+        const label = { tts: "TTS Studio", scenes: "Scenes", publicClips: "Public clip list" }[key];
+        toast.success(`${label} ${enabled ? "enabled" : "disabled"}`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not update feature flags");
       } finally {
