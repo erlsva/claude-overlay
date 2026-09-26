@@ -2,7 +2,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { CopyButton } from "./tts-guide/CopyButton";
 import { Emote } from "./tts-guide/Emote";
 import { PublicShell } from "./tts-guide/PublicShell";
-import { FALLBACK_LOOK, SECTION_LOOKS } from "./tts-guide/sectionStyle";
+import { colorOf as sectionColor } from "./tts-guide/sectionStyle";
 import {
   TTS_GUIDE_FOOTER,
   TTS_GUIDE_LEAD,
@@ -12,8 +12,7 @@ import {
   type GuideExample,
 } from "./tts-guide/content";
 
-const lookOf = (id: string) => SECTION_LOOKS[id] ?? FALLBACK_LOOK;
-const colorOf = (id: string) => ({ "--sec": lookOf(id).color }) as CSSProperties;
+const colorOf = (id: string) => ({ "--sec": sectionColor(id) }) as CSSProperties;
 
 /**
  * The public TTS cheat sheet at /tts. It needs no login and nothing from the server to render,
@@ -73,7 +72,6 @@ export function TtsGuide() {
       <nav className="tts-public__toc" aria-label="Sections">
         {TTS_GUIDE_SECTIONS.map((section) => (
           <a key={section.id} href={`#${section.id}`} style={colorOf(section.id)}>
-            <Emote name={lookOf(section.id).emote} size={26} />
             {section.title}
           </a>
         ))}
@@ -87,13 +85,10 @@ export function TtsGuide() {
           style={colorOf(section.id)}
         >
           <header className="tts-public__section-head">
-            <span className="tts-public__bubble">
-              <Emote name={lookOf(section.id).emote} size={68} />
+            <span className="tts-public__step" aria-hidden="true">
+              {index + 1}
             </span>
-            <div>
-              <span className="tts-public__step">{String(index + 1).padStart(2, "0")}</span>
-              <h2>{section.title}</h2>
-            </div>
+            <h2>{section.title}</h2>
           </header>
           <p className="tts-public__intro">{section.intro}</p>
           {section.examples && (

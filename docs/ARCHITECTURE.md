@@ -141,6 +141,10 @@ in the order where it should apply.
   Fontsource in `views/tts-guide/fonts.ts`, so visitors make no third-party font request. The
   emotes come from `client/src/assets`: register one in `views/tts-guide/emotes.ts` (an animated
   one names a still one to show for people who prefer reduced motion), then draw it with
-  `<Emote name="…" size={…} />`, which is decorative unless you pass a `label`. Which colour and
-  emote each cheat-sheet section gets is in `views/tts-guide/sectionStyle.ts`, not in the shared
-  content. `vicksyClassic.gif` is deliberately unused.
+  `<Emote name="…" size={…} />`, which is decorative unless you pass a `label`. Emotes are used
+  as hero art, in the warning, the campfire footer and the clip list's states (loading, off,
+  empty, error). They are deliberately not used inside badges, avatars or shortcut chips: each
+  emote means something, so a section number and a colour do that job instead. Each section's
+  colour is in `views/tts-guide/sectionStyle.ts`, not in the shared content. `vicksyClassic.gif`,
+  `vicksySteppies.gif` and `vicksyGaCard-4x.gif` are not shown anywhere at the moment
+  (`vicksyTomfoolery-4x.png` is only the still stand-in for the dancing fox).

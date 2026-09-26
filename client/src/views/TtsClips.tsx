@@ -10,7 +10,7 @@ import { CalendarDays, Clock, Play, Search, Square } from "lucide-react";
 import { SERVER_URL } from "../config/server";
 import { CopyButton } from "./tts-guide/CopyButton";
 import { Emote } from "./tts-guide/Emote";
-import { AVATARS, DANCERS, pickFor, type EmoteName } from "./tts-guide/emotes";
+import type { EmoteName } from "./tts-guide/emotes";
 import { PublicShell } from "./tts-guide/PublicShell";
 
 /** What the server shares about a clip: never who asked for it. */
@@ -34,6 +34,13 @@ const CLIP_COLORS = [
   "var(--tp-coral)",
   "var(--tp-lime)",
 ];
+
+/** The same clip always gets the same colour, so the list looks familiar from one visit to the next. */
+function colorFor(id: string): string {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return CLIP_COLORS[hash % CLIP_COLORS.length];
+}
 
 /** One page of matches, or "off" when the owner has switched the public list off. */
 async function fetchClips(
@@ -288,15 +295,20 @@ function Clip({
   onToggle: () => void;
 }) {
   const token = useRef<HTMLElement>(null);
-  const color = pickFor(clip.id, CLIP_COLORS);
+  const color = colorFor(clip.id);
   return (
     <li
       className={`tts-public__clip${playing ? " is-playing" : ""}`}
       style={{ "--sec": color } as CSSProperties}
     >
-      <span className="tts-public__avatar">
-        <Emote name={playing ? pickFor(clip.id, DANCERS) : pickFor(clip.id, AVATARS)} size={64} />
-      </span>
+      {playing && (
+        <span className="tts-public__eq" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+      )}
       <div className="tts-public__clip-body">
         <p className="tts-public__clip-prompt">{clip.prompt}</p>
         <p className="tts-public__clip-meta">

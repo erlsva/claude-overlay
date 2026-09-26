@@ -1,26 +1,19 @@
-import type { EmoteName } from "./emotes";
-
 /**
- * How each cheat-sheet section looks: its colour and its mascot. This is presentation only; the
- * words live in the shared content file, which the server tests. A new section without an entry
- * here still shows, in the fallback style.
+ * The colour of each cheat-sheet section, shown on its card, its number and its shortcut chip.
+ * This is presentation only; the words live in the shared content file, which the server tests.
+ * A new section without an entry here still shows, in orange.
  */
-export interface SectionLook {
-  color: string;
-  emote: EmoteName;
-}
-
-export const SECTION_LOOKS: Record<string, SectionLook> = {
-  basics: { color: "var(--tp-orange)", emote: "dance" },
-  characters: { color: "var(--tp-pink)", emote: "tomfoolery" },
-  accents: { color: "var(--tp-sky)", emote: "ga" },
-  delivery: { color: "var(--tp-coral)", emote: "bork" },
-  sounds: { color: "var(--tp-yellow)", emote: "boogie" },
-  places: { color: "var(--tp-mint)", emote: "binoculars" },
-  devices: { color: "var(--tp-lavender)", emote: "gaCard" },
-  silly: { color: "var(--tp-lime)", emote: "spin" },
-  timing: { color: "var(--tp-teal)", emote: "gainsane" },
-  tips: { color: "var(--tp-peach)", emote: "wixelsSit" },
+const SECTION_COLORS: Record<string, string> = {
+  basics: "var(--tp-orange)",
+  characters: "var(--tp-pink)",
+  accents: "var(--tp-sky)",
+  delivery: "var(--tp-coral)",
+  sounds: "var(--tp-yellow)",
+  places: "var(--tp-mint)",
+  devices: "var(--tp-lavender)",
+  silly: "var(--tp-lime)",
+  timing: "var(--tp-teal)",
+  tips: "var(--tp-peach)",
 };
 
-export const FALLBACK_LOOK: SectionLook = { color: "var(--tp-orange)", emote: "ga" };
+export const colorOf = (id: string) => SECTION_COLORS[id] ?? "var(--tp-orange)";

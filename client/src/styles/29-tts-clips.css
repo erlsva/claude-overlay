@@ -80,9 +80,10 @@
   list-style: none;
 }
 .tts-public__clip {
+  position: relative;
   display: flex;
   gap: 18px;
-  padding: 16px 20px 16px 16px;
+  padding: 18px 22px 18px 26px;
   border: 2px solid color-mix(in srgb, var(--sec) 32%, var(--tp-line));
   border-radius: 28px;
   background: color-mix(in srgb, var(--sec) 8%, var(--tp-card));
@@ -90,6 +91,16 @@
     transform 0.15s,
     border-color 0.15s,
     box-shadow 0.2s;
+}
+.tts-public__clip::before {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 0;
+  width: 6px;
+  border-radius: 0 6px 6px 0;
+  background: var(--sec);
+  content: "";
 }
 .tts-public__clip:hover {
   border-color: var(--sec);
@@ -101,24 +112,47 @@
     0 0 0 4px color-mix(in srgb, var(--sec) 26%, transparent),
     0 18px 36px -20px var(--sec);
 }
-.tts-public__avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  align-self: flex-start;
-  width: 78px;
-  aspect-ratio: 1;
-  border: 3px solid var(--sec);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--sec) 22%, var(--tp-card));
-  transform: rotate(-4deg);
+/* Little bars that bounce while a clip plays. */
+.tts-public__eq {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
 }
-.tts-public__avatar img {
-  width: 78%;
-  height: auto;
+.tts-public__eq i {
+  width: 5px;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--sec);
+  transform-origin: bottom;
+  animation: tts-eq 0.9s ease-in-out infinite;
 }
-.tts-public__clip.is-playing .tts-public__avatar {
-  transform: rotate(4deg) scale(1.06);
+.tts-public__eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.tts-public__eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+.tts-public__eq i:nth-child(4) {
+  animation-delay: -0.15s;
+}
+@keyframes tts-eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tts-public__eq i {
+    animation: none;
+    transform: scaleY(0.7);
+  }
 }
 .tts-public__clip-body {
   flex: 1;
@@ -203,10 +237,7 @@
 
 @media (max-width: 560px) {
   .tts-public__clip {
-    padding: 14px;
-  }
-  .tts-public__avatar {
-    width: 58px;
+    padding: 16px 16px 16px 22px;
   }
   .tts-public__state {
     flex-direction: column;
