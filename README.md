@@ -269,6 +269,13 @@ confirm the audio reaches the stream.
 For prompt syntax, timing rules, speech-speed controls, storage, playback, and
 failure behavior, see the complete [TTS Scene Studio guide](docs/TTS.md).
 
+Viewers get a shorter, public cheat sheet at `https://<frontend-host>/tts-guide`.
+It needs no login, is static (opening it never wakes the Render server), asks
+search engines to skip it, and carries a warning that results can be unstable or
+inaccurate. Its content is `shared/ttsGuide.ts`, and a server test checks that
+every example on it parses and does what its section claims, so a new TTS feature
+should be added there too. It never mentions providers, settings or voice names.
+
 Studio → TTS turns expressive prompts into reusable overlay audio:
 
 1. Plain text is spoken dialogue. Inside `((...))`, quoted text is speech and

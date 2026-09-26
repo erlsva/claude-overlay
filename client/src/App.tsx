@@ -4,12 +4,21 @@ import { useAuth } from "./hooks/useAuth";
 import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
+import { TtsGuide } from "./views/TtsGuide";
 import { ToastProvider, useToast } from "./components/ToastProvider";
 import vicksySpin from "./assets/vicksySpin.gif";
 import { customAccentVariables, loadStoredAccent, loadStoredTheme } from "./theme";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
+  // Public and static: no login, and no request to the server.
+  if (window.location.pathname.replace(/\/$/, "") === "/tts-guide") {
+    return (
+      <ErrorBoundary>
+        <TtsGuide />
+      </ErrorBoundary>
+    );
+  }
   if (window.location.pathname === "/overlay") {
     return (
       <ToastProvider>

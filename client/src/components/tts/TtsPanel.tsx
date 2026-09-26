@@ -54,6 +54,13 @@ export function TtsPanel(props: TtsPanelProps) {
             speech and sound effects alike, without changing pitch. Saved <code>(TTS:id)</code>{" "}
             tokens replay without spending generation credits.
           </p>
+          <p>
+            Share the{" "}
+            <a href="/tts-guide" target="_blank" rel="noopener noreferrer">
+              public cheat sheet
+            </a>{" "}
+            with viewers. It lists what is possible, with examples they can copy.
+          </p>
         </div>
       </details>
 

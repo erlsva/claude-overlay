@@ -1,0 +1,204 @@
+/* The public TTS cheat sheet (/tts-guide). Standalone page: it scrolls, and works on a phone. */
+.tts-guide {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(var(--accent-rgb), 0.18), transparent 45%),
+    var(--bg-app);
+  color: var(--text-primary);
+}
+.tts-guide__page {
+  box-sizing: border-box;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 48px var(--space-4) 64px;
+}
+.tts-guide__header {
+  margin-bottom: var(--space-5);
+}
+.tts-guide__eyebrow {
+  color: var(--accent-text);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tts-guide__header h1 {
+  margin: 6px 0 10px;
+  font-size: 34px;
+  line-height: 1.1;
+}
+.tts-guide__header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+  line-height: 1.55;
+}
+.tts-guide__warning {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid #b45309;
+  border-radius: var(--radius-lg);
+  background: rgba(245, 158, 11, 0.09);
+  color: #fcd9a0;
+}
+.tts-guide__warning svg {
+  flex: none;
+  margin-top: 2px;
+  color: #fbbf24;
+}
+.tts-guide__warning p {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.tts-guide__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: 40px;
+}
+.tts-guide__toc a {
+  padding: 5px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+}
+.tts-guide__toc a:hover,
+.tts-guide__toc a:focus-visible {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+  outline: none;
+}
+.tts-guide__section {
+  margin-bottom: 40px;
+  scroll-margin-top: var(--space-5);
+}
+.tts-guide__section h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 22px;
+}
+.tts-guide__intro {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+  line-height: 1.6;
+}
+.tts-guide ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-guide__examples {
+  display: grid;
+  gap: var(--space-2);
+}
+.tts-guide__example {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+.tts-guide__example > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.tts-guide__example code {
+  min-width: 0;
+  color: #f3d9bf;
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.tts-guide__example p {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.tts-guide__copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.tts-guide__copy:hover,
+.tts-guide__copy:focus-visible {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+  outline: none;
+}
+.tts-guide__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: var(--space-4);
+}
+.tts-guide__chips li {
+  padding: 3px 10px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-size: var(--fs-sm);
+}
+.tts-guide__points {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.tts-guide__points li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+.tts-guide__points li::before {
+  position: absolute;
+  top: 0.6em;
+  left: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-border);
+  content: "";
+}
+.tts-guide__footer {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.tts-guide) {
+    scroll-behavior: smooth;
+  }
+}
+@media (max-width: 560px) {
+  .tts-guide__page {
+    padding-top: 28px;
+  }
+  .tts-guide__header h1 {
+    font-size: 28px;
+  }
+  .tts-guide__example > div {
+    flex-direction: column;
+  }
+}

@@ -5,6 +5,10 @@ can contain speech, a generated sound effect, background sound, silence, or a
 combination of speech and background sound. Finished clips can play through the
 overlay and are saved with a reusable token.
 
+A short, public version for viewers lives at `/tts-guide` on the dashboard site (no
+login). Its content is `shared/ttsGuide.ts`; keep it in step with this guide when a
+feature is added, since a test checks that its examples still work.
+
 ## Quick start
 
 1. Write a prompt in **Scene prompt or saved token**.

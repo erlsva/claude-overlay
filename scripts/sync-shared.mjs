@@ -15,6 +15,8 @@ const copies = [
   ["shared/types.ts", "client/src/types/index.ts"],
   ["shared/canvas.ts", "server/src/config/canvas.ts"],
   ["shared/canvas.ts", "client/src/canvas/geometry.ts"],
+  ["shared/ttsGuide.ts", "server/src/tts/guide.ts"],
+  ["shared/ttsGuide.ts", "client/src/views/tts-guide/content.ts"],
 ];
 const header = (source) =>
   `// Generated from ${source}. Edit that file, then run: node scripts/sync-shared.mjs\n\n`;
