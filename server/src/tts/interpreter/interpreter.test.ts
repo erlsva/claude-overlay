@@ -107,6 +107,18 @@ test("authored speech speed overrides an omitted planner value", () => {
   assert.equal(plan.scenes[0].speechRate, 0.8);
 });
 
+test("a written speed reaches a sound effect the planner described, and never reaches its prompt", () => {
+  const plan = decodePlan(
+    response([{ ...scene, dialogue: "", sound: "" }]),
+    voices,
+    1,
+    "((rumbling thunder;speed=0.5x;6s))",
+  );
+  assert.equal(plan.scenes[0].speechRate, 0.5);
+  assert.ok(!/speed/i.test(plan.scenes[0].sound), plan.scenes[0].sound);
+  assert.throws(() => blockCount("((thunder;speed=3x;6s))"), /between 0\.5x and 2x/);
+});
+
 test("pause blocks override model narration with exact custom silence", () => {
   const prompt = "First. ((pause;2.5s)) Second.";
   const plan = decodePlan(

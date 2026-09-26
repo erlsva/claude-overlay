@@ -93,25 +93,70 @@ the echo are added by the overlay, never by the sound model, so wording about th
 is removed from what is sent to ElevenLabs.
 
 Speech is never cut merely to force it into an unrealistically short duration.
-Automatic fitting is capped at 1.25×. When the performance still needs longer,
+Automatic fitting to a written duration is capped at 1.25× (a speed you write
+yourself, up to 2×, is always honoured). When the performance still needs longer,
 the complete speech is retained and the job reports a useful duration warning.
 
-## Speech speed
+## Speed
 
-Speed is authored per speech scene and becomes part of the saved audio. Natural
-directions work:
+Speed is authored per scene and becomes part of the saved audio. It changes the
+pace only, never the pitch (for a tape-at-the-wrong-speed sound that changes both,
+see [slow motion and chipmunk](#funny-voice-and-sound-effects)). The range is
+**0.5× (half speed) to 2× (double speed)**.
+
+Natural directions work on a spoken line:
 
 ```text
 ((pirate slowly says "Wait for me";8s))
 ((pirate very quickly shouts "Run!";8s))
+((pirate incredibly slowly says "Wait for me"))
+((announcer at double speed says "Final round"))
 ```
 
-For exact control, use `speed=<rate>x` between 0.75× and 1.25×:
+| Wording                                                   | Speed |
+| --------------------------------------------------------- | ----- |
+| `incredibly slowly`, `painfully slowly`, `half speed`     | 0.5×  |
+| `very slowly`, `much slower`                              | 0.75× |
+| `slowly`, `slower`                                        | 0.9×  |
+| `quickly`, `faster`, `fast`                               | 1.1×  |
+| `very quickly`, `much faster`                             | 1.25× |
+| `insanely fast`, `ridiculously quickly`, `extremely fast` | 1.75× |
+| `double speed`                                            | 2×    |
+
+For exact control, use `speed=<rate>x` (or `rate=`) between 0.5× and 2×. Anything
+outside that range is rejected with a message, and no audio is generated:
 
 ```text
 ((pirate says "Wait for me";speed=0.8x;8s))
 ((announcer says "Final round";speed=1.15x))
+((robot says "Please stand by";speed=0.5x))
+((auctioneer shouts "Going once, going twice";speed=1.75x))
 ```
+
+### Speed on sound effects
+
+A sound effect takes the same `speed=` directive:
+
+```text
+((rumbling thunder in a cave;speed=0.5x;6s))
+((a gunshot;speed=2x))
+```
+
+The sound is time-stretched after it is generated, so its pitch stays the same.
+Everyday words are **not** read as a speed in a sound description, because there
+they describe the sound (`a slowly creaking door` is sent to the sound model as
+written); write `speed=` when you want the clip itself slowed or sped up.
+
+- **With a duration** (`;6s`), the duration is still the length of the finished
+  scene. The sound model is asked for the length that ends up there (half a
+  second's worth per second at half speed), so `speed=0.5x;6s` is six seconds of
+  slowed sound with room left for its echo or reverb.
+- **Without a duration**, the clip simply comes out longer (slower) or shorter
+  (faster) than it would at normal speed.
+- The sound model cannot make more than 30 seconds, so a very fast sound with a
+  long duration can end up shorter than written.
+- In a scene that also has speech, the speed belongs to the speech and the
+  background sound is left as it is.
 
 ## Shouting and screaming
 

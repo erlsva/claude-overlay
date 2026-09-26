@@ -7,7 +7,19 @@ import { MAX_AUTO_SPEECH_TEMPO } from "./tuning.js";
 const transientSound =
   /\b(fart|burp|belch|explosion|blast|thunder|gunshot|shot|slam|impact|bang|crash|burst|pop)\b/i;
 
+/**
+ * How many seconds of sound to ask the model for. A sound in a scene with no speech is later
+ * stretched or squeezed by the scene's speed, so with a written duration it is asked for the
+ * length that ends up at that duration (half speed: half as much). Without a duration the clip
+ * simply comes out longer or shorter, which is what a speed change means.
+ */
 export function activeSoundDuration(scene: Scene, hasSpeech: boolean): number {
+  const seconds = sourceSoundDuration(scene, hasSpeech);
+  if (hasSpeech || !scene.duration || !scene.speechRate) return seconds;
+  return Math.min(30, Math.max(0.5, seconds * scene.speechRate));
+}
+
+function sourceSoundDuration(scene: Scene, hasSpeech: boolean): number {
   const requested =
     scene.soundDuration ??
     (!hasSpeech && scene.effect !== "none"

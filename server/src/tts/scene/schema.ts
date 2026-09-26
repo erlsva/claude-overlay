@@ -2,6 +2,10 @@
 
 import { z } from "zod";
 
+/** How much a scene's speech or sound can be slowed down or sped up, as a multiple of normal. */
+export const SPEED_MIN = 0.5;
+export const SPEED_MAX = 2;
+
 export const sceneSchema = z
   .object({
     dialogue: z.string().max(2000),
@@ -23,7 +27,8 @@ export const sceneSchema = z
     preferredVoiceId: z.string().max(100).optional(),
     soundDuration: z.number().min(0.5).max(30).optional(),
     stability: z.number().min(0).max(1).optional(),
-    speechRate: z.number().min(0.75).max(1.25).optional(),
+    /** Playback speed of the line, or of the sound in a scene with no speech. Pitch is kept. */
+    speechRate: z.number().min(SPEED_MIN).max(SPEED_MAX).optional(),
     voice: z.enum(["voice1", "voice2"]),
     duration: z.number().min(0.5).max(30).nullable(),
     /** "both" is an echo and a room together. */

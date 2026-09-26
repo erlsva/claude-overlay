@@ -18,6 +18,7 @@ import {
   parseTrailingDuration,
   scenesSchema,
   splitPromptSegments,
+  stripSpeechRateDirective,
   type PromptSegment,
 } from "../scene/index.js";
 import { sanitizeSoundPrompt } from "../sound.js";
@@ -117,8 +118,7 @@ function applySilence(scene: RawScene, seconds: number) {
 /** A block with no quoted words is a sound effect; the model must not turn it into narration. */
 function applySoundBlock(scene: RawScene, segment: PromptSegment, index: number, plan: RawPlan) {
   if (typeof scene.sound !== "string" || !scene.sound.trim()) {
-    scene.sound = segment.text
-      .replace(/;\s*\d+(?:\.\d+)?s\s*$/i, "")
+    scene.sound = stripSpeechRateDirective(segment.text.replace(/;\s*\d+(?:\.\d+)?s\s*$/i, ""))
       .replace(/\b(?:with\s+)?(?:extreme\s+)?(?:echo(?:ing)?|reverb)\b/gi, "")
       .replace(/\b(?:in|inside)\s+(?:a\s+)?(?:cave|church|cathedral)\b/gi, "")
       .replace(/\s+/g, " ")
@@ -143,6 +143,9 @@ function applySoundBlock(scene: RawScene, segment: PromptSegment, index: number,
   scene.room = detectRoom(segment.text);
   scene.muffled = detectMuffled(segment.text) || undefined;
   scene.voiceEffect = detectVoiceEffect(segment.text);
+  // Only the written `speed=` counts here: "slowly" in a sound description describes the sound.
+  const speed = parseSpeechRate(segment.text, { explicitOnly: true });
+  if (speed !== undefined) scene.speechRate = speed;
 }
 
 /** A block with quoted words is speech; its directions outside the quotes are the user's. */

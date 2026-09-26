@@ -73,7 +73,12 @@ export async function renderSound(
   await decodeToWav(
     raw,
     decoded,
-    soundDecodeFilter(scene.sound, { channel: scene.channel, voiceEffect: scene.voiceEffect }),
+    soundDecodeFilter(scene.sound, {
+      channel: scene.channel,
+      voiceEffect: scene.voiceEffect,
+      // With speech in the scene the speed belongs to the speech; the sound is its background.
+      speed: hasSpeech ? undefined : scene.speechRate,
+    }),
   );
 
   // Sharp effects keep extra headroom: their spikes, not their average, are what hurts.

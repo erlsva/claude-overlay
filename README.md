@@ -278,9 +278,10 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    for an exact 0.5–30 second
    sound-effect pause. Without a duration, a pause defaults to one second and
    is created locally without spending sound-generation credits.
-   Speech speed can be written naturally (`slowly`, `very quickly`) or set
-   precisely with `speed=0.85x` inside a directed scene. Supported rates are
-   0.75×–1.25× and are baked into the saved clip.
+   Speed can be written naturally on a spoken line (`slowly`, `very quickly`,
+   `half speed`) or set precisely with `speed=0.85x` inside a directed scene,
+   for speech and for sound effects alike. Supported rates are 0.5×–2× (pitch is
+   kept) and are baked into the saved clip.
 2. **Review plan** shows the interpreted voices, sounds, effects, and timing
    before ElevenLabs credits are spent.
 3. **Generate & save** stores a 128 kbps MP3 and returns a `(TTS:<id>)` token.

@@ -124,7 +124,6 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
       const authoredDescription = timing
         ? segment.text.slice(0, timing.index).trim()
         : segment.text;
-      const speechRate = parseSpeechRate(authoredDescription);
       const description = stripSpeechRateDirective(authoredDescription);
       const quotes = quotedDialogue(description);
       const dialogue = quotes.map((quote) => quote[1].replace(/\\"/g, '"')).join(" ");
@@ -151,7 +150,8 @@ export function parsePrompt(input: string): { scenes: Scene[]; warnings: string[
       if (detectMuffled(direction)) scene.muffled = true;
       const voiceEffect = detectVoiceEffect(direction);
       if (voiceEffect) scene.voiceEffect = voiceEffect;
-      if (dialogue && speechRate !== undefined) scene.speechRate = speechRate;
+      const speechRate = parseSpeechRate(authoredDescription, { explicitOnly: !dialogue });
+      if (speechRate !== undefined) scene.speechRate = speechRate;
       if (dialogue) scene.intensity = detectIntensity(direction);
       if (dialogue) {
         const before = description

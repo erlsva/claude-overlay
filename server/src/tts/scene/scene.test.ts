@@ -91,7 +91,44 @@ test("authored speech speed supports natural and precise prompt directions", () 
     0.8,
   );
   assert.equal(parsePrompt('((pirate very quickly says "Run!";8s))').scenes[0].speechRate, 1.25);
-  assert.throws(() => parsePrompt('((pirate says "No";speed=0.5x;8s))'), /0.75x.*1.25x/);
+});
+
+test("speed can go from half to double, and nothing outside that is accepted", () => {
+  const rate = (prompt: string) => parsePrompt(prompt).scenes[0].speechRate;
+  assert.equal(rate('((pirate says "Wait";speed=0.5x;8s))'), 0.5);
+  assert.equal(rate('((pirate says "Run";speed=1.5x;8s))'), 1.5);
+  assert.equal(rate('((pirate says "Run";speed=2x;8s))'), 2);
+  assert.equal(rate('((pirate says "Run";speed=2;8s))'), 2);
+  assert.equal(rate('((pirate says "Run";rate: 1.75;8s))'), 1.75);
+  for (const bad of ["0.4x", "2.5x", "3x", "0x"])
+    assert.throws(
+      () => parsePrompt(`((pirate says "No";speed=${bad};8s))`),
+      /between 0\.5x and 2x/,
+      bad,
+    );
+  // Everyday wording for the extremes.
+  assert.equal(rate('((pirate incredibly slowly says "Wait")) '), 0.5);
+  assert.equal(rate('((pirate at half speed says "Wait"))'), 0.5);
+  assert.equal(rate('((pirate at double speed says "Run"))'), 2);
+  assert.equal(rate('((pirate insanely fast says "Run"))'), 1.75);
+});
+
+test("speed applies to a sound effect only when it is written as speed=", () => {
+  const thunder = parsePrompt("((rumbling thunder;speed=0.5x;6s))").scenes[0];
+  assert.equal(thunder.speechRate, 0.5);
+  assert.equal(thunder.duration, 6);
+  assert.ok(
+    !/speed/i.test(thunder.sound),
+    `the directive is not sent to the sound model: ${thunder.sound}`,
+  );
+  assert.equal(parsePrompt("((a gunshot;speed=2x))").scenes[0].speechRate, 2);
+  // In a sound description these words describe the sound, so they stay there.
+  const door = parsePrompt("((a slowly creaking door;6s))").scenes[0];
+  assert.equal(door.speechRate, undefined);
+  assert.match(door.sound, /slowly/);
+  assert.equal(parsePrompt("((train quickly passing;5s))").scenes[0].speechRate, undefined);
+  assert.equal(parsePrompt("((a fart at half speed;3s))").scenes[0].speechRate, undefined);
+  assert.throws(() => parsePrompt("((a gunshot;speed=3x))"), /between 0\.5x and 2x/);
 });
 
 test("straight, smart double, and smart single quotes become dialogue", () => {

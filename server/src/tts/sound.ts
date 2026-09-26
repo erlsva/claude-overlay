@@ -7,6 +7,7 @@
  * handled locally, so they must never reach the provider.
  */
 
+import { atempoFilters } from "./audio/ffmpeg.js";
 import { channelBandpass, pitchTempoRatio, RATE } from "./dsp/index.js";
 import type { Scene } from "./scene/index.js";
 
@@ -207,12 +208,18 @@ export const isSharpSound = (sound: string) => sharpSounds.test(sound);
  */
 export function soundDecodeFilter(
   sound: string,
-  options: { channel?: Scene["channel"]; voiceEffect?: Scene["voiceEffect"] } = {},
+  options: {
+    channel?: Scene["channel"];
+    voiceEffect?: Scene["voiceEffect"];
+    /** Written speed (0.5 = half, 2 = double). Changes the pace only, never the pitch. */
+    speed?: number;
+  } = {},
 ): string {
   const filters = ["aresample=44100"];
   if (isHugeSound(sound)) filters.push("asetrate=30870", "aresample=44100");
   const warpRatio = pitchTempoRatio(options.voiceEffect);
   if (warpRatio) filters.push(`asetrate=${Math.round(RATE * warpRatio)}`, "aresample=44100");
+  if (options.speed) filters.push(...atempoFilters(options.speed));
   filters.push(...channelBandpass(options.channel));
   filters.push("treble=g=-3:f=4500");
   if (isSharpSound(sound)) {

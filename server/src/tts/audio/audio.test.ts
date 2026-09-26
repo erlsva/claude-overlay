@@ -15,6 +15,7 @@ import {
   speechTempo,
 } from "./index.js";
 import { parsePrompt } from "../scene/index.js";
+import { soundDecodeFilter } from "../sound.js";
 import { readWav, RATE } from "../dsp/index.js";
 
 /** Renders one prompt in credit-free demo mode and returns the finished clip's samples. */
@@ -193,4 +194,56 @@ test("ElevenLabs permission failures remain actionable without exposing credenti
   assert.match(message, /Text to Speech permission \(text_to_speech\)/);
   assert.match(message, /safe-request-id/);
   assert.doesNotMatch(message, /xi-api-key|secret/i);
+});
+
+test("speed runs from half to double on a spoken line, keeping every word", async () => {
+  const line = "This line is exactly forty-eight characters long"; // 48 characters, 3s of demo speech
+  const seconds = async (rate: string) =>
+    (await renderDemo(`((man says "${line}"${rate}))`)).length / RATE;
+  const normal = await seconds("");
+  assert.ok(Math.abs((await seconds(";speed=0.5x")) / normal - 2) < 0.1, "half speed doubles it");
+  assert.ok(Math.abs((await seconds(";speed=2x")) / normal - 0.5) < 0.1, "double speed halves it");
+  assert.ok(Math.abs((await seconds(";speed=1.5x")) / normal - 1 / 1.5) < 0.1);
+});
+
+test("a sound effect can be slowed or sped up too, and still lands on its written duration", async () => {
+  const half = await renderDemo("((rumbling thunder;speed=0.5x;4s))");
+  assertClean(half, 1);
+  assert.ok(
+    Math.abs(half.length / RATE - 4) < 0.15,
+    `half speed still ends at 4s, got ${(half.length / RATE).toFixed(2)}s`,
+  );
+  const double = await renderDemo("((rumbling thunder;speed=2x;4s))");
+  assert.ok(Math.abs(double.length / RATE - 4) < 0.15, `got ${(double.length / RATE).toFixed(2)}s`);
+
+  // With no duration the clip itself gets longer or shorter, which is what a speed change means.
+  const normal = (await renderDemo("((rumbling thunder))")).length;
+  const slower = (await renderDemo("((rumbling thunder;speed=0.5x))")).length;
+  const faster = (await renderDemo("((rumbling thunder;speed=2x))")).length;
+  assert.ok(Math.abs(slower / normal - 2) < 0.1, "half speed doubles the clip");
+  assert.ok(Math.abs(faster / normal - 0.5) < 0.1, "double speed halves the clip");
+});
+
+test("a sound speed asks the sound model for the length that ends at the written duration", () => {
+  const [scene] = parsePrompt("((rumbling thunder;speed=0.5x;6s))").scenes;
+  const [plain] = parsePrompt("((rumbling thunder;6s))").scenes;
+  assert.equal(activeSoundDuration(scene, false), activeSoundDuration(plain, false) * 0.5);
+  const [fast] = parsePrompt("((rumbling thunder;speed=2x;6s))").scenes;
+  assert.equal(activeSoundDuration(fast, false), activeSoundDuration(plain, false) * 2);
+  // The model cannot make more than 30 seconds.
+  const [long] = parsePrompt("((rumbling thunder;speed=2x;25s))").scenes;
+  assert.equal(activeSoundDuration(long, false), 30);
+  // Speech in the scene owns the speed; its background sound is left alone.
+  const [mixed] = parsePrompt('((man says "Hi" while thunder rumbles;speed=0.5x;6s))').scenes;
+  assert.equal(
+    activeSoundDuration(mixed, true),
+    activeSoundDuration({ ...mixed, speechRate: undefined }, true),
+  );
+});
+
+test("a sound's speed change keeps its pitch", () => {
+  assert.match(soundDecodeFilter("thunder", { speed: 0.5 }), /atempo=0\.500000/);
+  assert.match(soundDecodeFilter("thunder", { speed: 1.5 }), /atempo=1\.500000/);
+  assert.doesNotMatch(soundDecodeFilter("thunder", { speed: 0.5 }), /asetrate/);
+  assert.doesNotMatch(soundDecodeFilter("thunder"), /atempo/);
 });

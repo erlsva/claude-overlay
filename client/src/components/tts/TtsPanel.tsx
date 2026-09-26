@@ -46,11 +46,13 @@ export function TtsPanel(props: TtsPanelProps) {
           </p>
           <code>{'((pirate screaming: "Run!" in a cave;speed=0.9x;8s))'}</code>
           <code>{"((gigantic fart in a cathedral;5s))"}</code>
+          <code>{"((rumbling thunder;speed=0.5x;6s))"}</code>
           <code>{"((silence;2s))"}</code>
           <p>
             Quoted words are spoken; unquoted blocks become sound effects. A duration is the whole
-            scene, including its echo or reverb tail. Saved <code>(TTS:id)</code> tokens replay
-            without spending generation credits.
+            scene, including its echo or reverb tail. <code>speed=</code> runs from 0.5x to 2x on
+            speech and sound effects alike, without changing pitch. Saved <code>(TTS:id)</code>{" "}
+            tokens replay without spending generation credits.
           </p>
         </div>
       </details>
