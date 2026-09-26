@@ -41,28 +41,30 @@ export function PublicShell({
       <div className="tts-public__glow" aria-hidden="true" />
 
       <header className="tts-public__nav">
-        <a className="tts-public__brand" href="/tts">
-          <span className="tts-public__brand-emotes">
-            <Emote name="icon" size={34} eager />
-            <Emote name="wixelsSit" size={34} eager />
-          </span>
-          <span>
-            Vicksy &amp; Wixels <b>TTS</b>
-          </span>
-        </a>
-        {live && (
-          <span className="tts-public__live" role="status">
-            <i aria-hidden="true" /> Live now
-          </span>
-        )}
-        <nav className="tts-public__tabs" aria-label="Text-to-speech pages">
-          <a href="/tts" aria-current={active === "guide" ? "page" : undefined}>
-            Cheat sheet
+        <div className="tts-public__nav-inner">
+          <a className="tts-public__brand" href="/tts">
+            <span className="tts-public__brand-emotes">
+              <Emote name="icon" size={34} eager />
+              <Emote name="wixelsSit" size={34} eager />
+            </span>
+            <span className="tts-public__brand-name">
+              Vicksy &amp; Wixels <b>TTS</b>
+            </span>
           </a>
-          <a href="/tts/clips" aria-current={active === "clips" ? "page" : undefined}>
-            All clips
-          </a>
-        </nav>
+          {live && (
+            <span className="tts-public__live" role="status">
+              <i aria-hidden="true" /> <span className="tts-public__live-text">Live now</span>
+            </span>
+          )}
+          <nav className="tts-public__tabs" aria-label="Text-to-speech pages">
+            <a href="/tts" aria-current={active === "guide" ? "page" : undefined}>
+              Cheat sheet
+            </a>
+            <a href="/tts/clips" aria-current={active === "clips" ? "page" : undefined}>
+              All clips
+            </a>
+          </nav>
+        </div>
       </header>
 
       <main className="tts-public__page">

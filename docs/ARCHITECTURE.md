@@ -154,7 +154,10 @@ in the order where it should apply.
   CSS prefix, since `tts-guide` already belongs to the dashboard's "How TTS prompts work" box.
 - **How the public pages look**: a warm fox palette defined as `--tp-*` tokens at the top of
   `26-tts-public.css` (dark by default, cream for `prefers-color-scheme: light`), with one colour
-  per cheat-sheet section. Type is Fredoka (headings) and Nunito (text), bundled through
+  per cheat-sheet section. The top bar is sticky and spans the window, while what is in it
+  shares the page column's width through the `--tp-column` token (960px, of which the visible
+  content is 896 after the side padding). Keep `.tts-public` at `overflow-x: clip`: `hidden` makes
+  it a scroll container and the bar silently stops sticking. Type is Fredoka (headings) and Nunito (text), bundled through
   Fontsource in `views/tts-guide/fonts.ts`, so visitors make no third-party font request. The
   emotes come from `client/src/assets`: register one in `views/tts-guide/emotes.ts` (an animated
   one names a still one to show for people who prefer reduced motion), then draw it with

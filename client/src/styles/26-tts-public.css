@@ -24,12 +24,17 @@
   --tp-button: #ff8a1f;
   --tp-button-ink: #2a1300;
   --tp-grad: linear-gradient(100deg, #ff8a1f 0%, #ff7fae 55%, #ffd23f 100%);
+  /* The width of the page column. The top bar's content uses it too, so the two line up. */
+  --tp-column: 960px;
   --tp-display: "Fredoka Variable", "Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
   --tp-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 
   position: relative;
   min-height: 100vh;
+  /* "hidden" would make this a scroll container and stop the top bar sticking to the window;
+     "clip" hides the same overflow without that. */
   overflow-x: hidden;
+  overflow-x: clip;
   background: var(--tp-bg);
   color: var(--tp-ink);
   font-family: "Nunito Variable", "Nunito", ui-rounded, system-ui, sans-serif;
@@ -108,14 +113,20 @@
   position: sticky;
   z-index: 20;
   top: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 16px;
-  padding: 12px clamp(16px, 4vw, 32px);
   border-bottom: 1px solid color-mix(in srgb, var(--tp-line) 75%, transparent);
   background: color-mix(in srgb, var(--tp-bg) 80%, transparent);
   backdrop-filter: blur(14px);
+}
+/* The bar spans the window; what is in it lines up with the page's content. */
+.tts-public__nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  box-sizing: border-box;
+  gap: 10px 16px;
+  width: min(var(--tp-column), 100%);
+  margin: 0 auto;
+  padding: 12px clamp(16px, 4vw, 32px);
 }
 .tts-public__brand {
   display: inline-flex;
@@ -198,7 +209,7 @@
   position: relative;
   z-index: 1;
   box-sizing: border-box;
-  width: min(960px, 100%);
+  width: min(var(--tp-column), 100%);
   margin: 0 auto;
   padding: clamp(28px, 6vw, 60px) clamp(16px, 4vw, 32px) 32px;
 }
@@ -385,15 +396,29 @@
   }
 }
 @media (max-width: 560px) {
-  .tts-public__nav {
-    position: static;
+  /* The bar stays on screen on a phone too, so it is kept to one short row: the site name gives
+     way to its two emotes, and the tabs take the rest. */
+  .tts-public__nav-inner {
+    gap: 8px 12px;
+    padding-block: 8px;
   }
-  .tts-public__tabs {
-    width: 100%;
-    margin-left: 0;
+  .tts-public__brand-name {
+    display: none;
+  }
+  /* When live, the red pill shrinks to its pulsing dot (its text stays for screen readers) so the
+     bar still fits one row. */
+  .tts-public__live {
+    padding: 9px;
+  }
+  .tts-public__live-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .tts-public__tabs a {
-    flex: 1;
-    text-align: center;
+    padding: 6px 12px;
   }
 }
