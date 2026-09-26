@@ -8,7 +8,6 @@ import ga from "../../assets/vicksyGa.png";
 import gainsane from "../../assets/vicksyGainsane-4x.png";
 import insane from "../../assets/vicksyInsane.png";
 import peek from "../../assets/vicksyPeek.png";
-import pounce from "../../assets/vicksyPounce.gif";
 import spin from "../../assets/vicksySpin.gif";
 import tomfoolery from "../../assets/vicksyTomfoolery-4x.png";
 import wixelsSit from "../../assets/wixeisSit.gif";
@@ -30,7 +29,6 @@ export type EmoteName =
   | "gainsane"
   | "insane"
   | "peek"
-  | "pounce"
   | "spin"
   | "tomfoolery"
   | "wixelsSit"
@@ -56,7 +54,6 @@ export const EMOTES: Record<EmoteName, EmoteDef> = {
   boogie: { src: boogie, width: 112, height: 112, still: "ga" },
   bounce: { src: bounce, width: 112, height: 112, still: "ga" },
   dance: { src: dance, width: 112, height: 112, still: "tomfoolery" },
-  pounce: { src: pounce, width: 112, height: 112, still: "ga" },
   spin: { src: spin, width: 112, height: 112, still: "icon" },
   wixelsSit: { src: wixelsSit, width: 112, height: 112, still: "peek" },
   campfire: { src: campfire, width: 384, height: 96, still: "ga" },

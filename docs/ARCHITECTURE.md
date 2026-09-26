@@ -146,5 +146,5 @@ in the order where it should apply.
   empty, error). They are deliberately not used inside badges, avatars or shortcut chips: each
   emote means something, so a section number and a colour do that job instead. Each section's
   colour is in `views/tts-guide/sectionStyle.ts`, not in the shared content. `vicksyClassic.gif`,
-  `vicksySteppies.gif` and `vicksyGaCard-4x.gif` are not shown anywhere at the moment
+  `vicksySteppies.gif`, `vicksyGaCard-4x.gif` and `vicksyPounce.gif` are not shown anywhere at the moment
   (`vicksyTomfoolery-4x.png` is only the still stand-in for the dancing fox).

@@ -264,7 +264,7 @@ export function TtsClips() {
               onClick={() => void showMore()}
               disabled={loadingMore}
             >
-              <Emote name="pounce" size={30} />
+              {loadingMore && <Emote name="spin" size={30} />}
               {loadingMore ? "Loading…" : "Show more"}
             </button>
           )}
