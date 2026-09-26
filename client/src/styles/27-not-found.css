@@ -1,0 +1,47 @@
+/* The 404 page. */
+.not-found {
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: 32px var(--space-4);
+  background:
+    radial-gradient(circle at 50% 115%, rgba(var(--accent-rgb), 0.2), transparent 42%),
+    var(--bg-app);
+  color: var(--text-primary);
+  text-align: center;
+}
+.not-found p.not-found__code {
+  margin: 0;
+  color: var(--accent-text);
+  font-size: 64px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.not-found h1 {
+  margin: 0;
+  font-size: 24px;
+}
+.not-found p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+}
+.not-found a {
+  margin-top: var(--space-4);
+  padding: 9px 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+}
+.not-found a:hover,
+.not-found a:focus-visible {
+  background: var(--accent-surface-strong);
+  outline: none;
+}

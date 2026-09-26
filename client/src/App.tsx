@@ -4,6 +4,8 @@ import { useAuth } from "./hooks/useAuth";
 import { Dashboard } from "./views/dashboard/Dashboard";
 import { Overlay } from "./views/Overlay";
 import { LoginPage } from "./views/LoginPage";
+import { NotFound } from "./views/NotFound";
+import { pageFor } from "./views/routes";
 import { TtsClips } from "./views/TtsClips";
 import { TtsGuide } from "./views/TtsGuide";
 import { ToastProvider, useToast } from "./components/ToastProvider";
@@ -12,13 +14,14 @@ import { customAccentVariables, loadStoredAccent, loadStoredTheme } from "./them
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
-  // Public pages, before anything that signs in. The cheat sheet makes no request to the server;
-  // only the clip list does.
-  const publicPage = window.location.pathname.replace(/\/$/, "");
-  if (publicPage === "/tts" || publicPage === "/tts/clips") {
-    return <ErrorBoundary>{publicPage === "/tts" ? <TtsGuide /> : <TtsClips />}</ErrorBoundary>;
+  // The page is chosen from the address before anything signs in. The 404 and the cheat sheet
+  // make no request to the server; only the clip list does.
+  const page = pageFor(window.location.pathname);
+  if (page === "not-found") return <NotFound />;
+  if (page === "tts" || page === "tts-clips") {
+    return <ErrorBoundary>{page === "tts" ? <TtsGuide /> : <TtsClips />}</ErrorBoundary>;
   }
-  if (window.location.pathname === "/overlay") {
+  if (page === "overlay") {
     return (
       <ToastProvider>
         <ErrorBoundary>

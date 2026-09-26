@@ -117,6 +117,9 @@ in the order where it should apply.
 - **A new thing TTS can do**: also add an example to `shared/ttsGuide.ts` (the public `/tts`
   cheat sheet), then run `node scripts/sync-shared.mjs`. `tts/guide.test.ts` fails if an example
   stops parsing or stops doing what its section says. Keep it free of provider names and settings.
+- **A new page (any address)**: add it to the table in `client/src/views/routes.ts`. It matches
+  exactly (a trailing slash is ignored), and any address not in the table shows the 404 page
+  instead of the dashboard; `client/tests/routes.test.ts` covers it.
 - **A public page**: `App.tsx` routes by path before anything that logs in, so a page like
   `/tts` makes no server request. Do not import `useAuth` or `useSocket` into one. The one
   public page that does ask the server, `/tts/clips`, uses `GET /tts/public/clips`

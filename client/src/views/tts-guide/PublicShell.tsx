@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useNoIndex } from "../../hooks/useNoIndex";
 
 /**
  * The frame the public TTS pages share: a header, and links between them. The pages are separate
@@ -16,14 +17,7 @@ export function PublicShell({
   lead: string;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    document.title = `${title} | Stream Overlay`;
-    const robots = document.createElement("meta");
-    robots.name = "robots";
-    robots.content = "noindex, nofollow";
-    document.head.append(robots);
-    return () => robots.remove();
-  }, [title]);
+  useNoIndex(title);
 
   return (
     <div className="tts-public">

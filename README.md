@@ -494,6 +494,9 @@ After deploying:
 - Canvas state is intentionally runtime state and resets when the server does.
 - The Twitch embed is cross-origin and sensitive to pointer-blocking layers;
   editor interaction uses a shield only while dashboard gestures require it.
+- Only `/`, `/login`, `/overlay`, `/tts` and `/tts/clips` exist; any other address shows
+  the app's 404 page. Render's static site answers every path with the app, so the
+  HTTP status is still 200. The 404 page asks search engines to skip it instead.
 - Myinstants can return HTTP 403 to server-side resolution requests.
 - Saved TTS audio currently depends on private Discord webhook messages. Keep
   the webhook secret, and move the storage adapter to dedicated object storage
