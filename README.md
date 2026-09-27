@@ -334,15 +334,19 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    `half speed`) or set precisely with `speed=0.85x` inside a directed scene,
    for speech and for sound effects alike. Supported rates are 0.5×–2× (pitch is
    kept) and are baked into the saved clip.
-2. **Review plan** shows the interpreted voices, sounds, effects, and timing
-   before ElevenLabs credits are spent.
+2. **Review plan**, which showed the interpreted voices, sounds, effects, and
+   timing before ElevenLabs credits were spent, is switched off for now. Its code
+   is commented out in `client/src/components/tts/TtsActions.tsx`, with a note
+   on how to bring it back.
 3. **Generate & save** stores a 128 kbps MP3 and returns a `(TTS:<id>)` token.
    The intermediate WAV and temporary mix files are deleted after each job.
 4. Paste that token into Studio or a command/event action to replay the exact
    clip without running OpenAI or ElevenLabs again.
 5. Dashboard preview audio stays local to the controller. **Pause clip**,
    **Resume clip**, **Play from start**, and **Skip** affect the clip playing on
-   the connected overlay browser source. **Pause TTS** holds every request in a queue instead of
+   the connected overlay browser source. They are always shown (greyed out while
+   nothing plays), and the dashboard's top bar carries **Pause / Resume TTS**,
+   **Skip** and **From start** on every tab, next to the TTS status. **Pause TTS** holds every request in a queue instead of
    refusing it: requests are still made in the background (up to 5 ahead), but
    nothing plays until you **Resume TTS** or use **Play next**. Waiting requests
    can be removed one by one or all at once (a removed request's clip is

@@ -15,8 +15,8 @@ still work.
 ## Quick start
 
 1. Write a prompt in **Scene prompt or saved token**.
-2. Select **Review plan** to inspect voices, dialogue, effects, speed, and
-   timing without spending ElevenLabs generation credits.
+2. (**Review plan**, which inspected voices, dialogue, effects, speed, and timing
+   without spending ElevenLabs generation credits, is switched off for now.)
 3. Select **Generate & save** to create and archive the clip, or **Play on overlay**
    to create, archive, and immediately play it.
 4. Reuse the resulting `(TTS:<id>)` token to play exactly the same audio later
@@ -50,6 +50,10 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
 - **Silence between clips**: at least this many seconds pass between one clip ending
   and the next one starting (default 7, from 0 to 30). Play next ignores it, and the
   first clip after a quiet spell plays at once.
+- The controls are always visible. The dashboard's **top bar**, on every tab, shows the
+  TTS status (green while running, amber while paused) with **Pause TTS / Resume TTS**,
+  **Skip** and **From start**. The panel shows the same clip controls (and **Pause clip**),
+  greyed out while nothing is playing.
 - **Skip** cuts off the clip that is playing and moves on to the next request (after
   the silence). **Pause clip / Resume clip** pause and continue that one clip
   part-way through, which is separate from pausing TTS. **Play from start** plays the
@@ -437,7 +441,8 @@ only touches clips that have no waveform, and can safely be run again.
 
 ## Failures and billing
 
-**Review plan** uses OpenAI but does not generate ElevenLabs audio. Once speech
+**Review plan** (currently switched off) used OpenAI but did not generate ElevenLabs
+audio. Once speech
 or sound generation has started, the provider may charge credits even if a
 later scene fails. The server validates storage and prompt syntax before paid
 generation, queues jobs, and avoids automatic paid retries.

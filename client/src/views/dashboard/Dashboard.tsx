@@ -5,8 +5,8 @@ import { DashboardTopbar } from "./DashboardTopbar";
 import { customAccentVariables } from "../../theme";
 import { TextDialog } from "../../components/TextDialog";
 import TileController from "../../components/TileController";
-import { MessageCircle, Pause, Volume2 } from "lucide-react";
-import { barLabel } from "../../components/tts/statusText";
+import { MessageCircle } from "lucide-react";
+import { TtsQuickControls } from "../../components/tts/TtsQuickControls";
 import { Toolbar } from "../../components/toolbar/Toolbar";
 import { ElementPanel } from "../../components/layers/ElementPanel";
 import { WhitelistPanel } from "../../components/WhitelistPanel";
@@ -199,20 +199,7 @@ export function Dashboard(props: DashboardProps) {
                   Chat emotes active
                 </span>
               )}
-              {featureFlags.tts && (
-                <span
-                  className="chat-emote-active-indicator"
-                  title={
-                    ttsPlayback.held
-                      ? "TTS is paused: requests wait in the queue. Open Studio → TTS to resume."
-                      : "TTS is playing on the overlay. Open Studio → TTS to generate clips or pause it."
-                  }
-                >
-                  <span className="chat-emote-active-indicator__dot" />
-                  {ttsPlayback.held ? <Pause size={13} /> : <Volume2 size={13} />}
-                  {barLabel(ttsPlayback)}
-                </span>
-              )}
+              {featureFlags.tts && <TtsQuickControls playback={ttsPlayback} />}
             </>
           )
         }

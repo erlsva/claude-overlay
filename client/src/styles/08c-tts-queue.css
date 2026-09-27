@@ -103,3 +103,65 @@
 .tts-job--cancelled {
   opacity: 0.7;
 }
+
+/* TTS's status and main controls in the dashboard's top bar. */
+.tts-quick {
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  overflow: hidden;
+  border: 1px solid #15803d;
+  border-radius: 5px;
+  background: #052e16;
+  color: #bbf7d0;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.tts-quick__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-weight: 800;
+}
+.tts-quick__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tts-quick__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 0;
+  border-left: 1px solid rgba(187, 247, 208, 0.22);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.tts-quick__button:hover:not(:disabled),
+.tts-quick__button:focus-visible {
+  background: rgba(187, 247, 208, 0.14);
+}
+.tts-quick__button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+/* Paused: amber, so it is obvious at a glance that nothing new will play. */
+.tts-quick:has(.tts-quick__status--paused) {
+  border-color: #854d0e;
+  background: #2b1d04;
+  color: #f6c85f;
+}
+.tts-quick:has(.tts-quick__status--paused) .tts-quick__button {
+  border-left-color: rgba(246, 200, 95, 0.25);
+}
+.tts-quick:has(.tts-quick__status--paused) .tts-quick__button:hover:not(:disabled),
+.tts-quick:has(.tts-quick__status--paused) .tts-quick__button:focus-visible {
+  background: rgba(246, 200, 95, 0.14);
+}
