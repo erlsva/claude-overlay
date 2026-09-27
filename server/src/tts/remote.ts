@@ -5,7 +5,7 @@
  * acts on one.
  */
 
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { getFeatureFlags } from "../db/index.js";
@@ -68,24 +68,41 @@ function setHeld(held: boolean): boolean {
   return changed;
 }
 
-export const remoteControlRouter = Router();
-// A physical button may be pressed in quick succession, but this is still a control surface, not a
-// way to generate TTS, so a fairly tight limit is plenty.
-remoteControlRouter.use(
-  rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false }),
-);
-remoteControlRouter.post("/", async (req, res) => {
+/**
+ * Checks the bearer token and the owner's TTS switch, the same way for every request. On success,
+ * returns the token holder; on failure, it has already sent the error response, and the caller
+ * should stop.
+ */
+async function authenticate(req: Request, res: Response): Promise<boolean> {
   const auth = req.headers.authorization;
   const presented = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : undefined;
   const holder = presented && (await checkRemoteToken(presented));
   if (!holder) {
     res.status(401).json({ error: "Invalid or revoked TTS remote token." });
-    return;
+    return false;
   }
   if (!getFeatureFlags().tts) {
     res.status(503).json({ error: "TTS is currently disabled by the overlay owner." });
-    return;
+    return false;
   }
+  return true;
+}
+
+export const remoteControlRouter = Router();
+// A physical button may be pressed in quick succession, but this is still a control surface, not a
+// way to generate TTS, so a fairly tight limit is plenty. A polling status check shares the same
+// limit as button presses, since both hit this router.
+remoteControlRouter.use(
+  rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false }),
+);
+// Read-only: for a Stream Deck's "poll a URL for status" (or anything else polling for the icon to
+// follow), which only offers GET requests, not a JSON body.
+remoteControlRouter.get("/", async (req, res) => {
+  if (!(await authenticate(req, res))) return;
+  res.json({ ok: true, action: "status", changed: false, ...getTtsPlaybackState() });
+});
+remoteControlRouter.post("/", async (req, res) => {
+  if (!(await authenticate(req, res))) return;
   const input = z
     .object({
       action: z.enum([

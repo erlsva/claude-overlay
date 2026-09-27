@@ -94,7 +94,10 @@ is checked with `timingSafeEqual` against a stored SHA-256 hash, so only the has
 returned once, at creation. `remoteControlRouter` (`POST /tts/remote`, the token itself as a bearer
 header, no dashboard session, its own rate limit) maps an `action` onto the same functions the
 dashboard's `/playback` route uses, and shares `persistTtsQueueSettings()` (`queueSettings.ts`) with
-it so pausing from a remote survives a restart exactly like pausing from the dashboard does.
+it so pausing from a remote survives a restart exactly like pausing from the dashboard does. `GET
+/tts/remote` (same token, no body) returns the same state read-only, for a Stream Deck's polling
+option, whose icon otherwise only updates on that button's own presses. Both verbs share one
+`authenticate()` (token, then the owner's TTS switch) so they can never drift apart.
 
 ## Client (`client/src`)
 

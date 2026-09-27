@@ -106,6 +106,12 @@ tool that can send an HTTP request.
   dashboard uses (`held`, `waiting`, `active`, `paused`, `volume`, `gapSeconds`, `changed`, …) as
   plain top-level JSON fields, so the plugin's "set button image from a response field" can
   react to `held` or `active` directly.
+- `GET /tts/remote` (same token, same URL, no body) reads the same state as `status`, for a
+  button's **"periodically poll a URL for status"** option — a plain POST button's icon only
+  updates when it is pressed, so this is how the icon can instead follow what changed elsewhere
+  (the dashboard, or another button) without needing a press. Point the poll URL at the same
+  `/tts/remote`, method GET, and match on `held` (or whichever field the icon should follow) the
+  same way as the main request.
 - A token is playback-only: it cannot generate TTS, manage other tokens, or touch anything
   outside TTS. It is refused while TTS is switched off entirely (the owner's TTS Studio switch),
   same as the dashboard. Requests to `/tts/remote` are rate-limited.

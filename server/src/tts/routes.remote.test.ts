@@ -265,3 +265,27 @@ test("status reads the state without changing anything", async () => {
     assert.equal(typeof before.body.waiting, "number");
   });
 });
+
+test("a GET reads the same status, for polling (a Stream Deck's icon can only GET)", async () => {
+  await withServer(async (call) => {
+    assert.equal((await call("GET", "/remote")).status, 401, "no token");
+    assert.equal(
+      (await call("GET", "/remote", undefined, "vkremote.made.up")).status,
+      401,
+      "unknown token",
+    );
+    const created = await call("POST", "/remote-tokens", { name: "Deck" }, ownerSession);
+    const token = created.body.token;
+
+    const before = await call("GET", "/remote", undefined, token);
+    assert.equal(before.status, 200);
+    assert.equal(before.body.action, "status");
+    assert.equal(before.body.changed, false);
+    assert.equal(typeof before.body.held, "boolean");
+
+    // It only reads: pausing over POST is reflected the next time it is polled, not caused by it.
+    await call("POST", "/remote", { action: "pause-tts" }, token);
+    const after = await call("GET", "/remote", undefined, token);
+    assert.equal(after.body.held, true);
+  });
+});
