@@ -46,7 +46,7 @@ export function useTtsComposer(
       setJobs((current) => [job, ...current.filter((item) => item.id !== job.id)]);
       toast.info(
         play
-          ? "TTS queued for the overlay"
+          ? "TTS sent to the overlay"
           : isToken
             ? "Loading saved TTS clip"
             : "TTS generation queued",

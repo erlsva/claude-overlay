@@ -14,7 +14,7 @@ process.env.SESSION_SECRET = "tts-routes-test-secret";
 process.env.OWNER_TWITCH_USERNAME = "boss";
 
 const { saveClip } = await import("./store.js");
-const { clearWaitingJobs, setTtsGapSeconds, setTtsHeld, setTtsPlaybackController } =
+const { clearWaitingJobs, setTtsGapSeconds, setTtsHeld, setTtsPlaybackController, submit } =
   await import("./service.js");
 const { ttsRouter } = await import("./routes.js");
 const { cleanTtsQueueSettings, initializeTtsQueueSettings } = await import("../db/index.js");
@@ -167,9 +167,10 @@ test("the silence between clips is saved, and only sensible values are accepted"
 test("waiting requests appear in the queue, and can be played next, removed, or cleared", async () => {
   await withServer(async (call) => {
     await call("POST", "/playback", { action: "hold" });
-    const make = () => call("POST", "/generate", { prompt: `(TTS:${id})`, play: true });
-    const [one, two, three] = [await make(), await make(), await make()];
-    assert.equal(one.status, 202, "requests are accepted while paused");
+    // Requests from chat (triggers) are the ones that wait while TTS is paused.
+    const make = () =>
+      submit({ prompt: `(TTS:${id})`, sender: "viewer", owner: "trigger", play: true }).job;
+    const [, two] = [make(), make(), make()];
     await sleep(50);
 
     const state = await call("GET", "/state");
@@ -178,16 +179,41 @@ test("waiting requests appear in the queue, and can be played next, removed, or 
     assert.equal(state.body.queue.length, 3);
     assert.deepEqual(Object.keys(state.body.queue[0]).includes("prompt"), true);
 
-    const removed = await call("DELETE", `/jobs/${two.body.id}`);
+    const removed = await call("DELETE", `/jobs/${two.id}`);
     assert.equal(removed.status, 200);
-    assert.equal((await call("DELETE", `/jobs/${two.body.id}`)).status, 409, "already gone");
+    assert.equal((await call("DELETE", `/jobs/${two.id}`)).status, 409, "already gone");
     assert.equal((await call("DELETE", "/jobs/not-an-id")).status, 400);
     assert.equal((await call("GET", "/state")).body.queue.length, 2);
 
     const cleared = await call("POST", "/queue/clear");
     assert.equal(cleared.body.cleared, 2);
     assert.equal((await call("GET", "/state")).body.queue.length, 0);
-    assert.equal(three.status, 202);
+  });
+});
+
+test("Play on overlay from the dashboard plays at once even while TTS is paused", async () => {
+  await withServer(async (call) => {
+    await call("POST", "/playback", { action: "hold" });
+    const waiting = submit({
+      prompt: `(TTS:${id})`,
+      sender: "viewer",
+      owner: "trigger",
+      play: true,
+    }).job;
+    const mine = await call("POST", "/generate", { prompt: `(TTS:${id})`, play: true });
+    assert.equal(mine.status, 202);
+    await sleep(100);
+    const jobs = (await call("GET", "/jobs")).body as Array<{ id: string; stage?: string }>;
+    const played = jobs.find((job) => job.id === mine.body.id) as any;
+    assert.equal(played.stage, "playing", "it went straight to playing, past the pause");
+    assert.equal(played.status, "complete");
+    const state = (await call("GET", "/state")).body;
+    assert.equal(state.playback.held, true, "TTS stays paused");
+    assert.deepEqual(
+      state.queue.map((job: { id: string }) => job.id),
+      [waiting.id],
+      "and the request from chat is still waiting",
+    );
   });
 });
 

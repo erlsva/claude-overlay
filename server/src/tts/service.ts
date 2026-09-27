@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
+import { deleteMadeClip } from "./discard.js";
 import { interpretPrompt } from "./interpreter/index.js";
 import { generateClip, voices, type GenerateRequest } from "./generate.js";
 import { type Scene } from "./scene/index.js";
 import type { TtsPlaybackState } from "../types.js";
 import { createQueueGate, QueueCancelled } from "./queue.js";
-import { deleteClip, getClip, type TtsClip } from "./store.js";
-import { deleteUploadedClip, discordStorageConfigured } from "./discord.js";
+import { getClip, type TtsClip } from "./store.js";
 
 export type TtsJob = {
   id: string;
@@ -155,35 +154,13 @@ export function playNextTts(): boolean {
 export function setTtsGapSeconds(seconds: number) {
   ttsQueue.setGapSeconds(seconds);
 }
-/** Discord allows only a few webhook requests every couple of seconds. */
-const DISCORD_DELETE_SPACING_MS = 450;
-let discardChain: Promise<unknown> = Promise.resolve();
-/**
- * Deletes the clip that was made for a request that is no longer wanted, so it does not linger in
- * the saved clips or on the public clip page. A replay of a saved clip is never deleted. Removing a
- * whole queue at once queues the deletions one after another, which keeps within Discord's rate
- * limit (and the local file store, which cannot delete two clips at the same moment).
- */
+/** Deletes the clip made for a request that was removed. A replay of a saved clip is never deleted. */
 function discardClip(job: TtsJob): Promise<void> {
   const clip = job.clip;
   if (!job.generated || !clip) return Promise.resolve();
   job.clip = undefined;
   job.generated = false;
-  const done = discardChain.then(async () => {
-    try {
-      if (discordStorageConfigured()) {
-        await deleteUploadedClip(clip.discordMessageId);
-        await sleep(DISCORD_DELETE_SPACING_MS);
-      }
-    } catch (error) {
-      console.error("Could not delete the audio of a removed TTS request", error);
-    }
-    await deleteClip(clip.id).catch((error) =>
-      console.error("Could not delete the record of a removed TTS request", error),
-    );
-  });
-  discardChain = done;
-  return done;
+  return deleteMadeClip(clip);
 }
 /** Takes a request out of the queue. False when it is already playing, or finished. */
 export function removeWaitingJob(id: string): boolean {
@@ -274,11 +251,36 @@ async function settleFailure(job: TtsJob, error: unknown) {
   job.message = "TTS failed";
 }
 
-/** The playing track: waits for the clip, for pausing to end and for the silence, then plays it. */
+/**
+ * Only one clip plays at a time. Requests in the queue never overlap, but one started by hand
+ * (`direct`) does not wait in that line, so whoever is about to play takes the player first.
+ */
+let playerBusy = false;
+async function takePlayer(job: { cancelled: () => boolean }) {
+  for (;;) {
+    await ttsQueue.waitUntil(job, () => !playerBusy);
+    // Look again: two waiters can be woken together, and only the first may go.
+    if (!playerBusy) {
+      playerBusy = true;
+      return;
+    }
+  }
+}
+function freePlayer() {
+  playerBusy = false;
+  ttsQueue.nudge();
+}
+
+/**
+ * The playing track: waits for the clip, for pausing to end and for the silence, then plays it. A
+ * `direct` request skips the pause and the silence (it was started by hand, so it plays as soon
+ * as no other clip is playing) and does not wait behind the requests in the queue.
+ */
 async function playWhenReady(
   job: TtsJob,
   made: Promise<TtsClip>,
   addWarning: (message: string) => void,
+  direct: boolean,
 ) {
   const gateJob = { cancelled: () => job.status === "cancelled" };
   let playbackFailed = false;
@@ -286,23 +288,29 @@ async function playWhenReady(
     const clip = await made;
     // Held here while TTS is paused, and until there has been enough silence since the last clip.
     // Time spent making the clip counts as silence.
-    await waitOn(
-      job,
-      () => (ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips"),
-      ttsQueue.playWouldWait(),
-      () => ttsQueue.beforePlay(gateJob),
-    );
-    job.stage = "playing";
-    job.message = "Playing on overlay";
-    stateChanged();
+    if (!direct)
+      await waitOn(
+        job,
+        () => (ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips"),
+        ttsQueue.playWouldWait(),
+        () => ttsQueue.beforePlay(gateJob),
+      );
+    await takePlayer(gateJob);
     try {
-      if (!play) throw new Error("Overlay playback is unavailable.");
-      await play(clip, overlayVolume);
-    } catch (error) {
-      playbackFailed = true;
-      addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
+      job.stage = "playing";
+      job.message = "Playing on overlay";
+      stateChanged();
+      try {
+        if (!play) throw new Error("Overlay playback is unavailable.");
+        await play(clip, overlayVolume);
+      } catch (error) {
+        playbackFailed = true;
+        addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
+      } finally {
+        ttsQueue.clipEnded();
+      }
     } finally {
-      ttsQueue.clipEnded();
+      freePlayer();
     }
     job.status = "complete";
     job.message = playbackFailed
@@ -321,6 +329,11 @@ export function submit(input: {
   owner: string;
   planId?: string;
   play: boolean;
+  /**
+   * Started by hand from the dashboard: it plays as soon as no other clip is playing, whether or
+   * not TTS is paused, and without the silence, ahead of the requests waiting in the queue.
+   */
+  direct?: boolean;
 }) {
   z.string().trim().min(1).max(6000).parse(input.prompt);
   // Nothing can play without an open overlay, so refuse before any credits are spent.
@@ -362,20 +375,21 @@ export function submit(input: {
   };
   const gateJob = { cancelled: () => job.status === "cancelled" };
 
-  // The making track: one clip at a time, ahead of playing and even while TTS is paused.
-  const made = makeChain.then(async () => {
+  const direct = !!input.direct && input.play;
+  const replayOf = replayId(input.prompt);
+  const make = async () => {
     if (job.status === "cancelled") throw new QueueCancelled(); // removed while it waited
     // Only so many made clips may wait for their turn: that bounds the credits spent on ones that
-    // are then removed.
-    if (input.play) await ttsQueue.waitUntil(gateJob, () => readyCount() < MAX_READY_AHEAD);
+    // are then removed. A request started by hand is not held to it.
+    if (input.play && !direct)
+      await ttsQueue.waitUntil(gateJob, () => readyCount() < MAX_READY_AHEAD);
     job.status = "running";
     job.stage = "making";
     stateChanged();
-    const token = replayId(input.prompt);
     let clip: TtsClip;
-    if (token) {
+    if (replayOf) {
       job.message = "Loading saved clip";
-      const savedClip = await getClip(token);
+      const savedClip = await getClip(replayOf);
       if (!savedClip) throw new Error("TTS token not found.");
       // The audio remains attributable in storage, while the live overlay
       // correctly identifies the person who chose to replay it now.
@@ -401,11 +415,16 @@ export function submit(input: {
     job.message = "Made, waiting for its turn";
     stateChanged();
     return clip;
-  });
-  makeChain = made.then(
-    () => {},
-    () => {},
-  );
+  };
+  // The making track: one clip at a time, ahead of playing and even while TTS is paused. Loading a
+  // saved clip costs nothing, so a replay started by hand does not wait behind clips being made.
+  const skipsMaking = direct && !!replayOf;
+  const made = skipsMaking ? make() : makeChain.then(make);
+  if (!skipsMaking)
+    makeChain = made.then(
+      () => {},
+      () => {},
+    );
 
   if (!input.play) {
     // Just make and save it: there is nothing to play.
@@ -422,8 +441,9 @@ export function submit(input: {
     );
     return { job, completion };
   }
+  if (direct) return { job, completion: playWhenReady(job, made, addWarning, true) };
   // The playing track: in the order requests came in, held by pausing and the silence between clips.
-  const completion = playChain.then(() => playWhenReady(job, made, addWarning));
+  const completion = playChain.then(() => playWhenReady(job, made, addWarning, false));
   playChain = completion.catch(() => {});
   return { job, completion };
 }

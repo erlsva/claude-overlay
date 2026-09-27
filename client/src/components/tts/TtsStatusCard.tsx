@@ -69,7 +69,7 @@ export function TtsStatusCard({
           title={
             playback.held
               ? "Play the requests that are waiting, and let new ones play as they come"
-              : "Hold new requests in a queue instead of playing them. What is playing now finishes."
+              : "Hold new requests in a queue instead of playing them. What is playing now finishes, and Play on overlay here still plays at once."
           }
           onClick={() =>
             void runAction(async () => {

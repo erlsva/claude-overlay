@@ -51,7 +51,7 @@ export function TtsQuickControls({ playback }: { playback: PlaybackState }) {
         title={
           playback.held
             ? "Resume TTS: play the waiting requests, and let new ones play as they come"
-            : "Pause TTS: hold new requests in a queue. What is playing now finishes."
+            : "Pause TTS: hold new requests in a queue. What is playing now finishes. Play on overlay in the dashboard still plays at once."
         }
         onClick={() =>
           void run("/playback", { action: playback.held ? "release" : "hold" }, "Nothing changed")

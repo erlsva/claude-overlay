@@ -149,6 +149,8 @@ ttsRouter.post("/generate", expensive, async (req, res) => {
       .parse(req.body);
     const { job } = submit({
       ...input,
+      // Pressed by hand in the dashboard, so it plays now instead of waiting in the queue.
+      direct: true,
       owner: req.authUser!.id,
       sender: req.authUser!.displayName || req.authUser!.login,
     });

@@ -42,13 +42,19 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
 - **Resume TTS** plays the waiting requests in order and lets new ones play as they
   come. **Play next** (shown while paused) plays exactly one waiting request and
   holds again.
+- **Play on overlay** in the dashboard (for a typed prompt or a saved clip) is you asking
+  for it by hand, so it plays as soon as no other clip is playing: it is not held back by
+  pausing TTS or by the silence, and it goes ahead of the requests waiting in the queue,
+  which stay waiting. It never cuts off a clip that is playing, and its controls (Skip,
+  Pause clip, From start) work like any other clip's. Requests from chat, rewards and
+  triggers are the ones the pause and the silence hold back.
 - The **Waiting** list shows who asked for what, in order, and whether each is
   waiting, being made, or ready. Take one out with its X, or use **Clear all**. Removing
   a request that was already made deletes the clip that was made for it, so it does not
   stay in the saved clips or on the public clip page. Removing a replay of a saved
   `(TTS:…)` token never deletes that saved clip.
 - **Silence between clips**: at least this many seconds pass between one clip ending
-  and the next one starting (default 7, from 0 to 30). Play next ignores it, and the
+  and the next one starting (default 7, from 0 to 30). Play next and Play on overlay ignore it, and the
   first clip after a quiet spell plays at once.
 - The controls are always visible. The dashboard's **top bar**, on every tab, shows the
   TTS status (green while running, amber while paused) with **Pause TTS / Resume TTS**,

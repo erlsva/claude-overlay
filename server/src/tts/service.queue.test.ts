@@ -339,3 +339,72 @@ test("the dashboard is told when pausing or the queue changes", async () => {
   stop();
   assert.equal(ttsQueue.isHeld(), false);
 });
+
+/** Pressed by hand in the dashboard: plays now, whether or not TTS is paused. */
+const byHand = (n: number) =>
+  submit({ prompt: token(n), sender: "streamer", owner: "test", play: true, direct: true });
+
+test("a clip played by hand from the dashboard plays at once while TTS is paused", async () => {
+  setTtsHeld(true);
+  const waiting = [replay(1), replay(2)];
+  await sleep(50);
+  const pressedAt = Date.now();
+  const mine = byHand(3);
+  await mine.completion;
+  assert.deepEqual(order(), ["saved 3"], "it played, and the requests in the queue did not");
+  assert.ok(played[0].start - pressedAt < 100, "and it started straight away");
+  assert.equal(getTtsPlaybackState().waiting, 2, "the others are still waiting");
+  assert.equal(ttsQueue.isHeld(), true, "TTS is still paused");
+  assert.equal(waiting[0].job.stage, "ready");
+});
+
+test("a clip played by hand ignores the silence after the clip before it", async () => {
+  await replay(1).completion;
+  setTtsGapSeconds(30); // the clip that just ended is now followed by a long silence
+  const pressedAt = Date.now();
+  await Promise.race([
+    byHand(2).completion,
+    sleep(1500).then(() => assert.fail("it should not wait for the silence")),
+  ]);
+  assert.deepEqual(order(), ["saved 1", "saved 2"]);
+  assert.ok(played[1].start - pressedAt < 100);
+});
+
+test("a clip played by hand waits for the clip that is playing, and never cuts it off", async () => {
+  playMs = 200;
+  const first = replay(1);
+  await sleep(50); // saved 1 is playing
+  const mine = byHand(2);
+  await Promise.all([first.completion, mine.completion]);
+  assert.deepEqual(order(), ["saved 1", "saved 2"]);
+  assert.ok(played[1].start >= played[0].end, "the two never played over each other");
+});
+
+test("clips played by hand one after another never play over each other", async () => {
+  playMs = 100;
+  const all = [byHand(1), byHand(2), byHand(3)];
+  await Promise.all(all.map((entry) => entry.completion));
+  assert.equal(played.length, 3);
+  for (let i = 1; i < played.length; i++)
+    assert.ok(played[i].start >= played[i - 1].end, "each starts after the one before ended");
+});
+
+test("a clip played by hand can be removed while it waits for the clip that is playing", async () => {
+  playMs = 200;
+  const first = replay(1);
+  await sleep(50);
+  const mine = byHand(2);
+  await sleep(50);
+  assert.equal(removeWaitingJob(mine.job.id), true);
+  await Promise.all([first.completion, mine.completion]);
+  assert.deepEqual(order(), ["saved 1"]);
+  assert.equal(mine.job.status, "cancelled");
+});
+
+test("a request from the queue still waits for the silence after a clip played by hand", async () => {
+  setTtsGapSeconds(1);
+  await byHand(1).completion;
+  const endedAt = played[0].end;
+  await replay(2).completion;
+  assert.ok(played[1].start - endedAt >= 950, "the silence is counted from the hand-played clip");
+});
