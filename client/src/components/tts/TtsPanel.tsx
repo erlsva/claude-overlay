@@ -71,6 +71,8 @@ export function TtsPanel(props: TtsPanelProps) {
         </div>
       </details>
 
+      {isAdmin && <TtsRemoteTokens s={s} />}
+
       <TtsStatusCard s={s} />
       <TtsQueue s={s} />
 
@@ -124,8 +126,6 @@ export function TtsPanel(props: TtsPanelProps) {
       {jobs.length > 0 && <TtsJobs s={s} />}
 
       <TtsLibrary props={props} s={s} />
-
-      {isAdmin && <TtsRemoteTokens s={s} />}
     </section>
   );
 }
