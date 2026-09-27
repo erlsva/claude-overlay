@@ -4,6 +4,7 @@ import { OverlayStage, type OverlayStageHandle } from "../components/overlay-sta
 import { useSocket } from "../hooks/useSocket";
 import type { MediaControlPayload } from "../types";
 import { ChatEmoteLayer } from "../components/chat-emotes/ChatEmoteLayer";
+import { TtsEmote } from "../components/tts-emote/TtsEmote";
 import TileController from "../components/TileController";
 import { isMirrorMode, silencePage } from "../audio/silence";
 import { SERVER_URL } from "../config/server";
@@ -30,6 +31,8 @@ export function Overlay() {
     notifyMediaEnded,
     chatChannel,
     ttsPlayback,
+    featureFlags,
+    getTtsLevel,
   } = useSocket({
     mode: IS_MIRROR ? "mirror" : "overlay",
     onMediaControl: handleMediaControl,
@@ -74,7 +77,10 @@ export function Overlay() {
         onMediaEnded={IS_MIRROR ? undefined : notifyMediaEnded}
       />
       <ChatEmoteLayer spawn={chatEmoteSpawn} settings={chatEmoteSettings} />
-      {displayedTts.active && (
+      {featureFlags.tts && ttsPlayback.showEmote && (
+        <TtsEmote held={ttsPlayback.held} getLevel={getTtsLevel} />
+      )}
+      {displayedTts.active && ttsPlayback.showPrompt && (
         <div
           className={`overlay-tts-status ${displayedTts.paused ? "overlay-tts-status--paused" : ""}${ttsLeaving ? " overlay-tts-status--leaving" : ""}`}
           role="status"

@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Check, CircleAlert, Pause, PauseCircle, Play, Timer, Volume2 } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  MessageSquareText,
+  Pause,
+  PauseCircle,
+  Play,
+  Smile,
+  Timer,
+  Volume2,
+} from "lucide-react";
 import { api } from "./api";
 import { type PlaybackState } from "./types";
 import { Service } from "./Service";
@@ -103,6 +113,56 @@ export function TtsStatusCard({
           />
           <span aria-hidden="true">s</span>
         </label>
+      </div>
+      <div className="tts-status-row">
+        <span className="tts-status-row__icon">
+          <MessageSquareText size={16} />
+        </span>
+        <span className="tts-status-row__text">
+          <strong>Prompt on the overlay</strong>
+          <small>Shows who asked and what was said while a clip plays.</small>
+        </span>
+        <button
+          type="button"
+          className="ui-switch"
+          role="switch"
+          aria-checked={playback.showPrompt}
+          aria-label={playback.showPrompt ? "Hide the prompt card" : "Show the prompt card"}
+          title={playback.showPrompt ? "Hide the prompt card" : "Show the prompt card"}
+          disabled={busy}
+          onClick={() =>
+            void runAction(async () => {
+              const result = await send({ action: "prompt", show: !playback.showPrompt });
+              setPlayback(result.state);
+              toast.info(result.state.showPrompt ? "Prompt card shown" : "Prompt card hidden");
+            })
+          }
+        />
+      </div>
+      <div className="tts-status-row">
+        <span className="tts-status-row__icon">
+          <Smile size={16} />
+        </span>
+        <span className="tts-status-row__text">
+          <strong>Icon on the overlay</strong>
+          <small>Shows TTS is on and moves with what is said. Grey while paused.</small>
+        </span>
+        <button
+          type="button"
+          className="ui-switch"
+          role="switch"
+          aria-checked={playback.showEmote}
+          aria-label={playback.showEmote ? "Hide the TTS icon" : "Show the TTS icon"}
+          title={playback.showEmote ? "Hide the TTS icon" : "Show the TTS icon"}
+          disabled={busy}
+          onClick={() =>
+            void runAction(async () => {
+              const result = await send({ action: "emote", show: !playback.showEmote });
+              setPlayback(result.state);
+              toast.info(result.state.showEmote ? "TTS icon shown" : "TTS icon hidden");
+            })
+          }
+        />
       </div>
       <div
         className={`tts-status-row ${status?.configured ? "tts-status-row--ok" : status ? "tts-status-row--warn" : ""}`}

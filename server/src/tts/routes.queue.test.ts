@@ -76,13 +76,74 @@ test("pausing and resuming TTS is saved, and reported back", async () => {
     assert.equal(paused.status, 200);
     assert.equal(paused.body.changed, true);
     assert.equal(paused.body.state.held, true);
-    assert.deepEqual(saved(), { held: true, gapSeconds: 7 });
+    assert.deepEqual(saved(), { held: true, gapSeconds: 7, showEmote: true, showPrompt: true });
     assert.equal((await initializeTtsQueueSettings()).held, true, "a restart would find it paused");
 
     assert.equal((await call("POST", "/playback", { action: "hold" })).body.changed, false);
     const resumed = await call("POST", "/playback", { action: "release" });
     assert.equal(resumed.body.state.held, false);
     assert.equal(saved().held, false);
+  });
+});
+
+test("showing or hiding the TTS icon is saved, and only a yes or no is accepted", async () => {
+  await withServer(async (call) => {
+    assert.equal((await call("GET", "/state")).body.playback.showEmote, true, "shown by default");
+
+    const hidden = await call("POST", "/playback", { action: "emote", show: false });
+    assert.equal(hidden.status, 200);
+    assert.equal(hidden.body.changed, true);
+    assert.equal(hidden.body.state.showEmote, false);
+    assert.equal(saved().showEmote, false);
+    assert.equal(
+      (await initializeTtsQueueSettings()).showEmote,
+      false,
+      "a restart keeps it hidden",
+    );
+    assert.equal(
+      (await call("POST", "/playback", { action: "emote", show: false })).body.changed,
+      false,
+    );
+
+    for (const show of ["no", 0, null, undefined])
+      assert.equal((await call("POST", "/playback", { action: "emote", show })).status, 400);
+    assert.equal(saved().showEmote, false, "a refused value changes nothing");
+
+    const shown = await call("POST", "/playback", { action: "emote", show: true });
+    assert.equal(shown.body.state.showEmote, true);
+    assert.equal(saved().showEmote, true);
+  });
+});
+
+test("showing or hiding the prompt card is saved, and is separate from the icon", async () => {
+  await withServer(async (call) => {
+    const state = (await call("GET", "/state")).body.playback;
+    assert.equal(state.showPrompt, true, "shown by default, as it always was");
+
+    const hidden = await call("POST", "/playback", { action: "prompt", show: false });
+    assert.equal(hidden.status, 200);
+    assert.equal(hidden.body.changed, true);
+    assert.equal(hidden.body.state.showPrompt, false);
+    assert.equal(hidden.body.state.showEmote, true, "the icon is not affected");
+    assert.equal(saved().showPrompt, false);
+    assert.equal(saved().showEmote, true);
+    assert.equal((await initializeTtsQueueSettings()).showPrompt, false, "kept over a restart");
+    assert.equal(
+      (await call("POST", "/playback", { action: "prompt", show: false })).body.changed,
+      false,
+    );
+
+    for (const show of ["no", 0, null, undefined])
+      assert.equal((await call("POST", "/playback", { action: "prompt", show })).status, 400);
+    assert.equal(saved().showPrompt, false, "a refused value changes nothing");
+
+    // Hiding the icon leaves the card alone, too.
+    const iconOff = await call("POST", "/playback", { action: "emote", show: false });
+    assert.equal(iconOff.body.state.showPrompt, false);
+    await call("POST", "/playback", { action: "emote", show: true });
+    const shown = await call("POST", "/playback", { action: "prompt", show: true });
+    assert.equal(shown.body.state.showPrompt, true);
+    assert.equal(saved().showPrompt, true);
   });
 });
 
@@ -185,14 +246,19 @@ test("nobody signed out can touch the queue", async () => {
 });
 
 test("saved settings are cleaned up when they are read back", () => {
-  assert.deepEqual(cleanTtsQueueSettings({ held: true, gapSeconds: 12 }), {
-    held: true,
-    gapSeconds: 12,
-  });
-  assert.deepEqual(cleanTtsQueueSettings({ held: "yes", gapSeconds: 999 }), {
-    held: false,
-    gapSeconds: 7,
-  });
+  assert.deepEqual(
+    cleanTtsQueueSettings({ held: true, gapSeconds: 12, showEmote: false, showPrompt: false }),
+    { held: true, gapSeconds: 12, showEmote: false, showPrompt: false },
+  );
+  assert.deepEqual(
+    cleanTtsQueueSettings({ held: "yes", gapSeconds: 999, showEmote: "no", showPrompt: 0 }),
+    // Only an explicit false hides the icon or the card.
+    { held: false, gapSeconds: 7, showEmote: true, showPrompt: true },
+  );
   for (const odd of [undefined, null, "paused", 5, [], { gapSeconds: -3 }])
-    assert.deepEqual(cleanTtsQueueSettings(odd), { held: false, gapSeconds: 7 }, String(odd));
+    assert.deepEqual(
+      cleanTtsQueueSettings(odd),
+      { held: false, gapSeconds: 7, showEmote: true, showPrompt: true },
+      String(odd),
+    );
 });

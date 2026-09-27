@@ -87,6 +87,7 @@ export function useSocket(props: UseSocketOptions = {}) {
     stopPreviewSound,
     playSound,
     stopSound,
+    getTtsLevel,
     saveTrigger,
     deleteTrigger,
   } = s;
@@ -139,6 +140,7 @@ export function useSocket(props: UseSocketOptions = {}) {
     stopPreviewSound,
     playSound,
     stopSound,
+    getTtsLevel,
     saveTrigger,
     deleteTrigger,
   };

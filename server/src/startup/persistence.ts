@@ -5,7 +5,7 @@ import {
   initializeWhitelistStore,
 } from "../db/index.js";
 import { canvasStore } from "../state/canvasStore.js";
-import { ttsQueue } from "../tts/service.js";
+import { setTtsShowEmote, setTtsShowPrompt, ttsQueue } from "../tts/service.js";
 import { initializeEventAuthStore } from "../twitch/eventAuthStore.js";
 
 const inProduction = () => process.env.NODE_ENV === "production";
@@ -30,6 +30,8 @@ export async function initializePersistence() {
   const queueSettings = await initializeTtsQueueSettings();
   ttsQueue.setHeld(queueSettings.held);
   ttsQueue.setGapSeconds(queueSettings.gapSeconds);
+  setTtsShowEmote(queueSettings.showEmote);
+  setTtsShowPrompt(queueSettings.showPrompt);
   const stored = await initializeChatEmoteSettingsStore().catch((error) => {
     console.error("Could not initialize persistent chat-emote settings", error);
     return undefined;

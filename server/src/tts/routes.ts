@@ -21,6 +21,8 @@ import {
   setTtsGapSeconds,
   setTtsHeld,
   setTtsPlaybackVolume,
+  setTtsShowEmote,
+  setTtsShowPrompt,
   stopTtsPlayback,
   submit,
   ttsQueue,
@@ -182,6 +184,10 @@ ttsRouter.post("/playback", async (req, res) => {
           action: z.literal("gap"),
           seconds: z.number().int().min(0).max(MAX_GAP_SECONDS),
         }),
+        // Whether the overlay shows the TTS icon.
+        z.object({ action: z.literal("emote"), show: z.boolean() }),
+        // Whether the overlay shows the now-playing card (who asked, and the prompt).
+        z.object({ action: z.literal("prompt"), show: z.boolean() }),
       ])
       .parse(req.body);
   } catch (error) {
@@ -197,7 +203,15 @@ ttsRouter.post("/playback", async (req, res) => {
   else if (input.action === "restart") changed = restartTtsPlayback();
   else if (input.action === "volume") changed = setTtsPlaybackVolume(input.volume);
   else if (input.action === "next") changed = playNextTts();
-  else if (input.action === "gap") {
+  else if (input.action === "prompt") {
+    changed = getTtsPlaybackState().showPrompt !== input.show;
+    setTtsShowPrompt(input.show);
+    saveSettings = true;
+  } else if (input.action === "emote") {
+    changed = getTtsPlaybackState().showEmote !== input.show;
+    setTtsShowEmote(input.show);
+    saveSettings = true;
+  } else if (input.action === "gap") {
     changed = ttsQueue.gapSeconds() !== input.seconds;
     setTtsGapSeconds(input.seconds);
     saveSettings = true;
@@ -212,6 +226,8 @@ ttsRouter.post("/playback", async (req, res) => {
       await saveTtsQueueSettings({
         held: ttsQueue.isHeld(),
         gapSeconds: ttsQueue.gapSeconds(),
+        showEmote: getTtsPlaybackState().showEmote,
+        showPrompt: getTtsPlaybackState().showPrompt,
       });
     } catch (error) {
       console.error("Could not save the TTS queue settings", error);

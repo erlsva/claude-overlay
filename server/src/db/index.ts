@@ -27,6 +27,10 @@ interface WhitelistEntry {
 export interface TtsQueueSettings {
   held: boolean;
   gapSeconds: number;
+  /** Whether the overlay shows the TTS icon. On unless it was switched off. */
+  showEmote: boolean;
+  /** Whether the overlay shows the now-playing card. On unless it was switched off. */
+  showPrompt: boolean;
 }
 
 interface DbSchema {
@@ -244,6 +248,8 @@ export function cleanTtsQueueSettings(value: unknown): TtsQueueSettings {
     held: stored.held === true,
     gapSeconds:
       Number.isFinite(gap) && gap >= 0 && gap <= MAX_GAP_SECONDS ? gap : DEFAULT_GAP_SECONDS,
+    showEmote: stored.showEmote !== false,
+    showPrompt: stored.showPrompt !== false,
   };
 }
 
@@ -258,7 +264,7 @@ export async function initializeTtsQueueSettings(): Promise<TtsQueueSettings> {
     return cleanTtsQueueSettings(await loadStoredSetting("tts_queue", "TTS queue settings"));
   } catch (error) {
     console.error("TTS queue settings unavailable at startup, keeping TTS paused", error);
-    return { held: true, gapSeconds: DEFAULT_GAP_SECONDS };
+    return { held: true, gapSeconds: DEFAULT_GAP_SECONDS, showEmote: true, showPrompt: true };
   }
 }
 

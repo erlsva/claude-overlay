@@ -15,6 +15,8 @@ export function useTtsVolume(
     held: false,
     waiting: 0,
     gapSeconds: 7,
+    showEmote: true,
+    showPrompt: true,
     active: false,
     paused: false,
   });

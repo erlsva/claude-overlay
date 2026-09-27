@@ -47,6 +47,7 @@ export function useSocketConnection(
       | "pendingCursors"
       | "pendingUpdates"
       | "rafRef"
+      | "ttsClipRef"
     > &
     Pick<ReturnType<typeof useSocketServices>, "toast"> &
     Pick<ReturnType<typeof useSoundActions>, "startSound">,
@@ -71,6 +72,7 @@ export function useSocketConnection(
     setTtsPlayback,
     socketRef,
     activeSoundAudioRef,
+    ttsClipRef,
     connectedOnceRef,
     cursorExpiryTimers,
     lastConnectionToastRef,
@@ -231,6 +233,13 @@ export function useSocketConnection(
     });
     socket.on("sound:play", (item) => {
       if (mode !== "overlay") return;
+      // A TTS clip arrives with its length and waveform, which the overlay's icon moves to.
+      if (typeof item.duration === "number")
+        ttsClipRef.current = {
+          id: item.id,
+          peaks: Array.isArray(item.peaks) ? item.peaks : null,
+          duration: item.duration,
+        };
       startSound(item, true, false);
     });
     socket.on("sound:stop", ({ id }) => {

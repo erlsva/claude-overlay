@@ -48,6 +48,20 @@ export const MAX_QUEUED = 100;
 export const MAX_READY_AHEAD = 5;
 /** Holds made clips while TTS is paused, and keeps some silence between clips. */
 export const ttsQueue = createQueueGate();
+let showPrompt = true;
+/** Shows (true) or hides (false) the now-playing card (who asked, and the prompt) on the overlay. */
+export function setTtsShowPrompt(show: boolean) {
+  if (showPrompt === show) return;
+  showPrompt = show;
+  stateChanged();
+}
+let showEmote = true;
+/** Shows (true) or hides (false) the TTS icon on the overlay. */
+export function setTtsShowEmote(show: boolean) {
+  if (showEmote === show) return;
+  showEmote = show;
+  stateChanged();
+}
 const stateListeners = new Set<() => void>();
 /** Calls `listener` whenever the playback state (paused, waiting, gap, what plays) may have changed. */
 export function onTtsStateChange(listener: () => void) {
@@ -125,6 +139,8 @@ export function getTtsPlaybackState(): TtsPlaybackState {
     held: ttsQueue.isHeld(),
     waiting: waitingJobs().length,
     gapSeconds: ttsQueue.gapSeconds(),
+    showEmote,
+    showPrompt,
     volume: overlayVolume,
   };
 }

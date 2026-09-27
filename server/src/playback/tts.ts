@@ -6,6 +6,7 @@
 import { randomUUID } from "crypto";
 import { publicServerUrl } from "../config/env.js";
 import { getFeatureFlags } from "../db/index.js";
+import { sanitizePeaks } from "../tts/publicClips.js";
 import { activeOverlays, io } from "../runtime.js";
 import {
   getTtsPlaybackState,
@@ -128,6 +129,9 @@ async function playClip(clip: Clip, volume: number) {
       url: `${publicServerUrl()}/tts/clips/${clip.id}/audio`,
       volume,
       playbackId,
+      // The overlay's icon moves to the clip's waveform, so it is told the length and the shape.
+      duration: clip.duration,
+      ...(sanitizePeaks(clip.peaks) ? { peaks: sanitizePeaks(clip.peaks)! } : {}),
     });
     emitStatus();
   });

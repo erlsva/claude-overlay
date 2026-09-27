@@ -2,13 +2,17 @@ import { useCallback } from "react";
 import { type SoundboardItem } from "../../types";
 import type { UseSocketOptions } from "../useSocket";
 import type { useSocketRefs } from "./useSocketRefs";
+import { levelAt, steadyLevel } from "../../support/ttsLevel";
 import type { useSocketState } from "./useSocketState";
 import type { useSocketServices } from "./useSocketServices";
 
 /** Playing, previewing and stopping soundboard clips, and saving or deleting them. */
 export function useSoundActions(
   props: UseSocketOptions,
-  deps: Pick<ReturnType<typeof useSocketRefs>, "activeSoundAudioRef" | "previewAudioBySoundRef"> &
+  deps: Pick<
+    ReturnType<typeof useSocketRefs>,
+    "activeSoundAudioRef" | "previewAudioBySoundRef" | "ttsClipRef"
+  > &
     Pick<
       ReturnType<typeof useSocketState>,
       "overlayConnected" | "setPreviewingSoundIds" | "socketRef" | "studio"
@@ -19,6 +23,7 @@ export function useSoundActions(
   const {
     activeSoundAudioRef,
     previewAudioBySoundRef,
+    ttsClipRef,
     overlayConnected,
     setPreviewingSoundIds,
     socketRef,
@@ -164,7 +169,24 @@ export function useSoundActions(
     [overlayConnected, studio.sounds, toast],
   );
 
+  /**
+   * How loud the TTS clip on the overlay is right now, 0 to 1, from its waveform and where its audio
+   * has got to. 0 when nothing is playing, or the clip is paused. The overlay's icon moves to it.
+   */
+  const getTtsLevel = useCallback(() => {
+    const clip = ttsClipRef.current;
+    if (!clip) return 0;
+    for (const audio of activeSoundAudioRef.current) {
+      if (audio.dataset.soundId !== clip.id) continue;
+      if (audio.paused || audio.ended) return 0;
+      return clip.peaks
+        ? levelAt(clip.peaks, audio.currentTime, clip.duration || audio.duration)
+        : steadyLevel(audio.currentTime);
+    }
+    return 0;
+  }, [activeSoundAudioRef, ttsClipRef]);
   return {
+    getTtsLevel,
     startSound,
     saveSound,
     deleteSound,

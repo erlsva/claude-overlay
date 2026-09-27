@@ -347,7 +347,9 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    nothing plays until you **Resume TTS** or use **Play next**. Waiting requests
    can be removed one by one or all at once (a removed request's clip is
    deleted), and the silence between clips (7 seconds by default) is adjustable.
-   Whether TTS is paused survives a restart. New TTS playback defaults to 25% volume.
+   The overlay can show a small TTS icon (grey while paused, and moving with the
+   audio) and the now-playing prompt card; each has its own switch. Whether TTS is
+   paused, and those switches, survive a restart. New TTS playback defaults to 25% volume.
    See [docs/TTS.md](docs/TTS.md#pausing-tts-and-the-queue).
 6. Finished speech is loudness-normalized with true-peak protection. Standalone
    effects use a quieter target and additional peak headroom. OBS shows an

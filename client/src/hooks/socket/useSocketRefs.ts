@@ -22,6 +22,8 @@ export function useSocketRefs(props: UseSocketOptions) {
   const connectedOnceRef = useRef(false);
   const lastConnectionToastRef = useRef(0);
   const activeSoundAudioRef = useRef<Set<HTMLAudioElement>>(new Set());
+  /** The TTS clip on the overlay and its waveform, which the TTS icon moves to. */
+  const ttsClipRef = useRef<{ id: string; peaks: number[] | null; duration: number } | null>(null);
   const previewAudioBySoundRef = useRef<Map<string, Set<HTMLAudioElement>>>(new Map());
   const pendingAudioTests = useRef(
     new Map<string, (result: { ok: boolean; error?: string }) => void>(),
@@ -37,6 +39,7 @@ export function useSocketRefs(props: UseSocketOptions) {
     connectedOnceRef,
     lastConnectionToastRef,
     activeSoundAudioRef,
+    ttsClipRef,
     previewAudioBySoundRef,
     pendingAudioTests,
   };

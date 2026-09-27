@@ -58,7 +58,17 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
   clip its full time again, so it is not cut short.
 - Up to 100 requests can be queued or being made at once; after that new requests
   fail with "The TTS queue is full".
-- Whether TTS is paused, and the silence, are saved, so a server restart keeps them.
+- **The overlay** shows two optional things while TTS is on, each with a switch in the panel (both on
+  by default, both saved): the **prompt card** at the bottom centre, with who asked and what
+  was said, and a small **icon** at the bottom left. The icon is in colour while TTS is
+  running and grey and dimmed while it is paused, and it moves with the audio: it bounces and
+  shakes on loud parts (words, or a sound effect) and settles in the pauses. That movement
+  is worked out from each clip's stored waveform and where its audio has got to, since the
+  audio's own host does not let a page analyse it live. Hiding the prompt card does not hide
+  the icon, and the other way round. The icon is the `vicksyW` picture for now; swap the one
+  import in `client/src/components/tts-emote/TtsEmote.tsx` to change it.
+- Whether TTS is paused, the silence, and the two overlay switches are saved, so a server
+  restart keeps them.
   If the saved setting cannot be read at startup, TTS starts **paused** rather than
   guessing. The waiting requests themselves are held in memory, so a restart loses
   them (a clip that was already made stays saved, but is not played).

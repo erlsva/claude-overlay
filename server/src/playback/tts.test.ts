@@ -29,6 +29,29 @@ await saveClip({
   duration: 1,
   discordMessageId: "message",
 });
+// Two more clips: one with a stored waveform, and one whose stored waveform is not a waveform.
+const shaped = "c".repeat(32);
+await saveClip({
+  id: shaped,
+  token: `(TTS:${shaped})`,
+  prompt: "a clip with a waveform",
+  sender: "saved",
+  createdAt: new Date().toISOString(),
+  duration: 3.5,
+  discordMessageId: "message-shaped",
+  peaks: [10, 55, 100, 60, 7],
+});
+const garbled = "d".repeat(32);
+await saveClip({
+  id: garbled,
+  token: `(TTS:${garbled})`,
+  prompt: "a clip with a broken waveform",
+  sender: "saved",
+  createdAt: new Date().toISOString(),
+  duration: 2,
+  discordMessageId: "message-garbled",
+  peaks: "loud" as never,
+});
 installTtsPlayback();
 activeOverlays.add("an-overlay");
 setTtsGapSeconds(0);
@@ -86,6 +109,34 @@ test("restarting a clip that was paused part-way plays it from the start", async
   assert.equal(getTtsPlaybackState().active, true, "the full time is allowed after a restart");
   mock.timers.tick(2);
   await completion;
+});
+
+/** Plays a saved clip to the end, and returns what the overlay was told to play. */
+async function playAndCapture(clip: string) {
+  const { completion } = submit({
+    prompt: `(TTS:${clip})`,
+    sender: "viewer",
+    owner: "test",
+    play: true,
+  });
+  await untilPlaying();
+  const told = heard.find((entry) => entry.event === "sound:play")!.payload;
+  mock.timers.tick(60_000);
+  await completion;
+  return told;
+}
+
+test("the overlay is told a clip's length and waveform, for the icon to move to", async () => {
+  const told = await playAndCapture(shaped);
+  assert.equal(told.id, shaped);
+  assert.equal(told.duration, 3.5);
+  assert.deepEqual(told.peaks, [10, 55, 100, 60, 7]);
+});
+
+test("a clip whose stored waveform is unusable is played without one", async () => {
+  const told = await playAndCapture(garbled);
+  assert.equal(told.duration, 2);
+  assert.equal("peaks" in told, false, "the overlay then uses a steady movement");
 });
 
 test("with nothing playing there is nothing to restart, and the overlay is not told to", () => {

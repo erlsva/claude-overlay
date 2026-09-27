@@ -134,6 +134,10 @@ export interface TtsPlaybackState {
   waiting: number;
   /** The least silence, in seconds, between one clip ending and the next starting. */
   gapSeconds: number;
+  /** Whether the overlay shows the TTS icon (it moves with what is being said). */
+  showEmote: boolean;
+  /** Whether the overlay shows the now-playing card with who asked and the prompt. */
+  showPrompt: boolean;
   /** A clip is on the overlay (playing, or paused part-way). */
   active: boolean;
   /** That clip is paused part-way. */
@@ -324,7 +328,14 @@ export interface ServerToClientEvents {
   "chat-emote:spawn": (spawn: ChatEmoteSpawn) => void;
   "studio:sync": (state: StudioState) => void;
   "history:status": (status: { canUndo: boolean; canRedo: boolean }) => void;
-  "sound:play": (item: SoundboardItem & { playbackId?: string }) => void;
+  "sound:play": (
+    item: SoundboardItem & {
+      playbackId?: string;
+      /** A TTS clip's length and waveform (whole numbers 0 to 100), which the overlay's icon moves to. */
+      duration?: number;
+      peaks?: number[];
+    },
+  ) => void;
   "sound:stop": (payload: { id: string }) => void;
   "sound:pause": (payload: { id: string }) => void;
   "sound:resume": (payload: { id: string }) => void;

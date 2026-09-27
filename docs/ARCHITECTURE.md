@@ -72,6 +72,14 @@ itself is in memory. `generate.ts` holds the paid part (OpenAI, ElevenLabs, Disc
 `setTtsGenerator` lets tests stand in for it. The
 owner's `tts` feature flag is a separate, harder switch: it stops the clip and clears the queue.
 
+The overlay's **TTS icon** (`components/tts-emote/TtsEmote.tsx`) moves a single element every frame
+with `requestAnimationFrame`, not through React state. Its movement comes from
+`support/ttsLevel.ts` (pure and tested): `levelAt` reads the clip's stored `peaks` at the playing audio's
+`currentTime`. The overlay gets `peaks` and `duration` with `sound:play`, and `useSoundActions`'s
+`getTtsLevel` finds the audio element. Do not try to analyse the audio live with Web Audio: the
+store sends no CORS headers, so the analyser would only ever hear silence. `showEmote` and
+`showPrompt` are part of the playback state and of the saved `tts_queue` settings.
+
 ## Client (`client/src`)
 
 | Folder | What it owns |
