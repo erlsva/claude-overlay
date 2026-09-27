@@ -1,23 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
 import { interpretPrompt } from "./interpreter/index.js";
-import {
-  eleven,
-  FINAL_SOUND_EFFECT_FILTER,
-  FINAL_TTS_FILTER,
-  peaksOfMp3,
-  renderAudio,
-  run,
-} from "./audio/index.js";
-import { castScenes, type AccountVoice } from "./casting/index.js";
-import { scenesSchema, type Scene } from "./scene/index.js";
+import { generateClip, voices, type GenerateRequest } from "./generate.js";
+import { type Scene } from "./scene/index.js";
 import type { TtsPlaybackState } from "../types.js";
 import { createQueueGate, QueueCancelled } from "./queue.js";
-import { getClip, saveClip, type TtsClip } from "./store.js";
-import { deleteUploadedClip, uploadClip } from "./discord.js";
+import { deleteClip, getClip, type TtsClip } from "./store.js";
+import { deleteUploadedClip, discordStorageConfigured } from "./discord.js";
 
 export type TtsJob = {
   id: string;
@@ -27,8 +17,14 @@ export type TtsJob = {
   /** What was asked for, shortened, and who asked: shown in the dashboard's queue. */
   prompt: string;
   sender: string;
-  /** True while the request is held back: TTS is paused, or the silence between clips. */
+  /** Whether it will play on the overlay once made (false: it is only made and saved). */
+  willPlay: boolean;
+  /** How far a running request has got: being made, made and waiting for its turn, or playing. */
+  stage?: "making" | "ready" | "playing";
+  /** Held back right now: TTS is paused, or the silence between clips. */
   waiting?: boolean;
+  /** Made for this request, not a replay of a saved clip, so removing the request deletes it. */
+  generated?: boolean;
   clip?: TtsClip;
   error?: string;
   warning?: string;
@@ -38,11 +34,19 @@ const plans = new Map<
   string,
   { prompt: string; scenes: Scene[]; owner: string; expires: number }
 >();
-let chain: Promise<unknown> = Promise.resolve();
+// Two tracks, each in the order requests came in. Making runs ahead of playing, even while TTS is
+// paused, so a paused queue plays the moment it is resumed.
+let makeChain: Promise<unknown> = Promise.resolve();
+let playChain: Promise<unknown> = Promise.resolve();
 let previews = 0;
 /** The most requests that may be queued or being made at once, so a flood cannot grow the queue for ever. */
 export const MAX_QUEUED = 100;
-/** Holds requests while TTS is paused, and keeps some silence between clips. */
+/**
+ * How many made clips may wait for their turn at once. Making pauses at this many, so a flood of
+ * requests while TTS is paused spends credits on at most this many clips (plus the one in hand).
+ */
+export const MAX_READY_AHEAD = 5;
+/** Holds made clips while TTS is paused, and keeps some silence between clips. */
 export const ttsQueue = createQueueGate();
 const stateListeners = new Set<() => void>();
 /** Calls `listener` whenever the playback state (paused, waiting, gap, what plays) may have changed. */
@@ -51,17 +55,24 @@ export function onTtsStateChange(listener: () => void) {
   return () => stateListeners.delete(listener);
 }
 const stateChanged = () => {
+  ttsQueue.nudge(); // whatever waits on the queue (making, playing) looks again
   for (const listener of [...stateListeners]) listener();
 };
 ttsQueue.subscribe(stateChanged);
 const activeJobCount = () =>
   [...jobs.values()].filter((job) => job.status === "queued" || job.status === "running").length;
-/** Requests waiting for their turn: queued, or made and held back before playing. */
+/** Requests that will play but are not playing yet: queued, being made, or made and waiting. */
 export function waitingJobs(): TtsJob[] {
   return [...jobs.values()].filter(
-    (job) => job.status === "queued" || (job.status === "running" && job.waiting),
+    (job) =>
+      job.willPlay &&
+      (job.status === "queued" || (job.status === "running" && job.stage !== "playing")),
   );
 }
+const readyCount = () =>
+  [...jobs.values()].filter(
+    (job) => job.willPlay && job.status === "running" && job.stage === "ready",
+  ).length;
 let play: ((clip: TtsClip, volume: number) => Promise<void>) | undefined;
 export type { TtsPlaybackState };
 type PlaybackController = {
@@ -123,7 +134,37 @@ export function playNextTts(): boolean {
 export function setTtsGapSeconds(seconds: number) {
   ttsQueue.setGapSeconds(seconds);
 }
-/** Takes a waiting request out of the queue. False when it is already being made, or finished. */
+/** Discord allows only a few webhook requests every couple of seconds. */
+const DISCORD_DELETE_SPACING_MS = 450;
+let discardChain: Promise<unknown> = Promise.resolve();
+/**
+ * Deletes the clip that was made for a request that is no longer wanted, so it does not linger in
+ * the saved clips or on the public clip page. A replay of a saved clip is never deleted. Removing a
+ * whole queue at once queues the deletions one after another, which keeps within Discord's rate
+ * limit (and the local file store, which cannot delete two clips at the same moment).
+ */
+function discardClip(job: TtsJob): Promise<void> {
+  const clip = job.clip;
+  if (!job.generated || !clip) return Promise.resolve();
+  job.clip = undefined;
+  job.generated = false;
+  const done = discardChain.then(async () => {
+    try {
+      if (discordStorageConfigured()) {
+        await deleteUploadedClip(clip.discordMessageId);
+        await sleep(DISCORD_DELETE_SPACING_MS);
+      }
+    } catch (error) {
+      console.error("Could not delete the audio of a removed TTS request", error);
+    }
+    await deleteClip(clip.id).catch((error) =>
+      console.error("Could not delete the record of a removed TTS request", error),
+    );
+  });
+  discardChain = done;
+  return done;
+}
+/** Takes a request out of the queue. False when it is already playing, or finished. */
 export function removeWaitingJob(id: string): boolean {
   const job = jobs.get(id);
   if (!job || !waitingJobs().includes(job)) return false;
@@ -132,6 +173,7 @@ export function removeWaitingJob(id: string): boolean {
   job.message = "Removed from the queue";
   ttsQueue.wake();
   stateChanged();
+  void discardClip(job); // a clip still being made is deleted when it is done
   return true;
 }
 /** Removes every waiting request. Returns how many there were. */
@@ -159,7 +201,7 @@ async function waitOn<T>(
   } finally {
     stopFollowing();
     job.waiting = false;
-    job.message = before;
+    if (job.status !== "cancelled") job.message = before;
     stateChanged();
   }
 }
@@ -171,12 +213,6 @@ export function replayId(text: string) {
 }
 export function attributeReplay(clip: TtsClip, sender: string): TtsClip {
   return { ...clip, sender: sender.slice(0, 100) };
-}
-async function voices() {
-  const data = (await (await eleven("voices", process.env.ELEVENLABS_API_KEY || "")).json()) as {
-    voices: AccountVoice[];
-  };
-  return data.voices;
 }
 export async function preview(prompt: string, owner: string) {
   z.string().trim().min(1).max(6000).parse(prompt);
@@ -198,6 +234,66 @@ export async function preview(prompt: string, owner: string) {
     previews--;
   }
 }
+let generator: (request: GenerateRequest) => Promise<TtsClip> = generateClip;
+/** Lets tests stand in for OpenAI, ElevenLabs and Discord. Call with nothing to put them back. */
+export function setTtsGenerator(next?: (request: GenerateRequest) => Promise<TtsClip>) {
+  generator = next ?? generateClip;
+}
+
+/** How a request ended when it did not simply finish: removed from the queue, or failed. */
+async function settleFailure(job: TtsJob, error: unknown) {
+  if (error instanceof QueueCancelled) {
+    job.status = "cancelled";
+    job.message = "Removed from the queue";
+    await discardClip(job);
+    return;
+  }
+  job.status = "failed";
+  job.error = error instanceof Error ? error.message : "TTS failed";
+  job.message = "TTS failed";
+}
+
+/** The playing track: waits for the clip, for pausing to end and for the silence, then plays it. */
+async function playWhenReady(
+  job: TtsJob,
+  made: Promise<TtsClip>,
+  addWarning: (message: string) => void,
+) {
+  const gateJob = { cancelled: () => job.status === "cancelled" };
+  let playbackFailed = false;
+  try {
+    const clip = await made;
+    // Held here while TTS is paused, and until there has been enough silence since the last clip.
+    // Time spent making the clip counts as silence.
+    await waitOn(
+      job,
+      () => (ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips"),
+      ttsQueue.playWouldWait(),
+      () => ttsQueue.beforePlay(gateJob),
+    );
+    job.stage = "playing";
+    job.message = "Playing on overlay";
+    stateChanged();
+    try {
+      if (!play) throw new Error("Overlay playback is unavailable.");
+      await play(clip, overlayVolume);
+    } catch (error) {
+      playbackFailed = true;
+      addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
+    } finally {
+      ttsQueue.clipEnded();
+    }
+    job.status = "complete";
+    job.message = playbackFailed
+      ? "Clip saved; overlay playback was unavailable"
+      : "Playback finished";
+  } catch (error) {
+    await settleFailure(job, error);
+  } finally {
+    stateChanged();
+  }
+}
+
 export function submit(input: {
   prompt: string;
   sender: string;
@@ -229,6 +325,7 @@ export function submit(input: {
     message: "Waiting in TTS queue",
     prompt: input.prompt.slice(0, 300),
     sender: input.sender.slice(0, 100),
+    willPlay: input.play,
   };
   jobs.set(job.id, job);
   stateChanged();
@@ -239,143 +336,73 @@ export function submit(input: {
         break;
       }
     }
-  const completion = chain.then(async () => {
-    if (job.status === "cancelled") return; // removed while waiting for its turn
+  const addWarning = (message: string) => {
+    job.warning = [job.warning, message].filter(Boolean).join(" ");
+  };
+  const gateJob = { cancelled: () => job.status === "cancelled" };
+
+  // The making track: one clip at a time, ahead of playing and even while TTS is paused.
+  const made = makeChain.then(async () => {
+    if (job.status === "cancelled") throw new QueueCancelled(); // removed while it waited
+    // Only so many made clips may wait for their turn: that bounds the credits spent on ones that
+    // are then removed.
+    if (input.play) await ttsQueue.waitUntil(gateJob, () => readyCount() < MAX_READY_AHEAD);
     job.status = "running";
+    job.stage = "making";
     stateChanged();
-    let temp: string | undefined;
-    let playbackFailed = false;
-    let manual = false;
-    const gateJob = { cancelled: () => job.status === "cancelled" };
-    const addWarning = (message: string) => {
-      job.warning = [job.warning, message].filter(Boolean).join(" ");
-    };
-    try {
-      // Nothing is made (and no credits are spent) while TTS is paused: the request waits here.
-      if (input.play)
-        manual = await waitOn(
-          job,
-          () => "Waiting for TTS to be resumed",
-          ttsQueue.turnWouldWait(),
-          () => ttsQueue.turn(gateJob),
-        );
-      const token = replayId(input.prompt);
-      let clip: TtsClip | undefined;
-      if (token) {
-        job.message = "Loading saved clip";
-        const savedClip = await getClip(token);
-        if (!savedClip) throw new Error("TTS token not found.");
-        // The audio remains attributable in storage, while the live overlay
-        // correctly identifies the person who chose to replay it now.
-        clip = attributeReplay(savedClip, input.sender);
-      } else {
-        if (
-          !process.env.OPENAI_API_KEY ||
-          !process.env.ELEVENLABS_API_KEY ||
-          !process.env.DISCORD_TTS_WEBHOOK_URL
-        )
-          throw new Error("Configure OpenAI, ElevenLabs and Discord TTS server keys first.");
-        // Confirm persistent storage is available before spending generation credits.
-        await getClip("storage-check");
-        job.message = "Interpreting performance";
-        const catalog = await voices();
-        const scenes = scenesSchema.parse(
-          prepared ||
-            (await interpretPrompt(input.prompt, process.env.OPENAI_API_KEY, catalog)).scenes,
-        );
-        temp = await mkdtemp(path.join(os.tmpdir(), "overlay-tts-"));
-        await mkdir(path.join(temp, "clips"));
-        const id = randomUUID().replaceAll("-", "");
-        const duration = await renderAudio({
-          id,
-          scenes,
-          mode: "elevenlabs",
-          key: process.env.ELEVENLABS_API_KEY,
-          voices: {},
-          casting: castScenes(scenes, catalog),
-          dataDir: temp,
-          progress: (message) => {
-            job.message = message;
-          },
-          warning: addWarning,
-        });
-        job.message = "Encoding and saving to Discord";
-        const mp3 = path.join(temp, `${id}.mp3`);
-        const containsSpeech = scenes.some((scene) => scene.dialogue.trim());
-        await run([
-          "-i",
-          path.join(temp, "clips", `${id}.wav`),
-          "-af",
-          containsSpeech ? FINAL_TTS_FILTER : FINAL_SOUND_EFFECT_FILTER,
-          "-codec:a",
-          "libmp3lame",
-          "-b:a",
-          "128k",
-          mp3,
-        ]);
-        const metadata = {
-          id,
-          token: `(TTS:${id})`,
-          prompt: input.prompt,
-          sender: input.sender.slice(0, 100),
-          createdAt: new Date().toISOString(),
-          duration,
-        };
-        const bytes = await readFile(mp3);
-        // The waveform is only decoration for the public clip page, so a failure here must never
-        // lose the clip; it is simply left out (and can be filled in later).
-        const peaks = await peaksOfMp3(bytes).catch(() => undefined);
-        const discordMessageId = await uploadClip(bytes, metadata);
-        clip = { ...metadata, discordMessageId, ...(peaks ? { peaks } : {}) };
-        try {
-          await saveClip(clip);
-        } catch (error) {
-          await deleteUploadedClip(discordMessageId).catch(() => {});
-          throw error;
-        }
-      }
-      job.clip = clip;
-      if (input.play) {
-        // Held here if TTS was paused while this was being made, and until there has been enough
-        // silence since the last clip. Time spent making the clip counts as silence.
-        await waitOn(
-          job,
-          () =>
-            ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips",
-          ttsQueue.playWouldWait(),
-          () => ttsQueue.beforePlay(gateJob, manual),
-        );
-        job.message = "Playing on overlay";
-        try {
-          if (!play) throw new Error("Overlay playback is unavailable.");
-          await play(clip, overlayVolume);
-        } catch (error) {
-          playbackFailed = true;
-          addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
-        } finally {
-          ttsQueue.clipEnded();
-        }
-      }
-      job.status = "complete";
-      job.message = input.play
-        ? playbackFailed
-          ? "Clip saved; overlay playback was unavailable"
-          : "Playback finished"
-        : "Clip saved";
-    } catch (e) {
-      if (e instanceof QueueCancelled) {
-        job.status = "cancelled";
-        job.message = "Removed from the queue";
-      } else {
-        job.status = "failed";
-        job.error = e instanceof Error ? e.message : "TTS failed";
-        job.message = "TTS failed";
-      }
-    } finally {
-      stateChanged();
-      if (temp) await rm(temp, { recursive: true, force: true });
+    const token = replayId(input.prompt);
+    let clip: TtsClip;
+    if (token) {
+      job.message = "Loading saved clip";
+      const savedClip = await getClip(token);
+      if (!savedClip) throw new Error("TTS token not found.");
+      // The audio remains attributable in storage, while the live overlay
+      // correctly identifies the person who chose to replay it now.
+      clip = attributeReplay(savedClip, input.sender);
+    } else {
+      clip = await generator({
+        prompt: input.prompt,
+        sender: input.sender,
+        prepared,
+        progress: (message) => {
+          if (job.status !== "cancelled") job.message = message;
+        },
+        warning: addWarning,
+      });
+      job.generated = true;
     }
+    job.clip = clip;
+    if (gateJob.cancelled()) {
+      await discardClip(job); // removed while it was being made
+      throw new QueueCancelled();
+    }
+    job.stage = "ready";
+    job.message = "Made, waiting for its turn";
+    stateChanged();
+    return clip;
   });
-  chain = completion.catch(() => {});
+  makeChain = made.then(
+    () => {},
+    () => {},
+  );
+
+  if (!input.play) {
+    // Just make and save it: there is nothing to play.
+    const completion = made.then(
+      () => {
+        job.status = "complete";
+        job.message = "Clip saved";
+        stateChanged();
+      },
+      async (error) => {
+        await settleFailure(job, error);
+        stateChanged();
+      },
+    );
+    return { job, completion };
+  }
+  // The playing track: in the order requests came in, held by pausing and the silence between clips.
+  const completion = playChain.then(() => playWhenReady(job, made, addWarning));
+  playChain = completion.catch(() => {});
   return { job, completion };
 }

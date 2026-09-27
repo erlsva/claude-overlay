@@ -57,17 +57,20 @@ dsp/          filters, dynamics, loudness, rooms: pure functions on samples
 
 `service.ts` is the entry point the rest of the server uses; `store.ts` holds saved clips.
 
-The **queue**: requests run one at a time down a promise chain in `service.ts`, and
-`queue.ts` (a pure gate with an injectable clock) decides when each may start being made and
-when its clip may play. Pausing TTS holds the gate; it must never *refuse* a request, because
-viewers who spent points expect it to play later. The gate is checked before generation (so a
-paused queue spends no credits) and again before playing (so pausing mid-generation holds at the
-last step). The silence between clips is counted from when the last clip ended, and time spent
-making the next clip counts toward it. A waiting job has `waiting: true` and a `message` saying
-why; removing one sets it `cancelled` and wakes the gate. Paused state and the gap are saved as
-the `tts_queue` row in `app_settings` and loaded at startup in `startup/persistence.ts`, which
-fails closed (comes up paused if the row cannot be read). The queue itself is in memory. The owner's
-`tts` feature flag is a separate, harder switch: it stops the clip and clears the queue.
+The **queue** has two tracks in `service.ts`, each a promise chain in submission order: *making*
+(one clip at a time, ahead of time, even while TTS is paused) and *playing*. `queue.ts` (a pure
+gate with an injectable clock) only decides when a *made* clip may play: not while paused, and not
+sooner than the set silence after the last clip ended. Pausing must never *refuse* a request,
+because viewers who spent points expect it to play later. Making stops when `MAX_READY_AHEAD` (5)
+made clips are waiting, which bounds the credits spent on requests that are then removed. A job
+has a `stage` (making, ready, playing), `waiting` while held, and a `message` saying why. Removing
+one sets it `cancelled`, wakes the gate, and deletes the clip *generated for it* (never a replayed
+saved clip); those deletions run one at a time to stay inside Discord's webhook rate limit. Paused
+state and the gap are saved as the `tts_queue` row in `app_settings` and loaded at startup in
+`startup/persistence.ts`, which fails closed (comes up paused if the row cannot be read). The queue
+itself is in memory. `generate.ts` holds the paid part (OpenAI, ElevenLabs, Discord), and
+`setTtsGenerator` lets tests stand in for it. The
+owner's `tts` feature flag is a separate, harder switch: it stops the clip and clears the queue.
 
 ## Client (`client/src`)
 

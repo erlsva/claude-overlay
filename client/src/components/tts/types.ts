@@ -19,6 +19,10 @@ export type Job = {
   /** What was asked for (shortened) and who asked: shown in the queue. */
   prompt?: string;
   sender?: string;
+  /** Whether it will play on the overlay once made. */
+  willPlay?: boolean;
+  /** How far a running request has got: being made, made and ready, or playing. */
+  stage?: "making" | "ready" | "playing";
   /** Held back: TTS is paused, or the silence between clips. */
   waiting?: boolean;
   error?: string;

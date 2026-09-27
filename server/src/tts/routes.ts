@@ -228,7 +228,7 @@ ttsRouter.delete("/jobs/:id", (req, res) => {
     return;
   }
   if (!removeWaitingJob(req.params.id)) {
-    res.status(409).json({ error: "That request is already being made, or has finished." });
+    res.status(409).json({ error: "That request is already playing, or has finished." });
     return;
   }
   res.json({ removed: true });

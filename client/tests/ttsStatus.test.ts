@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { barLabel, panelStatus, parseGap } from "../src/components/tts/statusText.ts";
+import { barLabel, panelStatus, parseGap, stageLabel } from "../src/components/tts/statusText.ts";
 
 const state = (over: Partial<Parameters<typeof panelStatus>[0]> = {}) => ({
   held: false,
@@ -54,4 +54,12 @@ test("a typed gap is a whole number of seconds within the limit, or nothing", ()
   assert.equal(parseGap("30", 30), 30);
   for (const bad of ["31", "-1", "", "  ", "7.5", "abc", "1e2", "٧"])
     assert.equal(parseGap(bad, 30), null, JSON.stringify(bad));
+});
+
+test("a waiting request says whether it is waiting, being made, or ready", () => {
+  assert.equal(stageLabel({ status: "queued" }), "Waiting");
+  assert.equal(stageLabel({ status: "running", stage: "making" }), "Making…");
+  assert.equal(stageLabel({ status: "running", stage: "ready" }), "Ready");
+  assert.equal(stageLabel({ status: "running", stage: "playing" }), "");
+  assert.equal(stageLabel({ status: "cancelled" }), "");
 });

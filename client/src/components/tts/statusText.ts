@@ -37,6 +37,14 @@ export function barLabel(state: Pick<QueueState, "held" | "waiting">): string {
   return state.waiting > 0 ? `TTS paused · ${state.waiting} waiting` : "TTS paused";
 }
 
+/** Where a waiting request is: not started, being made, or made and ready to play. */
+export function stageLabel(job: { status: string; stage?: string }): string {
+  if (job.status === "queued") return "Waiting";
+  if (job.stage === "making") return "Making…";
+  if (job.stage === "ready") return "Ready";
+  return "";
+}
+
 /** What a gap typed into the panel means: a whole number of seconds from 0 to `max`, or null. */
 export function parseGap(text: string, max: number): number | null {
   if (!/^\s*\d+\s*$/.test(text)) return null;

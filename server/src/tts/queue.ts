@@ -1,7 +1,7 @@
 /**
- * The waiting line for TTS. Requests are made one at a time; this decides when the next one may
- * start being made (so no credits are spent while TTS is paused) and when its finished clip may
- * start playing (so nothing plays while paused, and there is always some silence between clips).
+ * The waiting line for TTS, from the point of view of playing. Requests are made ahead of time
+ * (that is the service's job); this decides when a made clip may start playing: not while TTS is
+ * paused, and never sooner than the set silence after the previous clip ended.
  *
  * Pausing holds the line. Nothing here ever refuses a request.
  */
@@ -47,8 +47,12 @@ export function createQueueGate(
   const waiters = new Set<() => void>();
   const observers = new Set<() => void>();
 
-  const changed = () => {
+  /** Makes waiting requests look again. */
+  const nudge = () => {
     for (const wake of [...waiters]) wake();
+  };
+  const changed = () => {
+    nudge();
     for (const observer of [...observers]) observer();
   };
   /** Resolves when something a waiter depends on changes, or after `ms` when one is given. */
@@ -80,7 +84,7 @@ export function createQueueGate(
       gapMs = Math.min(MAX_GAP_SECONDS, Math.max(0, seconds)) * 1000;
       changed();
     },
-    /** While paused, lets exactly one waiting request through. False when there is nothing to do. */
+    /** While paused, lets exactly one waiting request play. False when there is nothing to do. */
     playNext(): boolean {
       if (!held || pass) return false;
       pass = true;
@@ -88,36 +92,15 @@ export function createQueueGate(
       return true;
     },
 
-    /** Whether a request would have to wait before it may start being made. */
-    turnWouldWait: () => held && !pass,
-    /** Whether a finished clip would have to wait before it may play. */
+    /** Whether a made clip would have to wait before it may play. */
     playWouldWait: () => (held && !pass) || silenceLeft() > 0,
 
     /**
-     * Waits until the request may start being made. Resolves true when it got through on a
-     * "Play next" pass, which also lets it play at once, ignoring the silence between clips.
+     * Waits until a made clip may play: TTS is not paused, and enough silence has passed since the
+     * last clip ended. Time spent making the clip counts as silence. A "Play next" pass lets one
+     * clip out while paused, and it plays at once, ignoring the silence.
      */
-    async turn(job: QueueJob): Promise<boolean> {
-      for (;;) {
-        if (job.cancelled()) throw new QueueCancelled();
-        if (!held) return false;
-        if (pass) {
-          pass = false;
-          changed();
-          return true;
-        }
-        await nextChange();
-      }
-    },
-
-    /**
-     * Waits until the finished clip may play: TTS is not paused, and enough silence has passed
-     * since the last clip ended. Time spent making the clip counts as silence. A request that got
-     * through on a "Play next" pass plays at once. Pausing while a clip was being made holds it
-     * here, and a pass lets it out.
-     */
-    async beforePlay(job: QueueJob, manual: boolean): Promise<void> {
-      if (manual) return;
+    async beforePlay(job: QueueJob): Promise<void> {
       for (;;) {
         if (job.cancelled()) throw new QueueCancelled();
         if (held) {
@@ -135,10 +118,21 @@ export function createQueueGate(
       }
     },
 
+    /** Waits until `ready()` is true. Whoever changes what it looks at calls `nudge()`. */
+    async waitUntil(job: QueueJob, ready: () => boolean): Promise<void> {
+      for (;;) {
+        if (job.cancelled()) throw new QueueCancelled();
+        if (ready()) return;
+        await nextChange();
+      }
+    },
+
     /** A clip finished, or was skipped: the silence between clips is counted from now. */
     clipEnded() {
       lastEndedAt = clock.now();
     },
+    /** Makes waiting requests look again without telling the observers, so it cannot loop. */
+    nudge,
     /** Makes waiting requests look again, for example after one was removed. */
     wake: changed,
     /** Calls `listener` whenever pausing, the gap or a pass changes. Returns a way to stop. */

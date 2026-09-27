@@ -28,23 +28,28 @@ changed while a clip is playing.
 
 ## Pausing TTS and the queue
 
-Requests (from chat, rewards or the dashboard) go through one queue: each is made
-and played in turn. **Pause TTS** at the top of the TTS panel holds that queue; it
-never refuses a request.
+Requests (from chat, rewards or the dashboard) go through one queue with two tracks:
+requests are **made** one at a time, ahead of time, and **played** in the order they came
+in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuses a request.
 
-- While TTS is paused, requests are still accepted and wait. Nothing is made for
-  them (so no credits are spent) and nothing plays. A clip that is already playing
-  finishes on its own. A request that was being made when you paused is held just
-  before it would play.
+- While TTS is paused, requests are still accepted and are still made in the
+  background, so they play the moment you resume. Nothing plays. A clip that is already
+  playing finishes on its own.
+- Making runs ahead of playing even when TTS is running, so the next clip is usually
+  ready before the current one ends. At most **5** made clips wait for their turn; further
+  requests wait un-made until there is room. That keeps a flood of requests while paused
+  from spending credits on more than about five clips you might then remove.
 - **Resume TTS** plays the waiting requests in order and lets new ones play as they
   come. **Play next** (shown while paused) plays exactly one waiting request and
   holds again.
-- The **Waiting** list shows who asked for what, in order. Take one out with its X,
-  or use **Clear all**. Removed requests are not made, so they cost nothing.
+- The **Waiting** list shows who asked for what, in order, and whether each is
+  waiting, being made, or ready. Take one out with its X, or use **Clear all**. Removing
+  a request that was already made deletes the clip that was made for it, so it does not
+  stay in the saved clips or on the public clip page. Removing a replay of a saved
+  `(TTS:…)` token never deletes that saved clip.
 - **Silence between clips**: at least this many seconds pass between one clip ending
-  and the next one starting (default 7, from 0 to 30). Time spent making the next
-  clip counts as silence. Play next ignores it, and the first clip after a quiet
-  spell plays at once.
+  and the next one starting (default 7, from 0 to 30). Play next ignores it, and the
+  first clip after a quiet spell plays at once.
 - **Skip** cuts off the clip that is playing and moves on to the next request (after
   the silence). **Pause clip / Resume clip** pause and continue that one clip
   part-way through, which is separate from pausing TTS.
@@ -53,7 +58,7 @@ never refuses a request.
 - Whether TTS is paused, and the silence, are saved, so a server restart keeps them.
   If the saved setting cannot be read at startup, TTS starts **paused** rather than
   guessing. The waiting requests themselves are held in memory, so a restart loses
-  them.
+  them (a clip that was already made stays saved, but is not played).
 - The owner's **TTS Studio** switch in the account menu is different: it turns TTS
   off for everyone, refuses new requests, and clears the queue.
 

@@ -1,5 +1,6 @@
 import { ListOrdered, Play, X } from "lucide-react";
 import { api, shorten } from "./api";
+import { stageLabel } from "./statusText";
 import { type PlaybackState } from "./types";
 import type { TtsContext } from "./context";
 
@@ -67,7 +68,14 @@ export function TtsQueue({
           <li className="tts-queue-item" key={job.id}>
             <span className="tts-queue-item__number">{index + 1}</span>
             <span className="tts-queue-item__text">
-              <strong>{job.sender || "Unknown"}</strong>
+              <strong>
+                {job.sender || "Unknown"}
+                <em
+                  className={`tts-queue-item__stage tts-queue-item__stage--${job.stage ?? "waiting"}`}
+                >
+                  {stageLabel(job)}
+                </em>
+              </strong>
               <small title={job.prompt}>{shorten(job.prompt ?? "", 90)}</small>
             </span>
             <button
