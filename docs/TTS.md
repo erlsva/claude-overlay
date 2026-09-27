@@ -85,6 +85,31 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
 - The owner's **TTS Studio** switch in the account menu is different: it turns TTS
   off for everyone, refuses new requests, and clears the queue.
 
+## Remote control (Stream Deck, or anything else)
+
+The TTS panel's **Remote control** section (owner/admin only, below the saved clips) issues
+named tokens for controlling TTS from outside the dashboard — a Stream Deck button, or any other
+tool that can send an HTTP request.
+
+- **Create a token**, give it a name (which device or person it is for), and its full value is
+  shown once. Copy it somewhere safe: it is never shown again, and only its hash is kept, so a
+  copy of the database cannot be turned back into a working token. **Revoke** it at any time to
+  stop it working at once; a Stream Deck button using it will then need a new one.
+- Send it as `Authorization: Bearer <token>` (never in the URL) with `POST /tts/remote` and a
+  JSON body `{"action": "…"}`. With the Elgato Stream Deck app, a plugin such as **"StreamDeck
+  API Request"** does this in one button: set the method to POST, add that header, and paste
+  the body.
+- Actions: `pause-tts`, `resume-tts`, `toggle-tts` (the same as the dashboard's Pause/Resume
+  TTS); `play-next`; `pause-clip`, `resume-clip`, `toggle-clip`, `skip`, `restart` (the same as
+  the clip controls); `volume` (needs `"value"`, 0 to 1), `volume-up`, `volume-down` (±10%); and
+  `status`, which changes nothing and just reads. The response is the same playback state the
+  dashboard uses (`held`, `waiting`, `active`, `paused`, `volume`, `gapSeconds`, `changed`, …) as
+  plain top-level JSON fields, so the plugin's "set button image from a response field" can
+  react to `held` or `active` directly.
+- A token is playback-only: it cannot generate TTS, manage other tokens, or touch anything
+  outside TTS. It is refused while TTS is switched off entirely (the owner's TTS Studio switch),
+  same as the dashboard. Requests to `/tts/remote` are rate-limited.
+
 ## Prompt syntax
 
 Plain text is spoken as ordinary dialogue:

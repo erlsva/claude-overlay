@@ -1,0 +1,89 @@
+/* Owner/admin-only: named tokens for controlling TTS from outside the dashboard (a Stream Deck). */
+.tts-remote {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.tts-remote__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.tts-remote__hint code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+.tts-remote-reveal {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.tts-remote-reveal strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+.tts-remote-reveal__token {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 2px 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+.tts-remote-reveal__token code {
+  overflow-wrap: anywhere;
+  color: var(--accent-text);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--fs-xs);
+}
+.tts-remote-reveal > .ui-button {
+  justify-self: start;
+}
+.tts-remote__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-remote-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.tts-remote-item__text {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.tts-remote-item__text strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tts-remote-item__text small {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.tts-remote-create {
+  justify-content: space-between;
+}
+.tts-remote-create input {
+  min-width: 0;
+  flex: 1;
+}

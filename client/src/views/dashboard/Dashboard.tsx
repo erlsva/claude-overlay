@@ -237,6 +237,7 @@ export function Dashboard(props: DashboardProps) {
               elements={elements}
               selectedIds={selectedIds}
               isOwner={user.isOwner}
+              isAdmin={isAdmin}
               overlayConnected={overlayConnected}
               ttsPlayback={ttsPlayback}
               featureFlags={featureFlags}

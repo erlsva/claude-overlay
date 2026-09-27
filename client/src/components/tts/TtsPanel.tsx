@@ -4,6 +4,7 @@ import { TtsActions } from "./TtsActions";
 import { TtsPlan } from "./TtsPlan";
 import { TtsJobs } from "./TtsJobs";
 import { TtsLibrary } from "./TtsLibrary";
+import { TtsRemoteTokens } from "./TtsRemoteTokens";
 import { Sparkles, BookOpen, Volume2, CircleAlert } from "lucide-react";
 import { type TtsPanelProps } from "./types";
 import { shorten } from "./api";
@@ -21,7 +22,7 @@ export function TtsPanel(props: TtsPanelProps) {
   const ttsData = useTtsData({ ...ttsVolume, ...ttsServices, ...ttsPreview });
   const ttsComposer = useTtsComposer({ ...ttsData, ...ttsServices, ...ttsPreview });
   const s: TtsContext = { ...ttsServices, ...ttsVolume, ...ttsPreview, ...ttsData, ...ttsComposer };
-  const { overlayConnected } = props;
+  const { overlayConnected, isAdmin } = props;
   const { busy, prompt, setPrompt, setPlan, volume, changeVolume, error, plan, jobs } = s;
 
   return (
@@ -123,6 +124,8 @@ export function TtsPanel(props: TtsPanelProps) {
       {jobs.length > 0 && <TtsJobs s={s} />}
 
       <TtsLibrary props={props} s={s} />
+
+      {isAdmin && <TtsRemoteTokens s={s} />}
     </section>
   );
 }

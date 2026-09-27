@@ -18,6 +18,8 @@ export interface StudioPanelProps {
   elements: CanvasElement[];
   selectedIds: Set<string>;
   isOwner: boolean;
+  /** Owner or a whitelisted admin: who can issue and revoke TTS remote (Stream Deck) tokens. */
+  isAdmin: boolean;
   overlayConnected: boolean;
   ttsPlayback: TtsPlaybackState;
   featureFlags: FeatureFlags;

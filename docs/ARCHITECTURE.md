@@ -72,6 +72,12 @@ itself is in memory. `generate.ts` holds the paid part (OpenAI, ElevenLabs, Disc
 `setTtsGenerator` lets tests stand in for it. The
 owner's `tts` feature flag is a separate, harder switch: it stops the clip and clears the queue.
 
+**Play on overlay** from the dashboard (a typed prompt or a saved clip) is `submit({direct: true})`:
+it skips the pause and the silence gate and does not wait behind `makeChain`, but still only one
+clip plays at a time, via a `playerBusy` lock (`takePlayer`/`freePlayer` in `service.ts`) shared with
+the queued track, so it never cuts off a clip that is already playing. Only chat/reward/trigger
+requests go through the queue's pause and silence.
+
 The overlay's **TTS icon** (`components/tts-emote/TtsEmote.tsx`) moves a single element every frame
 with `requestAnimationFrame`, not through React state. Its movement comes from
 `support/ttsLevel.ts` (pure and tested): `levelAt` reads the clip's stored `peaks` at the playing audio's
@@ -79,6 +85,16 @@ with `requestAnimationFrame`, not through React state. Its movement comes from
 `getTtsLevel` finds the audio element. Do not try to analyse the audio live with Web Audio: the
 store sends no CORS headers, so the analyser would only ever hear silence. `showEmote` and
 `showPrompt` are part of the playback state and of the saved `tts_queue` settings.
+
+**Remote control** (`remoteTokens.ts`, `remote.ts`) lets something outside the dashboard — a Stream
+Deck button — control TTS. A token is `vkremote.<id>.<secret>`: `id` is a public lookup key (its own
+primary key in `tts_remote_tokens`, Postgres or a local JSON fallback outside production), `secret`
+is checked with `timingSafeEqual` against a stored SHA-256 hash, so only the hash is ever kept.
+`remoteTokensRouter` (owner/admin, a dashboard session) issues and revokes tokens; the raw token is
+returned once, at creation. `remoteControlRouter` (`POST /tts/remote`, the token itself as a bearer
+header, no dashboard session, its own rate limit) maps an `action` onto the same functions the
+dashboard's `/playback` route uses, and shares `persistTtsQueueSettings()` (`queueSettings.ts`) with
+it so pausing from a remote survives a restart exactly like pausing from the dashboard does.
 
 ## Client (`client/src`)
 

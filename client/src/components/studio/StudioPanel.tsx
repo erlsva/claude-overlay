@@ -101,7 +101,11 @@ export function StudioPanel(props: StudioPanelProps) {
       </div>
       <div className="studio-panel__body">
         {tab === "tts" && ttsEnabled && (
-          <TtsPanel overlayConnected={props.overlayConnected} livePlayback={props.ttsPlayback} />
+          <TtsPanel
+            overlayConnected={props.overlayConnected}
+            livePlayback={props.ttsPlayback}
+            isAdmin={props.isAdmin}
+          />
         )}
         {tab === "scenes" && <ScenesTab props={props} s={s} />}
         {tab === "presets" && <PresetsTab props={props} s={s} />}

@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAdmin, requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
-import { getFeatureFlags, saveTtsQueueSettings } from "../db/index.js";
+import { getFeatureFlags } from "../db/index.js";
 import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
 import { publicClipsRouter } from "./publicClips.js";
 import { ffmpegAvailable } from "./audio/index.js";
 import { MAX_GAP_SECONDS } from "./queue.js";
+import { persistTtsQueueSettings } from "./queueSettings.js";
+import { remoteControlRouter, remoteTokensRouter } from "./remote.js";
 import {
   clearWaitingJobs,
   getTtsPlaybackState,
@@ -76,7 +78,13 @@ ttsRouter.get("/clips/:id/audio", audioAccess, async (req, res) => {
 });
 // Public, and off until the owner switches it on; see publicClips.ts.
 ttsRouter.use("/public", publicClipsRouter);
+// A Stream Deck (or anything else) authenticates with its own bearer token, not a dashboard
+// session, so this is mounted ahead of requireAuth. It checks the feature flag itself.
+ttsRouter.use("/remote", remoteControlRouter);
 ttsRouter.use(requireAuth);
+// Managing remote tokens is an owner/admin action from a signed-in dashboard, kept ahead of the
+// "TTS disabled" gate below: tokens can still be issued or revoked while TTS itself is switched off.
+ttsRouter.use("/remote-tokens", requireAdmin, remoteTokensRouter);
 ttsRouter.use((_req, res, next) => {
   if (!getFeatureFlags().tts) {
     res.status(503).json({ error: "TTS is currently disabled by the overlay owner." });
@@ -225,12 +233,7 @@ ttsRouter.post("/playback", async (req, res) => {
   }
   if (saveSettings) {
     try {
-      await saveTtsQueueSettings({
-        held: ttsQueue.isHeld(),
-        gapSeconds: ttsQueue.gapSeconds(),
-        showEmote: getTtsPlaybackState().showEmote,
-        showPrompt: getTtsPlaybackState().showPrompt,
-      });
+      await persistTtsQueueSettings();
     } catch (error) {
       console.error("Could not save the TTS queue settings", error);
       res.status(503).json({

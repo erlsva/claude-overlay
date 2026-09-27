@@ -71,4 +71,15 @@ export type TtsState = {
 export interface TtsPanelProps {
   overlayConnected: boolean;
   livePlayback: PlaybackState;
+  /** Owner or a whitelisted admin: who can issue and revoke TTS remote (Stream Deck) tokens. */
+  isAdmin: boolean;
 }
+
+/** A named bearer token for controlling TTS from outside the dashboard (a Stream Deck, say). */
+export type RemoteToken = {
+  id: string;
+  name: string;
+  createdBy: string;
+  createdAt: string;
+  lastUsedAt?: string;
+};
