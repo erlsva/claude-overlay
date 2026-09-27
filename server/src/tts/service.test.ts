@@ -15,6 +15,7 @@ test("the overlay volume is remembered while nothing is playing", () => {
     stop: () => false,
     pause: () => false,
     resume: () => false,
+    restart: () => false,
     setVolume: () => false,
   });
   assert.equal(setTtsPlaybackVolume(0.8), true);
@@ -43,6 +44,7 @@ test("playback jobs are refused before generation while the overlay is closed", 
     stop: () => false,
     pause: () => false,
     resume: () => false,
+    restart: () => false,
     setVolume: () => false,
   });
   setTtsOverlayCheck(() => false);

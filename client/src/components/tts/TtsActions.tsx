@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { type Plan, type PlaybackState } from "./types";
-import { WandSparkles, FileAudio, Play, Pause, SkipForward } from "lucide-react";
+import { WandSparkles, FileAudio, Play, Pause, RotateCcw, SkipForward } from "lucide-react";
 import type { TtsContext } from "./context";
 import type { TtsPanelProps } from "./types";
 
@@ -114,6 +114,27 @@ export function TtsActions({
             title="Cut off the clip that is playing and move on to the next request"
           >
             <SkipForward size={12} fill="currentColor" /> Skip
+          </button>
+          <button
+            className="ui-button tts-restart"
+            disabled={busy}
+            title="Play the clip that is on the overlay again from the beginning, even if it is paused part-way"
+            onClick={() =>
+              void runAction(async () => {
+                const result = await api<{ changed: boolean; state: PlaybackState }>("/playback", {
+                  method: "POST",
+                  body: JSON.stringify({ action: "restart" }),
+                });
+                setPlayback(result.state);
+                toast.info(
+                  result.changed
+                    ? "Playing the clip again from the start"
+                    : "No TTS clip is currently playing",
+                );
+              })
+            }
+          >
+            <RotateCcw size={13} /> Play from start
           </button>
         </>
       )}

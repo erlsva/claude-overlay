@@ -16,6 +16,7 @@ import {
   playNextTts,
   preview,
   removeWaitingJob,
+  restartTtsPlayback,
   resumeTtsPlayback,
   setTtsGapSeconds,
   setTtsHeld,
@@ -171,6 +172,7 @@ ttsRouter.post("/playback", async (req, res) => {
         // The clip that is playing.
         z.object({ action: z.literal("pause") }),
         z.object({ action: z.literal("resume") }),
+        z.object({ action: z.literal("restart") }),
         z.object({ action: z.literal("volume"), volume: z.number().min(0).max(1) }),
         // TTS as a whole: paused requests wait in the queue instead of playing.
         z.object({ action: z.literal("hold") }),
@@ -192,6 +194,7 @@ ttsRouter.post("/playback", async (req, res) => {
   let saveSettings = false;
   if (input.action === "pause") changed = pauseTtsPlayback();
   else if (input.action === "resume") changed = resumeTtsPlayback();
+  else if (input.action === "restart") changed = restartTtsPlayback();
   else if (input.action === "volume") changed = setTtsPlaybackVolume(input.volume);
   else if (input.action === "next") changed = playNextTts();
   else if (input.action === "gap") {

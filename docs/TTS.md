@@ -52,7 +52,10 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
   first clip after a quiet spell plays at once.
 - **Skip** cuts off the clip that is playing and moves on to the next request (after
   the silence). **Pause clip / Resume clip** pause and continue that one clip
-  part-way through, which is separate from pausing TTS.
+  part-way through, which is separate from pausing TTS. **Play from start** plays the
+  clip that is on the overlay again from the beginning, whether it is playing or paused
+  part-way (for when you paused mid-sentence and want the whole thing). It also gives the
+  clip its full time again, so it is not cut short.
 - Up to 100 requests can be queued or being made at once; after that new requests
   fail with "The TTS queue is full".
 - Whether TTS is paused, and the silence, are saved, so a server restart keeps them.

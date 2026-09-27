@@ -79,6 +79,7 @@ type PlaybackController = {
   stop: () => boolean;
   pause: () => boolean;
   resume: () => boolean;
+  restart: () => boolean;
   setVolume: (volume: number) => boolean;
   /** What the overlay is doing; the queue's own state is added by getTtsPlaybackState. */
   state: () => Pick<TtsPlaybackState, "active" | "paused" | "clipId" | "prompt" | "sender">;
@@ -103,6 +104,10 @@ export function pauseTtsPlayback() {
 }
 export function resumeTtsPlayback() {
   return playbackController?.resume() ?? false;
+}
+/** Plays the clip that is on the overlay again from the start. False when nothing is playing. */
+export function restartTtsPlayback() {
+  return playbackController?.restart() ?? false;
 }
 /** One overlay volume for every clip, so chat-triggered and dashboard clips agree and it survives between clips. */
 let overlayVolume = 0.25;

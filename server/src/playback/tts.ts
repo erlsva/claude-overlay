@@ -30,6 +30,8 @@ interface ActivePlayback {
   volume: number;
   pause: () => void;
   resume: () => void;
+  /** Plays it again from the start, whether it was playing or paused part-way. */
+  restart: () => void;
   setVolume: (volume: number) => void;
 }
 
@@ -90,6 +92,16 @@ async function playClip(clip: Clip, volume: number) {
       schedule();
       emitStatus();
     };
+    const restart = () => {
+      if (!isCurrent()) return;
+      // The clip starts over, so the time allowed for it starts over too.
+      if (timer) clearTimeout(timer);
+      remainingMs = Math.ceil(clip.duration * 1000) + GRACE_MS;
+      active!.paused = false;
+      io.to("overlay").emit("sound:restart", { id: clip.id });
+      schedule();
+      emitStatus();
+    };
     const setVolume = (nextVolume: number) => {
       if (!isCurrent()) return;
       active!.volume = nextVolume;
@@ -105,6 +117,7 @@ async function playClip(clip: Clip, volume: number) {
       volume,
       pause,
       resume,
+      restart,
       setVolume,
     };
     expectSoundEnd(playbackId, finish);
@@ -145,6 +158,11 @@ export function installTtsPlayback() {
     resume: () => {
       if (!active || !active.paused) return false;
       active.resume();
+      return true;
+    },
+    restart: () => {
+      if (!active) return false;
+      active.restart();
       return true;
     },
     setVolume: (volume) => {

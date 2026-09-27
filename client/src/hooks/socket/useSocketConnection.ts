@@ -261,6 +261,18 @@ export function useSocketConnection(
         void audio.play().catch((error) => console.error("TTS resume failed:", error));
       }
     });
+    socket.on("sound:restart", ({ id }) => {
+      if (mode !== "overlay") return;
+      for (const audio of activeSoundAudioRef.current) {
+        if (audio.dataset.soundId !== id) continue;
+        try {
+          audio.currentTime = 0;
+        } catch {
+          audio.load(); // a stream that cannot be seeked starts over when it is loaded again
+        }
+        void audio.play().catch((error) => console.error("TTS restart failed:", error));
+      }
+    });
     socket.on("sound:volume", ({ id, volume }) => {
       if (mode !== "overlay") return;
       for (const audio of activeSoundAudioRef.current) {

@@ -341,8 +341,8 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
 4. Paste that token into Studio or a command/event action to replay the exact
    clip without running OpenAI or ElevenLabs again.
 5. Dashboard preview audio stays local to the controller. **Pause clip**,
-   **Resume clip**, and **Skip** affect the clip playing on the connected overlay
-   browser source. **Pause TTS** holds every request in a queue instead of
+   **Resume clip**, **Play from start**, and **Skip** affect the clip playing on
+   the connected overlay browser source. **Pause TTS** holds every request in a queue instead of
    refusing it: requests are still made in the background (up to 5 ahead), but
    nothing plays until you **Resume TTS** or use **Play next**. Waiting requests
    can be removed one by one or all at once (a removed request's clip is

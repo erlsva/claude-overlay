@@ -14,7 +14,8 @@ process.env.SESSION_SECRET = "tts-routes-test-secret";
 process.env.OWNER_TWITCH_USERNAME = "boss";
 
 const { saveClip } = await import("./store.js");
-const { clearWaitingJobs, setTtsGapSeconds, setTtsHeld } = await import("./service.js");
+const { clearWaitingJobs, setTtsGapSeconds, setTtsHeld, setTtsPlaybackController } =
+  await import("./service.js");
 const { ttsRouter } = await import("./routes.js");
 const { cleanTtsQueueSettings, initializeTtsQueueSettings } = await import("../db/index.js");
 
@@ -138,6 +139,38 @@ test("Play next says so when nothing is waiting", async () => {
   });
 });
 
+test("Play from start is a playback action, and says so when nothing is playing", async () => {
+  await withServer(async (call) => {
+    const nothing = await call("POST", "/playback", { action: "restart" });
+    assert.equal(nothing.status, 200);
+    assert.equal(nothing.body.changed, false);
+
+    let restarted = 0;
+    setTtsPlaybackController({
+      state: () => ({ active: true, paused: true }),
+      stop: () => false,
+      pause: () => false,
+      resume: () => false,
+      restart: () => ++restarted > 0,
+      setVolume: () => false,
+    });
+    try {
+      const played = await call("POST", "/playback", { action: "restart" });
+      assert.equal(played.body.changed, true);
+      assert.equal(restarted, 1);
+    } finally {
+      setTtsPlaybackController({
+        state: () => ({ active: false, paused: false }),
+        stop: () => false,
+        pause: () => false,
+        resume: () => false,
+        restart: () => false,
+        setVolume: () => false,
+      });
+    }
+  });
+});
+
 test("nobody signed out can touch the queue", async () => {
   await withServer(async (call) => {
     for (const [method, route, body] of [
@@ -145,6 +178,7 @@ test("nobody signed out can touch the queue", async () => {
       ["POST", "/queue/clear", undefined],
       ["DELETE", `/jobs/${crypto.randomUUID()}`, undefined],
       ["POST", "/stop", undefined],
+      ["POST", "/playback", { action: "restart" }],
     ] as const)
       assert.equal((await call(method, route, body, false)).status, 401, `${method} ${route}`);
   });

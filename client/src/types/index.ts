@@ -330,6 +330,7 @@ export interface ServerToClientEvents {
   "sound:stop": (payload: { id: string }) => void;
   "sound:pause": (payload: { id: string }) => void;
   "sound:resume": (payload: { id: string }) => void;
+  "sound:restart": (payload: { id: string }) => void;
   "sound:volume": (payload: { id: string; volume: number }) => void;
   "tts:status": (state: TtsPlaybackState) => void;
   "features:updated": (flags: FeatureFlags) => void;

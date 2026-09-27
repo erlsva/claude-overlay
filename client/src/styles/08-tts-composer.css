@@ -236,6 +236,9 @@
 .tts-actions > button:nth-child(3) {
   grid-column: 1 / -1;
 }
+.tts-actions > .tts-restart {
+  grid-column: 1 / -1;
+}
 .tts-stop {
   border-color: #854d0e !important;
   background: rgba(245, 158, 11, 0.1) !important;
