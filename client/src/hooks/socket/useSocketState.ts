@@ -68,7 +68,9 @@ export function useSocketState() {
   });
   const [chatChannel, setChatChannelState] = useState(DEFAULT_TWITCH_CHANNEL);
   const [ttsPlayback, setTtsPlayback] = useState<TtsPlaybackState>({
-    enabled: true,
+    held: false,
+    waiting: 0,
+    gapSeconds: 7,
     active: false,
     paused: false,
   });

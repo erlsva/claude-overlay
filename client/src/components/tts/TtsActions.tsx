@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { type Plan, type PlaybackState } from "./types";
-import { WandSparkles, FileAudio, Play, Pause, Square } from "lucide-react";
+import { WandSparkles, FileAudio, Play, Pause, SkipForward } from "lucide-react";
 import type { TtsContext } from "./context";
 import type { TtsPanelProps } from "./types";
 
@@ -69,7 +69,7 @@ export function TtsActions({
       </button>
       <button
         className="ui-button studio-primary"
-        disabled={busy || !prompt.trim() || !canGenerate || !overlayConnected || !playback.enabled}
+        disabled={busy || !prompt.trim() || !canGenerate || !overlayConnected}
         onClick={() => void submit(true)}
       >
         <Play size={13} fill="currentColor" /> Play on overlay
@@ -89,14 +89,16 @@ export function TtsActions({
                 setPlayback(result.state);
                 result.changed
                   ? toast.info(
-                      playback.paused ? "Resumed TTS on the overlay" : "Paused TTS on the overlay",
+                      playback.paused
+                        ? "Resumed the clip on the overlay"
+                        : "Paused the clip on the overlay",
                     )
                   : toast.info("No active TTS playback to control");
               })
             }
           >
             {playback.paused ? <Play size={13} /> : <Pause size={13} />}{" "}
-            {playback.paused ? "Resume" : "Pause"}
+            {playback.paused ? "Resume clip" : "Pause clip"}
           </button>
           <button
             className="ui-button tts-stop"
@@ -105,12 +107,13 @@ export function TtsActions({
               void runAction(async () => {
                 const result = await api<{ stopped: boolean }>("/stop", { method: "POST" });
                 result.stopped
-                  ? toast.info("Stopped the active TTS on the overlay")
+                  ? toast.info("Skipped the clip that was playing")
                   : toast.info("No TTS clip is currently playing");
               })
             }
+            title="Cut off the clip that is playing and move on to the next request"
           >
-            <Square size={11} fill="currentColor" /> Stop
+            <SkipForward size={12} fill="currentColor" /> Skip
           </button>
         </>
       )}

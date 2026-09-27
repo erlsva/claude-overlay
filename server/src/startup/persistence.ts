@@ -1,9 +1,11 @@
 import {
   initializeChatEmoteSettingsStore,
   initializeFeatureFlagsStore,
+  initializeTtsQueueSettings,
   initializeWhitelistStore,
 } from "../db/index.js";
 import { canvasStore } from "../state/canvasStore.js";
+import { ttsQueue } from "../tts/service.js";
 import { initializeEventAuthStore } from "../twitch/eventAuthStore.js";
 
 const inProduction = () => process.env.NODE_ENV === "production";
@@ -24,6 +26,10 @@ export async function initializePersistence() {
     console.error("Could not initialize feature flags", error);
     if (inProduction()) throw error;
   });
+  // Whether TTS was paused survives a restart. It fails closed: if it cannot be read, TTS is paused.
+  const queueSettings = await initializeTtsQueueSettings();
+  ttsQueue.setHeld(queueSettings.held);
+  ttsQueue.setGapSeconds(queueSettings.gapSeconds);
   const stored = await initializeChatEmoteSettingsStore().catch((error) => {
     console.error("Could not initialize persistent chat-emote settings", error);
     return undefined;

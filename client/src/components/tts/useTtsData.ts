@@ -7,17 +7,29 @@ import type { useTtsPreview } from "./useTtsPreview";
 
 /** The server's TTS state (clips, jobs, status), kept fresh by polling. */
 export function useTtsData(
-  deps: Pick<ReturnType<typeof useTtsVolume>, "followServerVolume" | "setPlayback"> &
+  deps: Pick<ReturnType<typeof useTtsVolume>, "followServerVolume" | "playback" | "setPlayback"> &
     Pick<ReturnType<typeof useTtsServices>, "toast"> &
     Pick<ReturnType<typeof useTtsPreview>, "setSelected">,
 ) {
-  const { followServerVolume, setPlayback, toast, setSelected } = deps;
+  const { followServerVolume, playback, setPlayback, toast, setSelected } = deps;
   const [clips, setClips] = useState<Clip[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [queue, setQueue] = useState<Job[]>([]);
   const [status, setStatus] = useState<TtsStatus | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [pollEpoch, setPollEpoch] = useState(0);
+  // A request joining or leaving the queue is announced at once over the live connection, so
+  // refresh the list straight away instead of waiting for the next poll.
+  const waitingCount = playback.waiting;
+  const firstWaitingCount = useRef(true);
+  useEffect(() => {
+    if (firstWaitingCount.current) {
+      firstWaitingCount.current = false;
+      return;
+    }
+    setPollEpoch((epoch) => epoch + 1);
+  }, [waitingCount]);
   const submittedJobs = useRef(new Set<string>());
   const notifiedJobs = useRef(new Set<string>());
   const refreshErrorShown = useRef(false);
@@ -28,6 +40,7 @@ export function useTtsData(
       followServerVolume(next.playback);
       setClips(next.clips);
       setJobs(next.jobs);
+      setQueue(next.queue ?? []);
       setError("");
       refreshErrorShown.current = false;
       if (!notify) return;
@@ -102,6 +115,8 @@ export function useTtsData(
     setClips,
     jobs,
     setJobs,
+    queue,
+    setQueue,
     status,
     setStatus,
     error,

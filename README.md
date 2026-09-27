@@ -340,10 +340,14 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    The intermediate WAV and temporary mix files are deleted after each job.
 4. Paste that token into Studio or a command/event action to replay the exact
    clip without running OpenAI or ElevenLabs again.
-5. Dashboard preview audio stays local to the controller. **Play**, **Pause**,
-   **Resume**, and **Stop OBS** affect the connected overlay browser source.
-   The on/off control blocks new paid playback before generation begins. New
-   TTS playback defaults to 25% volume.
+5. Dashboard preview audio stays local to the controller. **Pause clip**,
+   **Resume clip**, and **Skip** affect the clip playing on the connected overlay
+   browser source. **Pause TTS** holds every request in a queue instead of
+   refusing it: nothing is made or played until you **Resume TTS** or use
+   **Play next**, the waiting requests can be removed one by one or all at once,
+   and the silence between clips (7 seconds by default) is adjustable. Whether
+   TTS is paused survives a restart. New TTS playback defaults to 25% volume.
+   See [docs/TTS.md](docs/TTS.md#pausing-tts-and-the-queue).
 6. Finished speech is loudness-normalized with true-peak protection. Standalone
    effects use a quieter target and additional peak headroom. OBS shows an
    animated now-playing/paused TTS notice while a clip is active.

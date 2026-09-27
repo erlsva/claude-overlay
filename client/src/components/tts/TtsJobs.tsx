@@ -1,6 +1,7 @@
 import {
   Clock3,
   LoaderCircle,
+  Ban,
   Check,
   CircleAlert,
   Clipboard,
@@ -56,6 +57,8 @@ export function TtsJobs({
               <LoaderCircle className="tts-spin" size={14} />
             ) : job.status === "complete" ? (
               <Check size={14} />
+            ) : job.status === "cancelled" ? (
+              <Ban size={14} />
             ) : (
               <CircleAlert size={14} />
             )}

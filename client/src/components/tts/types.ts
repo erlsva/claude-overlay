@@ -1,5 +1,7 @@
 /** The shapes the TTS endpoints send and receive. */
 
+import type { TtsPlaybackState } from "../../types";
+
 export type Clip = {
   id: string;
   token: string;
@@ -12,8 +14,13 @@ export type Clip = {
 export type Job = {
   id: string;
   createdAt?: string;
-  status: "queued" | "running" | "complete" | "failed";
+  status: "queued" | "running" | "complete" | "failed" | "cancelled";
   message: string;
+  /** What was asked for (shortened) and who asked: shown in the queue. */
+  prompt?: string;
+  sender?: string;
+  /** Held back: TTS is paused, or the silence between clips. */
+  waiting?: boolean;
   error?: string;
   warning?: string;
   clip?: Clip;
@@ -44,17 +51,17 @@ export type TtsStatus = {
   };
 };
 
-export type PlaybackState = {
-  enabled: boolean;
-  active: boolean;
-  paused: boolean;
-  volume?: number;
-  clipId?: string;
-  prompt?: string;
-  sender?: string;
-};
+/** What the server shares about TTS playback: paused or not, what waits, and what is playing. */
+export type PlaybackState = TtsPlaybackState;
 
-export type TtsState = { status: TtsStatus; playback: PlaybackState; clips: Clip[]; jobs: Job[] };
+export type TtsState = {
+  status: TtsStatus;
+  playback: PlaybackState;
+  clips: Clip[];
+  jobs: Job[];
+  /** The requests waiting for their turn, next first. */
+  queue: Job[];
+};
 
 /** What the panel is given: whether an overlay is open, and what it is playing. */
 export interface TtsPanelProps {

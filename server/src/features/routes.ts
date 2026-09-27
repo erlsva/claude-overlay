@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getFeatureFlags, saveFeatureFlags } from "../db/index.js";
 import { requireAuth, requireOwner } from "../middleware/auth.js";
 import type { FeatureFlags } from "../types.js";
-import { setTtsPlaybackEnabled, stopTtsPlayback } from "../tts/service.js";
+import { clearWaitingJobs, stopTtsPlayback } from "../tts/service.js";
 
 export function createFeatureRouter(onUpdated: (flags: FeatureFlags) => void) {
   const router = Router();
@@ -27,9 +27,11 @@ export function createFeatureRouter(onUpdated: (flags: FeatureFlags) => void) {
         publicClips: changes.publicClips ?? previous.publicClips,
       };
       await saveFeatureFlags(flags);
-      if (flags.tts !== previous.tts) {
-        if (!flags.tts) stopTtsPlayback();
-        setTtsPlaybackEnabled(flags.tts);
+      // Switching TTS off for good ends what is playing and empties the queue. Whether TTS is
+      // paused is a separate setting, which this leaves alone.
+      if (flags.tts !== previous.tts && !flags.tts) {
+        stopTtsPlayback();
+        clearWaitingJobs();
       }
       onUpdated(flags);
       res.json(flags);

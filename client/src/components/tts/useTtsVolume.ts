@@ -12,7 +12,9 @@ export function useTtsVolume(
   const { livePlayback } = props;
   const { toast } = deps;
   const [playback, setPlayback] = useState<PlaybackState>({
-    enabled: true,
+    held: false,
+    waiting: 0,
+    gapSeconds: 7,
     active: false,
     paused: false,
   });

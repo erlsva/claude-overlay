@@ -1,0 +1,87 @@
+/* The TTS panel's pause control, the silence between clips, and the queue of waiting requests. */
+.tts-status-row--paused .tts-status-row__icon {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f6c85f;
+}
+
+.tts-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.tts-gap input {
+  width: 48px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-control);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  text-align: center;
+}
+
+.tts-queue {
+  display: grid;
+  gap: var(--space-2);
+}
+.tts-queue .tts-subheading small {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--bg-control);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+.tts-queue__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tts-queue__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-queue-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-raised);
+}
+.tts-queue-item__number {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.tts-queue-item__text {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.tts-queue-item__text strong {
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tts-queue-item__text small {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.tts-job--cancelled {
+  opacity: 0.7;
+}

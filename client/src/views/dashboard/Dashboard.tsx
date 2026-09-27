@@ -5,7 +5,8 @@ import { DashboardTopbar } from "./DashboardTopbar";
 import { customAccentVariables } from "../../theme";
 import { TextDialog } from "../../components/TextDialog";
 import TileController from "../../components/TileController";
-import { MessageCircle, Volume2 } from "lucide-react";
+import { MessageCircle, Pause, Volume2 } from "lucide-react";
+import { barLabel } from "../../components/tts/statusText";
 import { Toolbar } from "../../components/toolbar/Toolbar";
 import { ElementPanel } from "../../components/layers/ElementPanel";
 import { WhitelistPanel } from "../../components/WhitelistPanel";
@@ -186,7 +187,7 @@ export function Dashboard(props: DashboardProps) {
         canUndo={historyStatus.canUndo}
         canRedo={historyStatus.canRedo}
         trailing={
-          (chatEmoteSettings.enabled || ttsPlayback.enabled) && (
+          (chatEmoteSettings.enabled || featureFlags.tts) && (
             <>
               {chatEmoteSettings.enabled && (
                 <span
@@ -198,14 +199,18 @@ export function Dashboard(props: DashboardProps) {
                   Chat emotes active
                 </span>
               )}
-              {ttsPlayback.enabled && (
+              {featureFlags.tts && (
                 <span
                   className="chat-emote-active-indicator"
-                  title="TTS playback is enabled for the overlay. Open Studio → TTS to generate clips or turn TTS off."
+                  title={
+                    ttsPlayback.held
+                      ? "TTS is paused: requests wait in the queue. Open Studio → TTS to resume."
+                      : "TTS is playing on the overlay. Open Studio → TTS to generate clips or pause it."
+                  }
                 >
                   <span className="chat-emote-active-indicator__dot" />
-                  <Volume2 size={13} />
-                  TTS active
+                  {ttsPlayback.held ? <Pause size={13} /> : <Volume2 size={13} />}
+                  {barLabel(ttsPlayback)}
                 </span>
               )}
             </>

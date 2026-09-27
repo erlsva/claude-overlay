@@ -26,6 +26,37 @@ Dashboard previews play only in the dashboard browser. Overlay playback is sent 
 the connected overlay browser source. The overlay volume defaults to 25% and can be
 changed while a clip is playing.
 
+## Pausing TTS and the queue
+
+Requests (from chat, rewards or the dashboard) go through one queue: each is made
+and played in turn. **Pause TTS** at the top of the TTS panel holds that queue; it
+never refuses a request.
+
+- While TTS is paused, requests are still accepted and wait. Nothing is made for
+  them (so no credits are spent) and nothing plays. A clip that is already playing
+  finishes on its own. A request that was being made when you paused is held just
+  before it would play.
+- **Resume TTS** plays the waiting requests in order and lets new ones play as they
+  come. **Play next** (shown while paused) plays exactly one waiting request and
+  holds again.
+- The **Waiting** list shows who asked for what, in order. Take one out with its X,
+  or use **Clear all**. Removed requests are not made, so they cost nothing.
+- **Silence between clips**: at least this many seconds pass between one clip ending
+  and the next one starting (default 7, from 0 to 30). Time spent making the next
+  clip counts as silence. Play next ignores it, and the first clip after a quiet
+  spell plays at once.
+- **Skip** cuts off the clip that is playing and moves on to the next request (after
+  the silence). **Pause clip / Resume clip** pause and continue that one clip
+  part-way through, which is separate from pausing TTS.
+- Up to 100 requests can be queued or being made at once; after that new requests
+  fail with "The TTS queue is full".
+- Whether TTS is paused, and the silence, are saved, so a server restart keeps them.
+  If the saved setting cannot be read at startup, TTS starts **paused** rather than
+  guessing. The waiting requests themselves are held in memory, so a restart loses
+  them.
+- The owner's **TTS Studio** switch in the account menu is different: it turns TTS
+  off for everyone, refuses new requests, and clears the queue.
+
 ## Prompt syntax
 
 Plain text is spoken as ordinary dialogue:
@@ -384,7 +415,7 @@ only touches clips that have no waveform, and can safely be run again.
 - The finished clip is normalized once more with true-peak protection.
 - A voice created for a character is not pitch-shifted a second time.
 - The overlay shows a now-playing card with the requester and full prompt.
-- TTS can be paused, resumed, stopped, or disabled from Studio.
+- TTS can be paused (requests queue up), resumed, skipped, or disabled from Studio.
 
 ## Failures and billing
 

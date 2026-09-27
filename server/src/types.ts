@@ -130,8 +130,15 @@ export interface TriggerStep {
   ttsErrorMessage?: string;
 }
 export interface TtsPlaybackState {
-  enabled: boolean;
+  /** TTS is paused: requests are still accepted, but wait in the queue instead of playing. */
+  held: boolean;
+  /** How many requests are waiting for their turn (queued, or made and waiting to play). */
+  waiting: number;
+  /** The least silence, in seconds, between one clip ending and the next starting. */
+  gapSeconds: number;
+  /** A clip is on the overlay (playing, or paused part-way). */
   active: boolean;
+  /** That clip is paused part-way. */
   paused: boolean;
   volume?: number;
   clipId?: string;

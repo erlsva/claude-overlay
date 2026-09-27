@@ -1,4 +1,5 @@
 import { TtsStatusCard } from "./TtsStatusCard";
+import { TtsQueue } from "./TtsQueue";
 import { TtsActions } from "./TtsActions";
 import { TtsPlan } from "./TtsPlan";
 import { TtsJobs } from "./TtsJobs";
@@ -70,6 +71,7 @@ export function TtsPanel(props: TtsPanelProps) {
       </details>
 
       <TtsStatusCard s={s} />
+      <TtsQueue s={s} />
 
       <label className="tts-composer">
         <span>

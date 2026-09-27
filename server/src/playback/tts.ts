@@ -5,9 +5,11 @@
 
 import { randomUUID } from "crypto";
 import { publicServerUrl } from "../config/env.js";
+import { getFeatureFlags } from "../db/index.js";
 import { activeOverlays, io } from "../runtime.js";
 import {
   getTtsPlaybackState,
+  onTtsStateChange,
   setTtsOverlayCheck,
   setTtsPlaybackController,
   setTtsPlayer,
@@ -33,7 +35,6 @@ interface ActivePlayback {
 
 type Clip = Parameters<Parameters<typeof setTtsPlayer>[0]>[0];
 
-let playbackEnabled = true;
 let active: ActivePlayback | undefined;
 
 const emitStatus = () => io.emit("tts:status", getTtsPlaybackState());
@@ -46,7 +47,9 @@ function stopOnOverlay(playback: ActivePlayback) {
 
 /** Plays one clip on the overlay; resolves when it ends, rejects if it fails. */
 async function playClip(clip: Clip, volume: number) {
-  if (!playbackEnabled) throw new Error("TTS playback is turned off.");
+  // Pausing TTS holds requests in the queue before they get here. This is the owner's switch for
+  // TTS as a whole, checked again in case it was flipped while the clip was being made.
+  if (!getFeatureFlags().tts) throw new Error("TTS is currently disabled by the overlay owner.");
   if (!activeOverlays.size)
     throw new Error("The overlay is offline. Replay the saved clip once the overlay is open.");
   if (active) stopOnOverlay(active);
@@ -120,10 +123,11 @@ async function playClip(clip: Clip, volume: number) {
 /** Connects the TTS service to the overlay: what plays a clip, and how the dashboard controls it. */
 export function installTtsPlayback() {
   setTtsOverlayCheck(() => activeOverlays.size > 0);
+  // The dashboards and overlays hear about pausing, the queue and the gap as they change.
+  onTtsStateChange(emitStatus);
   setTtsPlayer(playClip);
   setTtsPlaybackController({
     state: () => ({
-      enabled: playbackEnabled,
       active: !!active,
       paused: active?.paused ?? false,
       ...(active ? { clipId: active.clipId, prompt: active.prompt, sender: active.sender } : {}),
@@ -148,12 +152,6 @@ export function installTtsPlayback() {
       active.setVolume(volume);
       emitStatus();
       return true;
-    },
-    setEnabled: (enabled) => {
-      playbackEnabled = enabled;
-      if (!enabled && active) stopOnOverlay(active);
-      emitStatus();
-      return getTtsPlaybackState();
     },
   });
 }

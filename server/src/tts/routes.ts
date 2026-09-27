@@ -3,20 +3,27 @@ import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { postgresConfigured } from "../db/postgres.js";
-import { getFeatureFlags } from "../db/index.js";
+import { getFeatureFlags, saveTtsQueueSettings } from "../db/index.js";
 import { audioUrl, deleteUploadedClip, discordStorageConfigured } from "./discord.js";
 import { publicClipsRouter } from "./publicClips.js";
 import { ffmpegAvailable } from "./audio/index.js";
+import { MAX_GAP_SECONDS } from "./queue.js";
 import {
+  clearWaitingJobs,
   getTtsPlaybackState,
   jobs,
   pauseTtsPlayback,
+  playNextTts,
   preview,
+  removeWaitingJob,
   resumeTtsPlayback,
-  setTtsPlaybackEnabled,
+  setTtsGapSeconds,
+  setTtsHeld,
   setTtsPlaybackVolume,
   stopTtsPlayback,
   submit,
+  ttsQueue,
+  waitingJobs,
 } from "./service.js";
 import { deleteClip, getClip, listClips, ttsMetadataStorageConfigured } from "./store.js";
 
@@ -97,6 +104,7 @@ ttsRouter.get("/state", async (_req, res) => {
       playback: getTtsPlaybackState(),
       clips,
       jobs: [...jobs.values()].reverse().slice(0, 20),
+      queue: waitingJobs(),
     });
   } catch {
     res.status(503).json({
@@ -153,36 +161,79 @@ ttsRouter.post("/generate", expensive, async (req, res) => {
     });
   }
 });
+// Skips the clip that is playing: it ends at once and the queue moves on to the next request.
 ttsRouter.post("/stop", (_req, res) => res.json({ stopped: stopTtsPlayback() }));
-ttsRouter.post("/playback", (req, res) => {
+ttsRouter.post("/playback", async (req, res) => {
+  let input;
   try {
-    const input = z
+    input = z
       .discriminatedUnion("action", [
+        // The clip that is playing.
         z.object({ action: z.literal("pause") }),
         z.object({ action: z.literal("resume") }),
-        z.object({ action: z.literal("enable"), enabled: z.boolean() }),
+        z.object({ action: z.literal("volume"), volume: z.number().min(0).max(1) }),
+        // TTS as a whole: paused requests wait in the queue instead of playing.
+        z.object({ action: z.literal("hold") }),
+        z.object({ action: z.literal("release") }),
+        z.object({ action: z.literal("next") }),
         z.object({
-          action: z.literal("volume"),
-          volume: z.number().min(0).max(1),
+          action: z.literal("gap"),
+          seconds: z.number().int().min(0).max(MAX_GAP_SECONDS),
         }),
       ])
       .parse(req.body);
-    const before = getTtsPlaybackState();
-    let changed = false;
-    if (input.action === "pause") changed = pauseTtsPlayback();
-    else if (input.action === "resume") changed = resumeTtsPlayback();
-    else if (input.action === "volume") changed = setTtsPlaybackVolume(input.volume);
-    else {
-      setTtsPlaybackEnabled(input.enabled);
-      changed = before.enabled !== input.enabled;
-    }
-    res.json({ changed, state: getTtsPlaybackState() });
   } catch (error) {
     res.status(400).json({
       error: error instanceof Error ? error.message : "Invalid playback control.",
     });
+    return;
   }
+  let changed = false;
+  let saveSettings = false;
+  if (input.action === "pause") changed = pauseTtsPlayback();
+  else if (input.action === "resume") changed = resumeTtsPlayback();
+  else if (input.action === "volume") changed = setTtsPlaybackVolume(input.volume);
+  else if (input.action === "next") changed = playNextTts();
+  else if (input.action === "gap") {
+    changed = ttsQueue.gapSeconds() !== input.seconds;
+    setTtsGapSeconds(input.seconds);
+    saveSettings = true;
+  } else {
+    const held = input.action === "hold";
+    changed = ttsQueue.isHeld() !== held;
+    setTtsHeld(held);
+    saveSettings = true;
+  }
+  if (saveSettings) {
+    try {
+      await saveTtsQueueSettings({
+        held: ttsQueue.isHeld(),
+        gapSeconds: ttsQueue.gapSeconds(),
+      });
+    } catch (error) {
+      console.error("Could not save the TTS queue settings", error);
+      res.status(503).json({
+        error: "That was changed, but it could not be saved, so a restart may undo it.",
+        state: getTtsPlaybackState(),
+      });
+      return;
+    }
+  }
+  res.json({ changed, state: getTtsPlaybackState() });
 });
+// Takes one waiting request out of the queue, or empties it.
+ttsRouter.delete("/jobs/:id", (req, res) => {
+  if (!z.string().uuid().safeParse(req.params.id).success) {
+    res.status(400).json({ error: "Invalid request ID." });
+    return;
+  }
+  if (!removeWaitingJob(req.params.id)) {
+    res.status(409).json({ error: "That request is already being made, or has finished." });
+    return;
+  }
+  res.json({ removed: true });
+});
+ttsRouter.post("/queue/clear", (_req, res) => res.json({ cleared: clearWaitingJobs() }));
 ttsRouter.delete("/clips/:id", async (req, res) => {
   try {
     if (!/^[a-f0-9]{32}$/.test(req.params.id)) {

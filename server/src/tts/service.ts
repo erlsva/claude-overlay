@@ -14,14 +14,21 @@ import {
 } from "./audio/index.js";
 import { castScenes, type AccountVoice } from "./casting/index.js";
 import { scenesSchema, type Scene } from "./scene/index.js";
+import type { TtsPlaybackState } from "../types.js";
+import { createQueueGate, QueueCancelled } from "./queue.js";
 import { getClip, saveClip, type TtsClip } from "./store.js";
 import { deleteUploadedClip, uploadClip } from "./discord.js";
 
 export type TtsJob = {
   id: string;
   createdAt: string;
-  status: "queued" | "running" | "complete" | "failed";
+  status: "queued" | "running" | "complete" | "failed" | "cancelled";
   message: string;
+  /** What was asked for, shortened, and who asked: shown in the dashboard's queue. */
+  prompt: string;
+  sender: string;
+  /** True while the request is held back: TTS is paused, or the silence between clips. */
+  waiting?: boolean;
   clip?: TtsClip;
   error?: string;
   warning?: string;
@@ -32,25 +39,38 @@ const plans = new Map<
   { prompt: string; scenes: Scene[]; owner: string; expires: number }
 >();
 let chain: Promise<unknown> = Promise.resolve();
-let pending = 0;
 let previews = 0;
-let play: ((clip: TtsClip, volume: number) => Promise<void>) | undefined;
-export type TtsPlaybackState = {
-  enabled: boolean;
-  active: boolean;
-  paused: boolean;
-  volume?: number;
-  clipId?: string;
-  prompt?: string;
-  sender?: string;
+/** The most requests that may be queued or being made at once, so a flood cannot grow the queue for ever. */
+export const MAX_QUEUED = 100;
+/** Holds requests while TTS is paused, and keeps some silence between clips. */
+export const ttsQueue = createQueueGate();
+const stateListeners = new Set<() => void>();
+/** Calls `listener` whenever the playback state (paused, waiting, gap, what plays) may have changed. */
+export function onTtsStateChange(listener: () => void) {
+  stateListeners.add(listener);
+  return () => stateListeners.delete(listener);
+}
+const stateChanged = () => {
+  for (const listener of [...stateListeners]) listener();
 };
+ttsQueue.subscribe(stateChanged);
+const activeJobCount = () =>
+  [...jobs.values()].filter((job) => job.status === "queued" || job.status === "running").length;
+/** Requests waiting for their turn: queued, or made and held back before playing. */
+export function waitingJobs(): TtsJob[] {
+  return [...jobs.values()].filter(
+    (job) => job.status === "queued" || (job.status === "running" && job.waiting),
+  );
+}
+let play: ((clip: TtsClip, volume: number) => Promise<void>) | undefined;
+export type { TtsPlaybackState };
 type PlaybackController = {
   stop: () => boolean;
   pause: () => boolean;
   resume: () => boolean;
   setVolume: (volume: number) => boolean;
-  setEnabled: (enabled: boolean) => TtsPlaybackState;
-  state: () => TtsPlaybackState;
+  /** What the overlay is doing; the queue's own state is added by getTtsPlaybackState. */
+  state: () => Pick<TtsPlaybackState, "active" | "paused" | "clipId" | "prompt" | "sender">;
 };
 let playbackController: PlaybackController | undefined;
 export function setTtsPlayer(player: (clip: TtsClip, volume: number) => Promise<void>) {
@@ -81,24 +101,67 @@ export function setTtsPlaybackVolume(volume: number) {
   const live = playbackController?.setVolume(volume) ?? false;
   return changed || live;
 }
-export function setTtsPlaybackEnabled(enabled: boolean) {
-  return (
-    playbackController?.setEnabled(enabled) ?? {
-      enabled,
-      active: false,
-      paused: false,
-    }
-  );
-}
 export function getTtsPlaybackState(): TtsPlaybackState {
   return {
-    ...(playbackController?.state() ?? {
-      enabled: true,
-      active: false,
-      paused: false,
-    }),
+    active: false,
+    paused: false,
+    ...playbackController?.state(),
+    held: ttsQueue.isHeld(),
+    waiting: waitingJobs().length,
+    gapSeconds: ttsQueue.gapSeconds(),
     volume: overlayVolume,
   };
+}
+/** Pauses (true) or resumes (false) TTS. While paused, requests are accepted and wait. */
+export function setTtsHeld(held: boolean) {
+  ttsQueue.setHeld(held);
+}
+/** Lets one waiting request through while paused. False when nothing is waiting. */
+export function playNextTts(): boolean {
+  return waitingJobs().length > 0 && ttsQueue.playNext();
+}
+export function setTtsGapSeconds(seconds: number) {
+  ttsQueue.setGapSeconds(seconds);
+}
+/** Takes a waiting request out of the queue. False when it is already being made, or finished. */
+export function removeWaitingJob(id: string): boolean {
+  const job = jobs.get(id);
+  if (!job || !waitingJobs().includes(job)) return false;
+  job.status = "cancelled";
+  job.waiting = false;
+  job.message = "Removed from the queue";
+  ttsQueue.wake();
+  stateChanged();
+  return true;
+}
+/** Removes every waiting request. Returns how many there were. */
+export function clearWaitingJobs(): number {
+  return waitingJobs().filter((job) => removeWaitingJob(job.id)).length;
+}
+/**
+ * Runs a wait on the queue, showing on the request (and in the dashboard) that it is held back and
+ * why. The reason follows the queue: pausing while a clip waits out the silence changes it.
+ */
+async function waitOn<T>(
+  job: TtsJob,
+  reason: () => string,
+  wouldWait: boolean,
+  wait: () => Promise<T>,
+): Promise<T> {
+  if (!wouldWait) return wait();
+  const before = job.message;
+  job.waiting = true;
+  job.message = reason();
+  const stopFollowing = ttsQueue.subscribe(() => (job.message = reason()));
+  stateChanged();
+  try {
+    return await wait();
+  } finally {
+    stopFollowing();
+    job.waiting = false;
+    job.message = before;
+    stateChanged();
+  }
 }
 export function replayId(text: string) {
   return text
@@ -143,14 +206,15 @@ export function submit(input: {
   play: boolean;
 }) {
   z.string().trim().min(1).max(6000).parse(input.prompt);
-  if (input.play && !getTtsPlaybackState().enabled)
-    throw new Error("TTS playback is turned off. Turn it on before playing on the overlay.");
   // Nothing can play without an open overlay, so refuse before any credits are spent.
   if (input.play && overlayOnline && !overlayOnline())
     throw new Error(
       "The overlay is not open, so nothing would play. Open the overlay and try again. No credits were spent.",
     );
-  if (pending >= 10) throw new Error("The TTS queue is full. Try again after a clip finishes.");
+  if (activeJobCount() >= MAX_QUEUED)
+    throw new Error(
+      `The TTS queue is full (${MAX_QUEUED} waiting). Skip or clear some, then try again.`,
+    );
   let prepared: Scene[] | undefined;
   if (input.planId) {
     const p = plans.get(input.planId);
@@ -163,9 +227,11 @@ export function submit(input: {
     createdAt: new Date().toISOString(),
     status: "queued",
     message: "Waiting in TTS queue",
+    prompt: input.prompt.slice(0, 300),
+    sender: input.sender.slice(0, 100),
   };
   jobs.set(job.id, job);
-  pending++;
+  stateChanged();
   if (jobs.size > 100)
     for (const [id, j] of jobs) {
       if (j.status === "complete" || j.status === "failed") {
@@ -174,13 +240,25 @@ export function submit(input: {
       }
     }
   const completion = chain.then(async () => {
+    if (job.status === "cancelled") return; // removed while waiting for its turn
     job.status = "running";
+    stateChanged();
     let temp: string | undefined;
     let playbackFailed = false;
+    let manual = false;
+    const gateJob = { cancelled: () => job.status === "cancelled" };
     const addWarning = (message: string) => {
       job.warning = [job.warning, message].filter(Boolean).join(" ");
     };
     try {
+      // Nothing is made (and no credits are spent) while TTS is paused: the request waits here.
+      if (input.play)
+        manual = await waitOn(
+          job,
+          () => "Waiting for TTS to be resumed",
+          ttsQueue.turnWouldWait(),
+          () => ttsQueue.turn(gateJob),
+        );
       const token = replayId(input.prompt);
       let clip: TtsClip | undefined;
       if (token) {
@@ -258,6 +336,15 @@ export function submit(input: {
       }
       job.clip = clip;
       if (input.play) {
+        // Held here if TTS was paused while this was being made, and until there has been enough
+        // silence since the last clip. Time spent making the clip counts as silence.
+        await waitOn(
+          job,
+          () =>
+            ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips",
+          ttsQueue.playWouldWait(),
+          () => ttsQueue.beforePlay(gateJob, manual),
+        );
         job.message = "Playing on overlay";
         try {
           if (!play) throw new Error("Overlay playback is unavailable.");
@@ -265,6 +352,8 @@ export function submit(input: {
         } catch (error) {
           playbackFailed = true;
           addWarning(error instanceof Error ? error.message : "Overlay playback failed.");
+        } finally {
+          ttsQueue.clipEnded();
         }
       }
       job.status = "complete";
@@ -274,11 +363,16 @@ export function submit(input: {
           : "Playback finished"
         : "Clip saved";
     } catch (e) {
-      job.status = "failed";
-      job.error = e instanceof Error ? e.message : "TTS failed";
-      job.message = "TTS failed";
+      if (e instanceof QueueCancelled) {
+        job.status = "cancelled";
+        job.message = "Removed from the queue";
+      } else {
+        job.status = "failed";
+        job.error = e instanceof Error ? e.message : "TTS failed";
+        job.message = "TTS failed";
+      }
     } finally {
-      pending--;
+      stateChanged();
       if (temp) await rm(temp, { recursive: true, force: true });
     }
   });

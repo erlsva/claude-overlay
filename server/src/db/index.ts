@@ -10,6 +10,7 @@ import type {
   SavedScene,
   SoundboardItem,
 } from "../types.js";
+import { DEFAULT_GAP_SECONDS, MAX_GAP_SECONDS } from "../tts/queue.js";
 import { postgres } from "./postgres.js";
 
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
@@ -22,6 +23,12 @@ interface WhitelistEntry {
   isAdmin: boolean;
 }
 
+/** Whether TTS is paused, and the least silence between clips. Saved so a restart keeps them. */
+export interface TtsQueueSettings {
+  held: boolean;
+  gapSeconds: number;
+}
+
 interface DbSchema {
   whitelist: WhitelistEntry[];
   scenes: SavedScene[];
@@ -30,6 +37,7 @@ interface DbSchema {
   triggers: OverlayTrigger[];
   chatEmoteSettings?: ChatEmoteSettings;
   featureFlags?: FeatureFlags;
+  ttsQueue?: TtsQueueSettings;
 }
 
 const adapter = new JSONFile<DbSchema>(path.join(DATA_DIR, "db.json"));
@@ -181,22 +189,25 @@ export async function initializeChatEmoteSettingsStore(): Promise<ChatEmoteSetti
  * spin-down can fail while the database wakes back up. Retry a few times before
  * giving up, instead of treating one slow query as "nothing was ever saved".
  */
-async function loadStoredFeatureFlags(): Promise<Partial<FeatureFlags> | undefined> {
+async function loadStoredSetting(key: string, label: string): Promise<unknown> {
   const attempts = 3;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       await ensureAppSettingsTable();
-      const result = await postgres!.query(
-        "SELECT value FROM app_settings WHERE key = 'feature_flags'",
-      );
-      return result.rows[0]?.value as Partial<FeatureFlags> | undefined;
+      const result = await postgres!.query("SELECT value FROM app_settings WHERE key = $1", [key]);
+      return result.rows[0]?.value;
     } catch (error) {
-      console.error(`Could not load feature flags (attempt ${attempt}/${attempts})`, error);
+      console.error(`Could not load ${label} (attempt ${attempt}/${attempts})`, error);
       if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
       else throw error;
     }
   }
   throw new Error("unreachable");
+}
+
+async function loadStoredFeatureFlags(): Promise<Partial<FeatureFlags> | undefined> {
+  return (await loadStoredSetting("feature_flags", "feature flags")) as
+    Partial<FeatureFlags> | undefined;
 }
 
 export async function initializeFeatureFlagsStore(): Promise<FeatureFlags> {
@@ -223,6 +234,48 @@ export async function initializeFeatureFlagsStore(): Promise<FeatureFlags> {
     );
   }
   return featureFlagsCache;
+}
+
+/** Whatever was stored, made safe: anything odd falls back to running with the normal gap. */
+export function cleanTtsQueueSettings(value: unknown): TtsQueueSettings {
+  const stored = value && typeof value === "object" ? (value as Partial<TtsQueueSettings>) : {};
+  const gap = Number(stored.gapSeconds);
+  return {
+    held: stored.held === true,
+    gapSeconds:
+      Number.isFinite(gap) && gap >= 0 && gap <= MAX_GAP_SECONDS ? gap : DEFAULT_GAP_SECONDS,
+  };
+}
+
+/**
+ * Loads whether TTS was paused. If that cannot be confirmed (the database is still waking up), TTS
+ * starts paused: a streamer who paused it does not want it playing again just because a restart
+ * could not read the setting. Resuming is one click.
+ */
+export async function initializeTtsQueueSettings(): Promise<TtsQueueSettings> {
+  if (!postgres) return cleanTtsQueueSettings(db.data.ttsQueue);
+  try {
+    return cleanTtsQueueSettings(await loadStoredSetting("tts_queue", "TTS queue settings"));
+  } catch (error) {
+    console.error("TTS queue settings unavailable at startup, keeping TTS paused", error);
+    return { held: true, gapSeconds: DEFAULT_GAP_SECONDS };
+  }
+}
+
+export async function saveTtsQueueSettings(settings: TtsQueueSettings): Promise<void> {
+  const clean = cleanTtsQueueSettings(settings);
+  if (postgres) {
+    await ensureAppSettingsTable();
+    await postgres.query(
+      `INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('tts_queue', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(clean)],
+    );
+    return;
+  }
+  db.data.ttsQueue = clean;
+  await db.write();
 }
 
 export function getFeatureFlags(): FeatureFlags {
