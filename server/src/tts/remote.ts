@@ -26,6 +26,7 @@ import {
   createRemoteToken,
   listRemoteTokens,
   revokeRemoteToken,
+  type RemoteToken,
 } from "./remoteTokens.js";
 import {
   getTtsPlaybackState,
@@ -112,18 +113,23 @@ const ACTIONS = [
 const remoteState = () => ({ ...getTtsPlaybackState(), emotes: chatEmoteRemoteState() });
 
 /**
- * Checks the bearer token. On success, returns true; on failure, it has already sent the error
- * response, and the caller should stop.
+ * Checks the bearer token. On success, returns who it belongs to; on failure, it has already sent
+ * the error response (and logged why, to the server console, so a rejected request is visible
+ * without needing to reproduce it), and the caller should stop.
  */
-async function authenticate(req: Request, res: Response): Promise<boolean> {
+async function authenticate(req: Request, res: Response): Promise<RemoteToken | undefined> {
   const auth = req.headers.authorization;
   const presented = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : undefined;
   const holder = presented && (await checkRemoteToken(presented));
   if (!holder) {
+    // The token's own id (never its secret) is safe to log: it is a lookup key, not a credential,
+    // and seeing it helps tell which button sent a token that no longer works.
+    const id = presented?.split(".")[1];
+    console.log(`TTS remote: refused${id ? ` (unknown or revoked token ${id})` : " (no token)"}`);
     res.status(401).json({ error: "Invalid or revoked remote token." });
-    return false;
+    return undefined;
   }
-  return true;
+  return holder;
 }
 
 export const remoteControlRouter = Router();
@@ -135,12 +141,16 @@ remoteControlRouter.use(
 );
 // Read-only: for a Stream Deck's "poll a URL for status" (or anything else polling for the icon to
 // follow), which only offers GET requests, not a JSON body.
+// Not logged on success: a poll fires every few seconds for as long as a button is configured to
+// poll, so logging every one would drown out the button presses actually worth seeing. A failed
+// poll is still logged, by authenticate() itself, since a poll that stops working is worth knowing.
 remoteControlRouter.get("/", async (req, res) => {
   if (!(await authenticate(req, res))) return;
   res.json({ ok: true, action: "status", changed: false, ...remoteState() });
 });
 remoteControlRouter.post("/", async (req, res) => {
-  if (!(await authenticate(req, res))) return;
+  const holder = await authenticate(req, res);
+  if (!holder) return;
   const input = z
     .object({
       action: z.enum(ACTIONS),
@@ -148,15 +158,18 @@ remoteControlRouter.post("/", async (req, res) => {
     })
     .safeParse(req.body);
   if (!input.success) {
+    console.log(`TTS remote: ${holder.name} sent an invalid request`);
     res.status(400).json({ error: "Invalid remote action." });
     return;
   }
   const { action } = input.data;
   if (action === "volume" && input.data.value === undefined) {
+    console.log(`TTS remote: ${holder.name} -> volume, refused (no value given)`);
     res.status(400).json({ error: "The volume action needs a value from 0 to 1." });
     return;
   }
   if (TTS_ACTIONS.has(action) && !getFeatureFlags().tts) {
+    console.log(`TTS remote: ${holder.name} -> ${action}, refused (TTS is switched off)`);
     res.status(503).json({ error: "TTS is currently disabled by the overlay owner." });
     return;
   }
@@ -190,7 +203,10 @@ remoteControlRouter.post("/", async (req, res) => {
     try {
       await persistTtsQueueSettings();
     } catch (error) {
-      console.error("Could not save the TTS queue settings from a remote", error);
+      console.error(
+        `TTS remote: ${holder.name} -> ${action}, changed but could not be saved`,
+        error,
+      );
       res.status(503).json({
         error: "That was changed, but it could not be saved, so a restart may undo it.",
         action,
@@ -200,5 +216,8 @@ remoteControlRouter.post("/", async (req, res) => {
       return;
     }
   }
+  console.log(
+    `TTS remote: ${holder.name} -> ${action}${action === "volume" ? ` ${input.data.value}` : ""} (${changed ? "changed" : "no change"})`,
+  );
   res.json({ ok: true, action, changed, ...remoteState() });
 });
