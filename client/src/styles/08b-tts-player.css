@@ -94,6 +94,18 @@
 .tts-clip .ui-button {
   min-width: 0 !important;
 }
+.tts-clips-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
+}
+.tts-clips-pager span {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
 .command-cost-warning {
   margin: 0;
   padding: 7px 8px;

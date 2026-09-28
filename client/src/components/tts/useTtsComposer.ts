@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { type Plan, type Job, type Clip } from "./types";
 import { tokenPattern, api } from "./api";
+import { pageCount } from "../../support/pagination";
 import type { useTtsData } from "./useTtsData";
 import type { useTtsServices } from "./useTtsServices";
 import type { useTtsPreview } from "./useTtsPreview";
@@ -30,6 +31,7 @@ export function useTtsComposer(
   const [prompt, setPrompt] = useState("");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [search, setSearch] = useState("");
+  const [clipsPage, setClipsPage] = useState(0);
   const isToken = tokenPattern.test(prompt.trim());
   const canGenerate = isToken ? !!status?.canReplay : !!status?.configured;
   const submit = (play: boolean, text = prompt) =>
@@ -61,6 +63,19 @@ export function useTtsComposer(
         )
       : clips;
   }, [clips, search]);
+  const CLIPS_PER_PAGE = 10;
+  const clipsPageCount = pageCount(filteredClips.length, CLIPS_PER_PAGE);
+  // A new search starts back at the first page of its own results.
+  useEffect(() => setClipsPage(0), [search]);
+  // The list shrinks (a clip is deleted, or a search narrows further) out from under the current
+  // page: land on the new last page instead of showing an empty one.
+  useEffect(() => {
+    setClipsPage((current) => Math.min(current, clipsPageCount - 1));
+  }, [clipsPageCount]);
+  const pagedClips = useMemo(
+    () => filteredClips.slice(clipsPage * CLIPS_PER_PAGE, (clipsPage + 1) * CLIPS_PER_PAGE),
+    [filteredClips, clipsPage],
+  );
   const copyToken = (clip: Clip) =>
     runAction(async () => {
       await navigator.clipboard.writeText(clip.token);
@@ -94,6 +109,10 @@ export function useTtsComposer(
     canGenerate,
     submit,
     filteredClips,
+    clipsPage,
+    setClipsPage,
+    clipsPageCount,
+    pagedClips,
     copyToken,
     removeClip,
   };

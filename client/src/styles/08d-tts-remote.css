@@ -88,7 +88,7 @@
  * only appearing once something has happened), so testing a button feels like watching a log tail.
  */
 .tts-remote-log {
-  max-height: 190px;
+  height: 190px;
   overflow-y: auto;
   padding: var(--space-2) var(--space-3);
   border: 1px solid #16241a;

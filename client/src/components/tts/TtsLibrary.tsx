@@ -1,4 +1,14 @@
-import { Database, Search, Clipboard, Square, Headphones, Play, Trash2 } from "lucide-react";
+import {
+  Database,
+  Search,
+  Clipboard,
+  Square,
+  Headphones,
+  Play,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { formatDuration } from "./api";
 import { TtsPreview } from "./TtsPreview";
 import type { TtsContext } from "./context";
@@ -14,15 +24,19 @@ export function TtsLibrary({
     TtsContext,
     | "busy"
     | "clips"
+    | "clipsPage"
+    | "clipsPageCount"
     | "closePreview"
     | "copyToken"
     | "filteredClips"
+    | "pagedClips"
     | "playingKey"
     | "previewAudioRef"
     | "previewKey"
     | "removeClip"
     | "search"
     | "selected"
+    | "setClipsPage"
     | "setPlayingKey"
     | "setSearch"
     | "submit"
@@ -33,15 +47,19 @@ export function TtsLibrary({
   const {
     busy,
     clips,
+    clipsPage,
+    clipsPageCount,
     closePreview,
     copyToken,
     filteredClips,
+    pagedClips,
     playingKey,
     previewAudioRef,
     previewKey,
     removeClip,
     search,
     selected,
+    setClipsPage,
     setPlayingKey,
     setSearch,
     submit,
@@ -66,7 +84,7 @@ export function TtsLibrary({
           />
         </label>
       )}
-      {filteredClips.map((clip) => (
+      {pagedClips.map((clip) => (
         <article className="tts-clip" key={clip.id}>
           <div className="tts-clip__meta">
             <strong>{clip.prompt}</strong>
@@ -136,6 +154,33 @@ export function TtsLibrary({
           )}
         </article>
       ))}
+      {clipsPageCount > 1 && (
+        <nav className="tts-clips-pager" aria-label="Saved clips pages">
+          <button
+            type="button"
+            className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+            disabled={clipsPage === 0}
+            onClick={() => setClipsPage((current) => current - 1)}
+            aria-label="Previous page of saved clips"
+            title="Previous page"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span>
+            Page {clipsPage + 1} of {clipsPageCount}
+          </span>
+          <button
+            type="button"
+            className="ui-icon-button ui-button--compact ui-icon-button--ghost"
+            disabled={clipsPage >= clipsPageCount - 1}
+            onClick={() => setClipsPage((current) => current + 1)}
+            aria-label="Next page of saved clips"
+            title="Next page"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </nav>
+      )}
       {!clips.length && (
         <div className="studio-empty-state">
           <strong>No saved TTS clips</strong>
