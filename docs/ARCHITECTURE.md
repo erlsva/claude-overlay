@@ -115,6 +115,25 @@ one `authenticate()` (token only, now that the TTS gate is per-action) so they c
 apart. The response always carries both TTS's own flat fields and a nested `emotes` object, so one
 poll can drive several buttons' icons.
 
+Two separate places a request becomes visible, for two separate audiences: `console.log` (every
+POST, plus every rejected request from either verb) is for watching Render's own logs while
+debugging a button's setup — `authenticate()` logs a rejection itself, by the token's public `id`
+alone, never its secret. `remoteActivity.ts` (`describeRemoteAction` + `recordRemoteActivity`) is
+for the streamer, in the dashboard's own Activity feed, with no server-log access needed:
+`describeRemoteAction` turns an action and its outcome into one plain sentence ("skipped the TTS
+clip", or, for a no-op, why — "tried to skip, but nothing was playing"), reading the *resulting*
+state rather than just `changed` for a toggle, since "changed" alone can't say which way it went;
+`recordRemoteActivity` then calls the same `recordActivity`/`studioState` (`state/studio.ts`) a
+Studio edit does, naming the token instead of a signed-in user, and tagging the item
+`source: "remote"` (`ActivityItem.source`, `shared/types.ts`) so the client can tell it apart from
+an edit a signed-in user made. Only an authenticated request ever reaches the feed — a rejected one
+(unknown token, say) is console-only, so a stranger poking at the endpoint can't fill 50 slots of a
+capped feed with noise; `status` and the poll are excluded too, since `describeRemoteAction`
+returns `undefined` for anything that changes nothing. The client filters `studio.activity` by that
+tag in `StudioPanel.tsx` and passes the result into `TtsPanel`/`TtsRemoteTokens.tsx`, which shows it
+as "Recent activity" right inside the Remote control dropdown — not just the general Activity feed
+sidebar — since that's where the streamer is actually looking while testing a button.
+
 ### Chat emote overlay control (`server/src/chat-emotes/control.ts`)
 
 One place applies a `ChatEmoteSettings` change, updates `canvasStore.chatEmoteSettings`, broadcasts

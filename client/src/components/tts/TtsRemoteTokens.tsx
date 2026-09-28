@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Clipboard, Gamepad2, Plus, Trash2 } from "lucide-react";
+import { Activity, Clipboard, Gamepad2, Trash2 } from "lucide-react";
+import { CreateRow } from "../studio/shared";
 import { api } from "./api";
 import type { RemoteToken } from "./types";
 import type { useTtsServices } from "./useTtsServices";
+import type { ActivityItem } from "../../types";
 
 /**
  * Named tokens for controlling TTS from outside the dashboard (a Stream Deck button, or anything
@@ -12,8 +14,11 @@ import type { useTtsServices } from "./useTtsServices";
  */
 export function TtsRemoteTokens({
   s,
+  recentActivity,
 }: {
   s: Pick<ReturnType<typeof useTtsServices>, "confirm" | "toast">;
+  /** The button presses seen so far this session, newest first: live proof a press reached the server. */
+  recentActivity: ActivityItem[];
 }) {
   const { confirm, toast } = s;
   const [tokens, setTokens] = useState<RemoteToken[] | null>(null);
@@ -119,6 +124,29 @@ export function TtsRemoteTokens({
           </div>
         )}
 
+        {recentActivity.length > 0 && (
+          <div className="tts-remote-activity">
+            <div className="tts-subheading">
+              <span>
+                <Activity size={13} />
+                <strong>Recent activity</strong>
+              </span>
+            </div>
+            <ul className="tts-remote-activity__list">
+              {recentActivity.slice(0, 6).map((item) => (
+                <li key={item.id}>
+                  <span className="tts-remote-activity__text">
+                    <strong>{item.user}</strong> {item.action}
+                  </span>
+                  <span className="tts-remote-activity__at">
+                    {new Date(item.at).toLocaleTimeString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {tokens.length > 0 && (
           <ul className="tts-remote__list">
             {tokens.map((token) => (
@@ -147,26 +175,14 @@ export function TtsRemoteTokens({
           </ul>
         )}
 
-        <label className="studio-search tts-remote-create">
-          <input
-            value={name}
-            maxLength={60}
-            disabled={busy}
-            placeholder="Name this token, e.g. “Office Stream Deck”"
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void create();
-            }}
-          />
-          <button
-            type="button"
-            className="ui-button ui-button--compact"
-            disabled={busy || !name.trim()}
-            onClick={() => void create()}
-          >
-            <Plus size={13} /> Create token
-          </button>
-        </label>
+        <CreateRow
+          name={name}
+          setName={setName}
+          placeholder="Token name, e.g. “Office Stream Deck”"
+          onCreate={() => void create()}
+          label="Create token"
+          disabled={busy || !name.trim()}
+        />
       </div>
     </details>
   );

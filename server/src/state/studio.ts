@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import type { ActivityItem } from "../types.js";
 import type { CanvasStore } from "./canvasStore.js";
 
 const ACTIVITY_LIMIT = 50;
@@ -16,7 +17,18 @@ export function studioState(store: CanvasStore) {
 }
 
 /** Adds a line to the activity feed, newest first, keeping only the most recent. */
-export function recordActivity(store: CanvasStore, user: string, action: string) {
-  store.activity.unshift({ id: randomUUID(), at: new Date().toISOString(), user, action });
+export function recordActivity(
+  store: CanvasStore,
+  user: string,
+  action: string,
+  source?: ActivityItem["source"],
+) {
+  store.activity.unshift({
+    id: randomUUID(),
+    at: new Date().toISOString(),
+    user,
+    action,
+    ...(source ? { source } : {}),
+  });
   store.activity = store.activity.slice(0, ACTIVITY_LIMIT);
 }

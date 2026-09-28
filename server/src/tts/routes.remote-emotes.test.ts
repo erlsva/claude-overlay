@@ -117,6 +117,21 @@ test("emote size and style actions over the remote step within their limits", as
   });
 });
 
+test("a remote action shows up in the dashboard's own Activity feed, named after the token", async () => {
+  await withServer(async (call) => {
+    canvasStore.activity = [];
+    const token = await newToken(call);
+    await call("POST", "/remote", { action: "toggle-emotes" }, token);
+    assert.equal(canvasStore.activity.length, 1);
+    assert.equal(canvasStore.activity[0].user, "Deck");
+    assert.equal(canvasStore.activity[0].action, "turned the chat emote overlay on");
+
+    // "status" is a pure read: nothing worth showing happened.
+    await call("POST", "/remote", { action: "status" }, token);
+    assert.equal(canvasStore.activity.length, 1, "status did not add a second entry");
+  });
+});
+
 test("chat emote actions work over the remote even while TTS itself is switched off", async () => {
   await saveFeatureFlags({ tts: false, scenes: false, publicClips: false });
   await withServer(async (call) => {

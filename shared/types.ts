@@ -170,6 +170,8 @@ export interface ActivityItem {
   at: string;
   user: string;
   action: string;
+  /** Where this came from, when it wasn't a signed-in dashboard user editing something. */
+  source?: "remote";
 }
 export interface StudioState {
   scenes: SavedScene[];

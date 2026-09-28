@@ -105,6 +105,7 @@ export function StudioPanel(props: StudioPanelProps) {
             overlayConnected={props.overlayConnected}
             livePlayback={props.ttsPlayback}
             isAdmin={props.isAdmin}
+            recentRemoteActivity={props.studio.activity.filter((item) => item.source === "remote")}
           />
         )}
         {tab === "scenes" && <ScenesTab props={props} s={s} />}

@@ -125,6 +125,15 @@ reaches the chat emote overlay; a token is not limited to one area, so the same 
   method GET, and match on whichever field that button's icon should follow, the same way as the
   main request.
 - Requests to `/tts/remote` are rate-limited (shared across every action and the poll).
+- A button press shows up right in the **Remote control** dropdown itself, under **Recent
+  activity** ("Office Stream Deck skipped the TTS clip", say), named after the token — so you can
+  see a button actually reached the server and what it did, live, while you're testing it, with
+  no server-log access needed. A no-op still shows up, with why ("tried to skip, but nothing was
+  playing"); a rejected request (unknown token, TTS switched off, …) does not, since it did not
+  come from a token that is really yours, and `status`/the poll never do, since they change
+  nothing. The same line also lands in the dashboard's general Activity feed (bottom-left), since
+  it's the same underlying mechanism a Studio edit uses. Rejections are still logged to the
+  server's own console, for deeper debugging.
 
 ## Prompt syntax
 

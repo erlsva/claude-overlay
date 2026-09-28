@@ -1,6 +1,6 @@
 /** The shapes the TTS endpoints send and receive. */
 
-import type { TtsPlaybackState } from "../../types";
+import type { ActivityItem, TtsPlaybackState } from "../../types";
 
 export type Clip = {
   id: string;
@@ -73,6 +73,8 @@ export interface TtsPanelProps {
   livePlayback: PlaybackState;
   /** Owner or a whitelisted admin: who can issue and revoke TTS remote (Stream Deck) tokens. */
   isAdmin: boolean;
+  /** Recent remote-control activity (a Stream Deck press, say), newest first. */
+  recentRemoteActivity: ActivityItem[];
 }
 
 /** A named bearer token for controlling TTS from outside the dashboard (a Stream Deck, say). */

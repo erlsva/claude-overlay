@@ -82,10 +82,44 @@
   color: var(--text-muted);
   font-size: var(--fs-xs);
 }
-.tts-remote-create {
-  justify-content: space-between;
+
+/* Recent remote-control activity: live proof a button reached the server, and what it did. */
+.tts-remote-activity {
+  display: grid;
+  gap: var(--space-1);
 }
-.tts-remote-create input {
+.tts-remote-activity__list {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tts-remote-activity__list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 5px var(--space-2) 5px var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+.tts-remote-activity__text {
   min-width: 0;
-  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+.tts-remote-activity__text strong {
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+.tts-remote-activity__at {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
 }

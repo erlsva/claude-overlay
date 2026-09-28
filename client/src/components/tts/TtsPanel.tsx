@@ -22,7 +22,7 @@ export function TtsPanel(props: TtsPanelProps) {
   const ttsData = useTtsData({ ...ttsVolume, ...ttsServices, ...ttsPreview });
   const ttsComposer = useTtsComposer({ ...ttsData, ...ttsServices, ...ttsPreview });
   const s: TtsContext = { ...ttsServices, ...ttsVolume, ...ttsPreview, ...ttsData, ...ttsComposer };
-  const { overlayConnected, isAdmin } = props;
+  const { overlayConnected, isAdmin, recentRemoteActivity } = props;
   const { busy, prompt, setPrompt, setPlan, volume, changeVolume, error, plan, jobs } = s;
 
   return (
@@ -71,7 +71,7 @@ export function TtsPanel(props: TtsPanelProps) {
         </div>
       </details>
 
-      {isAdmin && <TtsRemoteTokens s={s} />}
+      {isAdmin && <TtsRemoteTokens s={s} recentActivity={recentRemoteActivity} />}
 
       <TtsStatusCard s={s} />
       <TtsQueue s={s} />

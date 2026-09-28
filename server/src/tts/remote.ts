@@ -21,6 +21,7 @@ import {
 import { getFeatureFlags } from "../db/index.js";
 import { io } from "../runtime.js";
 import { persistTtsQueueSettings } from "./queueSettings.js";
+import { describeRemoteAction, recordRemoteActivity } from "./remoteActivity.js";
 import {
   checkRemoteToken,
   createRemoteToken,
@@ -199,6 +200,8 @@ remoteControlRouter.post("/", async (req, res) => {
   else if (action === "emote-style-next") changed = stepChatEmoteMotion(io, 1);
   else if (action === "emote-style-previous") changed = stepChatEmoteMotion(io, -1);
   // "status" changes nothing; it only reads.
+  const state = remoteState();
+  const description = describeRemoteAction(action, changed, input.data.value, state);
   if (heldChanged) {
     try {
       await persistTtsQueueSettings();
@@ -207,11 +210,13 @@ remoteControlRouter.post("/", async (req, res) => {
         `TTS remote: ${holder.name} -> ${action}, changed but could not be saved`,
         error,
       );
+      if (description)
+        recordRemoteActivity(io, holder.name, `${description} (not saved — a restart may undo it)`);
       res.status(503).json({
         error: "That was changed, but it could not be saved, so a restart may undo it.",
         action,
         changed,
-        ...remoteState(),
+        ...state,
       });
       return;
     }
@@ -219,5 +224,9 @@ remoteControlRouter.post("/", async (req, res) => {
   console.log(
     `TTS remote: ${holder.name} -> ${action}${action === "volume" ? ` ${input.data.value}` : ""} (${changed ? "changed" : "no change"})`,
   );
-  res.json({ ok: true, action, changed, ...remoteState() });
+  // Shown in the dashboard's own Activity feed, so the streamer can see a button actually reached
+  // the server (and what it did) without needing server-log access. Skipped for "status": it never
+  // changes anything, so describeRemoteAction() returns undefined for it.
+  if (description) recordRemoteActivity(io, holder.name, description);
+  res.json({ ok: true, action, changed, ...state });
 });
