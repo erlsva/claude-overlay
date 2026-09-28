@@ -1,16 +1,21 @@
-import { useEffect, useState } from "react";
-import { Activity, Clipboard, Gamepad2, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Clipboard, Gamepad2, Terminal, Trash2 } from "lucide-react";
 import { CreateRow } from "../studio/shared";
 import { api } from "./api";
 import type { RemoteToken } from "./types";
 import type { useTtsServices } from "./useTtsServices";
 import type { ActivityItem } from "../../types";
 
+const logTime = (at: string) =>
+  new Date(at).toLocaleTimeString(undefined, { hour12: false }).padStart(8, "0");
+
 /**
  * Named tokens for controlling TTS from outside the dashboard (a Stream Deck button, or anything
  * else that can send an HTTP request with `Authorization: Bearer <token>` to `POST /tts/remote`).
  * Owner/admin only. A collapsible section near the top of the panel, so it stays easy to find
- * instead of getting lost below the saved clips (which can run to a hundred entries).
+ * instead of getting lost below the saved clips (which can run to a hundred entries). Below the
+ * tokens is an always-on activity log, styled like a server console — not just something that
+ * pops up when a button is pressed — so testing a button feels like watching a log tail.
  */
 export function TtsRemoteTokens({
   s,
@@ -25,6 +30,14 @@ export function TtsRemoteTokens({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [justCreated, setJustCreated] = useState<{ name: string; token: string } | null>(null);
+  const logRef = useRef<HTMLDivElement>(null);
+
+  // Oldest first, like a log actually reads; newest line arrives at the bottom, so keep it in view.
+  const log = [...recentActivity].reverse();
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [log.length]);
 
   useEffect(() => {
     void api<RemoteToken[]>("/remote-tokens")
@@ -124,29 +137,6 @@ export function TtsRemoteTokens({
           </div>
         )}
 
-        {recentActivity.length > 0 && (
-          <div className="tts-remote-activity">
-            <div className="tts-subheading">
-              <span>
-                <Activity size={13} />
-                <strong>Recent activity</strong>
-              </span>
-            </div>
-            <ul className="tts-remote-activity__list">
-              {recentActivity.slice(0, 6).map((item) => (
-                <li key={item.id}>
-                  <span className="tts-remote-activity__text">
-                    <strong>{item.user}</strong> {item.action}
-                  </span>
-                  <span className="tts-remote-activity__at">
-                    {new Date(item.at).toLocaleTimeString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {tokens.length > 0 && (
           <ul className="tts-remote__list">
             {tokens.map((token) => (
@@ -183,6 +173,26 @@ export function TtsRemoteTokens({
           label="Create token"
           disabled={busy || !name.trim()}
         />
+
+        <div className="tts-subheading">
+          <span>
+            <Terminal size={13} />
+            <strong>Activity log</strong>
+          </span>
+        </div>
+        <div className="tts-remote-log" ref={logRef} role="log" aria-live="polite">
+          {log.length === 0 ? (
+            <p className="tts-remote-log__empty">waiting for a button press…</p>
+          ) : (
+            log.map((item) => (
+              <p className="tts-remote-log__line" key={item.id}>
+                <span className="tts-remote-log__time">[{logTime(item.at)}]</span>{" "}
+                <span className="tts-remote-log__user">{item.user}</span> {item.action}
+              </p>
+            ))
+          )}
+          <span className="tts-remote-log__cursor" aria-hidden="true" />
+        </div>
       </div>
     </details>
   );

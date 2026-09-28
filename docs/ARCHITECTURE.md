@@ -130,9 +130,12 @@ an edit a signed-in user made. Only an authenticated request ever reaches the fe
 (unknown token, say) is console-only, so a stranger poking at the endpoint can't fill 50 slots of a
 capped feed with noise; `status` and the poll are excluded too, since `describeRemoteAction`
 returns `undefined` for anything that changes nothing. The client filters `studio.activity` by that
-tag in `StudioPanel.tsx` and passes the result into `TtsPanel`/`TtsRemoteTokens.tsx`, which shows it
-as "Recent activity" right inside the Remote control dropdown — not just the general Activity feed
-sidebar — since that's where the streamer is actually looking while testing a button.
+tag in `StudioPanel.tsx` and passes the result into `TtsPanel`/`TtsRemoteTokens.tsx`, which renders
+it below the tokens as an "Activity log" styled like a server console (dark, monospace, a blinking
+cursor) — always on screen, not conditionally rendered only once there is something to show, so
+testing a button feels like watching a log tail rather than waiting for a toast. It lives right
+inside the Remote control dropdown, not just the general Activity feed sidebar, since that's where
+the streamer is actually looking while testing a button.
 
 ### Chat emote overlay control (`server/src/chat-emotes/control.ts`)
 

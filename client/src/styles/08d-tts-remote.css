@@ -83,43 +83,55 @@
   font-size: var(--fs-xs);
 }
 
-/* Recent remote-control activity: live proof a button reached the server, and what it did. */
-.tts-remote-activity {
-  display: grid;
-  gap: var(--space-1);
-}
-.tts-remote-activity__list {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.tts-remote-activity__list li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: 5px var(--space-2) 5px var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
-}
-.tts-remote-activity__text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-secondary);
+/*
+ * The remote-control activity log: styled like an actual server console, always on screen (not
+ * only appearing once something has happened), so testing a button feels like watching a log tail.
+ */
+.tts-remote-log {
+  max-height: 190px;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid #16241a;
+  border-radius: var(--radius-md);
+  background: #0a0c0f;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   font-size: var(--fs-xs);
+  line-height: 1.6;
 }
-.tts-remote-activity__text strong {
-  color: var(--text-primary);
+.tts-remote-log__line {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #8fd9a8;
+}
+.tts-remote-log__time {
+  color: #4f7259;
+  font-variant-numeric: tabular-nums;
+}
+.tts-remote-log__user {
+  color: #e3fbea;
   font-weight: var(--fw-semibold);
 }
-.tts-remote-activity__at {
-  flex: none;
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
+.tts-remote-log__empty {
+  margin: 0;
+  color: #4f7259;
+  font-style: italic;
+}
+.tts-remote-log__cursor {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  margin-left: 2px;
+  background: #8fd9a8;
+  vertical-align: text-bottom;
+  animation: tts-remote-log-blink 1.1s steps(1) infinite;
+}
+@keyframes tts-remote-log-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tts-remote-log__cursor {
+    animation: none;
+  }
 }
