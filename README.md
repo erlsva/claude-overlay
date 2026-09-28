@@ -356,9 +356,11 @@ Studio → TTS turns expressive prompts into reusable overlay audio:
    paused, and those switches, survive a restart. New TTS playback defaults to 25% volume.
    See [docs/TTS.md](docs/TTS.md#pausing-tts-and-the-queue).
 6. The TTS panel's **Remote control** section (owner/admin) issues named, revocable
-   bearer tokens for controlling TTS from outside the dashboard — a Stream Deck
-   button, say — over `POST /tts/remote`. Playback-only, rate-limited, and shown
-   once at creation. See [docs/TTS.md](docs/TTS.md#remote-control-stream-deck-or-anything-else).
+   bearer tokens for controlling the dashboard from outside it — a Stream Deck
+   button, say — over `POST /tts/remote`. Started TTS-only, it now also reaches
+   the chat emote overlay (on/off, direction, size, motion style). Rate-limited
+   and shown once at creation. See
+   [docs/TTS.md](docs/TTS.md#remote-control-stream-deck-or-anything-else).
 7. Finished speech is loudness-normalized with true-peak protection. Standalone
    effects use a quieter target and additional peak headroom. OBS shows an
    animated now-playing/paused TTS notice while a clip is active.

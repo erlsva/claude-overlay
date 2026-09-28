@@ -1,14 +1,25 @@
 /**
- * Controlling TTS from outside the dashboard: a Stream Deck button, or anything else that can send
- * an HTTP request with a bearer token. `remoteTokensRouter` (owner/admin, a signed-in dashboard)
- * issues and revokes named tokens; `remoteControlRouter` (the token itself, no dashboard session)
- * acts on one.
+ * Controlling the dashboard from outside it: a Stream Deck button, or anything else that can send
+ * an HTTP request with a bearer token. Started as TTS-only (hence still living under `/tts/remote`,
+ * and still called `remoteControlRouter` where it began), it now also reaches the chat emote
+ * overlay; the URL stays put so buttons already configured against it keep working.
+ * `remoteTokensRouter` (owner/admin, a signed-in dashboard) issues and revokes named tokens;
+ * `remoteControlRouter` (the token itself, no dashboard session) acts on one.
  */
 
 import { Router, type Request, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
+import {
+  CHAT_EMOTE_SIZE_STEP,
+  chatEmoteRemoteState,
+  setChatEmoteEnabled,
+  stepChatEmoteMotion,
+  stepChatEmoteSize,
+  toggleChatEmoteDirection,
+} from "../chat-emotes/control.js";
 import { getFeatureFlags } from "../db/index.js";
+import { io } from "../runtime.js";
 import { persistTtsQueueSettings } from "./queueSettings.js";
 import {
   checkRemoteToken,
@@ -68,21 +79,48 @@ function setHeld(held: boolean): boolean {
   return changed;
 }
 
+/** Every action that touches TTS itself, as opposed to some other part of the dashboard. */
+const TTS_ACTION_LIST = [
+  "pause-tts",
+  "resume-tts",
+  "toggle-tts",
+  "play-next",
+  "pause-clip",
+  "resume-clip",
+  "toggle-clip",
+  "skip",
+  "restart",
+  "volume",
+  "volume-up",
+  "volume-down",
+] as const;
+const TTS_ACTIONS: ReadonlySet<string> = new Set(TTS_ACTION_LIST);
+const ACTIONS = [
+  ...TTS_ACTION_LIST,
+  "status",
+  "emotes-on",
+  "emotes-off",
+  "toggle-emotes",
+  "toggle-emote-direction",
+  "emote-size-up",
+  "emote-size-down",
+  "emote-style-next",
+  "emote-style-previous",
+] as const;
+
+/** The full state a remote response shows: TTS playback plus the chat emote overlay's own controls. */
+const remoteState = () => ({ ...getTtsPlaybackState(), emotes: chatEmoteRemoteState() });
+
 /**
- * Checks the bearer token and the owner's TTS switch, the same way for every request. On success,
- * returns the token holder; on failure, it has already sent the error response, and the caller
- * should stop.
+ * Checks the bearer token. On success, returns true; on failure, it has already sent the error
+ * response, and the caller should stop.
  */
 async function authenticate(req: Request, res: Response): Promise<boolean> {
   const auth = req.headers.authorization;
   const presented = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : undefined;
   const holder = presented && (await checkRemoteToken(presented));
   if (!holder) {
-    res.status(401).json({ error: "Invalid or revoked TTS remote token." });
-    return false;
-  }
-  if (!getFeatureFlags().tts) {
-    res.status(503).json({ error: "TTS is currently disabled by the overlay owner." });
+    res.status(401).json({ error: "Invalid or revoked remote token." });
     return false;
   }
   return true;
@@ -99,27 +137,13 @@ remoteControlRouter.use(
 // follow), which only offers GET requests, not a JSON body.
 remoteControlRouter.get("/", async (req, res) => {
   if (!(await authenticate(req, res))) return;
-  res.json({ ok: true, action: "status", changed: false, ...getTtsPlaybackState() });
+  res.json({ ok: true, action: "status", changed: false, ...remoteState() });
 });
 remoteControlRouter.post("/", async (req, res) => {
   if (!(await authenticate(req, res))) return;
   const input = z
     .object({
-      action: z.enum([
-        "pause-tts",
-        "resume-tts",
-        "toggle-tts",
-        "play-next",
-        "pause-clip",
-        "resume-clip",
-        "toggle-clip",
-        "skip",
-        "restart",
-        "volume",
-        "volume-up",
-        "volume-down",
-        "status",
-      ]),
+      action: z.enum(ACTIONS),
       value: z.number().min(0).max(1).optional(),
     })
     .safeParse(req.body);
@@ -130,6 +154,10 @@ remoteControlRouter.post("/", async (req, res) => {
   const { action } = input.data;
   if (action === "volume" && input.data.value === undefined) {
     res.status(400).json({ error: "The volume action needs a value from 0 to 1." });
+    return;
+  }
+  if (TTS_ACTIONS.has(action) && !getFeatureFlags().tts) {
+    res.status(503).json({ error: "TTS is currently disabled by the overlay owner." });
     return;
   }
   let changed = false;
@@ -149,6 +177,14 @@ remoteControlRouter.post("/", async (req, res) => {
     changed = setTtsPlaybackVolume(clampVolume((getTtsPlaybackState().volume ?? 0) + VOLUME_STEP));
   else if (action === "volume-down")
     changed = setTtsPlaybackVolume(clampVolume((getTtsPlaybackState().volume ?? 0) - VOLUME_STEP));
+  else if (action === "emotes-on") changed = setChatEmoteEnabled(io, true);
+  else if (action === "emotes-off") changed = setChatEmoteEnabled(io, false);
+  else if (action === "toggle-emotes") changed = setChatEmoteEnabled(io);
+  else if (action === "toggle-emote-direction") changed = toggleChatEmoteDirection(io);
+  else if (action === "emote-size-up") changed = stepChatEmoteSize(io, CHAT_EMOTE_SIZE_STEP);
+  else if (action === "emote-size-down") changed = stepChatEmoteSize(io, -CHAT_EMOTE_SIZE_STEP);
+  else if (action === "emote-style-next") changed = stepChatEmoteMotion(io, 1);
+  else if (action === "emote-style-previous") changed = stepChatEmoteMotion(io, -1);
   // "status" changes nothing; it only reads.
   if (heldChanged) {
     try {
@@ -159,10 +195,10 @@ remoteControlRouter.post("/", async (req, res) => {
         error: "That was changed, but it could not be saved, so a restart may undo it.",
         action,
         changed,
-        ...getTtsPlaybackState(),
+        ...remoteState(),
       });
       return;
     }
   }
-  res.json({ ok: true, action, changed, ...getTtsPlaybackState() });
+  res.json({ ok: true, action, changed, ...remoteState() });
 });

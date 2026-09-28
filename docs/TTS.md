@@ -87,9 +87,10 @@ in. **Pause TTS** at the top of the TTS panel holds the playing; it never refuse
 
 ## Remote control (Stream Deck, or anything else)
 
-The TTS panel's **Remote control** section (owner/admin only, below the saved clips) issues
-named tokens for controlling TTS from outside the dashboard — a Stream Deck button, or any other
-tool that can send an HTTP request.
+The TTS panel's **Remote control** section (owner/admin only, near the top of the panel) issues
+named tokens for controlling the dashboard from outside it — a Stream Deck button, or any other
+tool that can send an HTTP request. It started as TTS-only (hence the URL below), and now also
+reaches the chat emote overlay; a token is not limited to one area, so the same token covers both.
 
 - **Create a token**, give it a name (which device or person it is for), and its full value is
   shown once. Copy it somewhere safe: it is never shown again, and only its hash is kept, so a
@@ -98,23 +99,32 @@ tool that can send an HTTP request.
 - Send it as `Authorization: Bearer <token>` (never in the URL) with `POST /tts/remote` and a
   JSON body `{"action": "…"}`. With the Elgato Stream Deck app, a plugin such as **"StreamDeck
   API Request"** does this in one button: set the method to POST, add that header, and paste
-  the body.
-- Actions: `pause-tts`, `resume-tts`, `toggle-tts` (the same as the dashboard's Pause/Resume
-  TTS); `play-next`; `pause-clip`, `resume-clip`, `toggle-clip`, `skip`, `restart` (the same as
-  the clip controls); `volume` (needs `"value"`, 0 to 1), `volume-up`, `volume-down` (±10%); and
-  `status`, which changes nothing and just reads. The response is the same playback state the
-  dashboard uses (`held`, `waiting`, `active`, `paused`, `volume`, `gapSeconds`, `changed`, …) as
-  plain top-level JSON fields, so the plugin's "set button image from a response field" can
-  react to `held` or `active` directly.
+  the body. That particular plugin's "JSON Path" for reading a field back out of the response is
+  a plain field name (e.g. `held`), **not** real JSONPath — it does not understand a leading `$.`.
+- **TTS actions**: `pause-tts`, `resume-tts`, `toggle-tts` (the same as the dashboard's
+  Pause/Resume TTS); `play-next`; `pause-clip`, `resume-clip`, `toggle-clip`, `skip`, `restart`
+  (the same as the clip controls); `volume` (needs `"value"`, 0 to 1), `volume-up`,
+  `volume-down` (±10%). Refused with a 503 while TTS is switched off entirely (the owner's TTS
+  Studio switch), same as the dashboard.
+- **Chat emote overlay actions**: `emotes-on`, `emotes-off`, `toggle-emotes` (the same as the
+  Emotes tab's on/off switch); `toggle-emote-direction` (left ⇄ right); `emote-size-up`,
+  `emote-size-down` (steps of 5, within the 24–100 range); `emote-style-next`,
+  `emote-style-previous` (cycles through the motion styles — floor, parade, fireworks, rain,
+  orbit, and so on — wrapping at either end). These are never blocked by the TTS switch.
+- `status` changes nothing and just reads. Every response — including from an action that
+  changes something — carries the *full* current state: TTS's own fields flat at the top level
+  (`held`, `waiting`, `active`, `paused`, `volume`, `gapSeconds`, `changed`, …) and the chat
+  emote overlay's under `emotes` (`emotes.enabled`, `emotes.direction`, `emotes.size`,
+  `emotes.motion`), so the plugin's "set button image from a response field" can react to any of
+  them directly, on any button, regardless of which action that particular button sends.
 - `GET /tts/remote` (same token, same URL, no body) reads the same state as `status`, for a
   button's **"periodically poll a URL for status"** option — a plain POST button's icon only
   updates when it is pressed, so this is how the icon can instead follow what changed elsewhere
-  (the dashboard, or another button) without needing a press. Point the poll URL at the same
-  `/tts/remote`, method GET, and match on `held` (or whichever field the icon should follow) the
-  same way as the main request.
-- A token is playback-only: it cannot generate TTS, manage other tokens, or touch anything
-  outside TTS. It is refused while TTS is switched off entirely (the owner's TTS Studio switch),
-  same as the dashboard. Requests to `/tts/remote` are rate-limited.
+  (the dashboard, another button, or a viewer's chat message toggling nothing but still worth
+  polling for) without needing a press of its own. Point the poll URL at the same `/tts/remote`,
+  method GET, and match on whichever field that button's icon should follow, the same way as the
+  main request.
+- Requests to `/tts/remote` are rate-limited (shared across every action and the poll).
 
 ## Prompt syntax
 

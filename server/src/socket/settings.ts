@@ -1,11 +1,7 @@
-import { saveChatEmoteSettings } from "../db/index.js";
+import { setChatEmoteSettings } from "../chat-emotes/control.js";
 import { getTwitchChatChannel, setTwitchChatChannel } from "../twitch/eventsub.js";
 import type { HandlerContext } from "./types.js";
-import { validChatEmoteSettings, validDvdSettings } from "./validateSettings.js";
-
-/** Settings changes are saved this long after the last one, so dragging a slider saves once. */
-const SAVE_DEBOUNCE_MS = 300;
-let chatEmoteSettingsSaveTimer: NodeJS.Timeout | undefined;
+import { validDvdSettings } from "./validateSettings.js";
 
 /** Overlay settings (DVD corner counter, chat emotes), the Twitch chat channel, and overlay controls. */
 export function registerSettings(ctx: HandlerContext) {
@@ -33,16 +29,7 @@ export function registerSettings(ctx: HandlerContext) {
   });
 
   socket.on("chat-emote:settings", (settings) => {
-    if (!validChatEmoteSettings(settings)) return;
-    store.chatEmoteSettings = {
-      ...settings,
-      blockedEmotes: settings.blockedEmotes ?? store.chatEmoteSettings.blockedEmotes,
-    };
-    io.emit("chat-emote:settings", store.chatEmoteSettings);
-    if (chatEmoteSettingsSaveTimer) clearTimeout(chatEmoteSettingsSaveTimer);
-    chatEmoteSettingsSaveTimer = setTimeout(() => {
-      void saveChatEmoteSettings(store.chatEmoteSettings);
-    }, SAVE_DEBOUNCE_MS);
+    setChatEmoteSettings(io, settings);
   });
 
   socket.on("chat:channel:set", async ({ channel }) => {

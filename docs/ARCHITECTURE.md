@@ -86,18 +86,44 @@ with `requestAnimationFrame`, not through React state. Its movement comes from
 store sends no CORS headers, so the analyser would only ever hear silence. `showEmote` and
 `showPrompt` are part of the playback state and of the saved `tts_queue` settings.
 
-**Remote control** (`remoteTokens.ts`, `remote.ts`) lets something outside the dashboard — a Stream
-Deck button — control TTS. A token is `vkremote.<id>.<secret>`: `id` is a public lookup key (its own
-primary key in `tts_remote_tokens`, Postgres or a local JSON fallback outside production), `secret`
-is checked with `timingSafeEqual` against a stored SHA-256 hash, so only the hash is ever kept.
+### Remote control (`server/src/tts/remote*.ts`)
+
+Lets something outside the dashboard — a Stream Deck button — control the dashboard over plain
+HTTP. Started as TTS-only, hence still living under `tts/` and still answering at `/tts/remote`
+(the URL never moves, so a button already configured against it keeps working); it now also
+reaches the chat emote overlay, and the intent is for anything controllable from the dashboard to
+eventually be reachable this way.
+
+A token is `vkremote.<id>.<secret>`: `id` is a public lookup key (its own primary key in
+`tts_remote_tokens`, Postgres or a local JSON fallback outside production), `secret` is checked
+with `timingSafeEqual` against a stored SHA-256 hash, so only the hash is ever kept.
 `remoteTokensRouter` (owner/admin, a dashboard session) issues and revokes tokens; the raw token is
-returned once, at creation. `remoteControlRouter` (`POST /tts/remote`, the token itself as a bearer
-header, no dashboard session, its own rate limit) maps an `action` onto the same functions the
-dashboard's `/playback` route uses, and shares `persistTtsQueueSettings()` (`queueSettings.ts`) with
-it so pausing from a remote survives a restart exactly like pausing from the dashboard does. `GET
-/tts/remote` (same token, no body) returns the same state read-only, for a Stream Deck's polling
-option, whose icon otherwise only updates on that button's own presses. Both verbs share one
-`authenticate()` (token, then the owner's TTS switch) so they can never drift apart.
+returned once, at creation. Tokens are not scoped by area — one token reaches everything this
+endpoint can do.
+
+`remoteControlRouter` (`POST /tts/remote`, the token itself as a bearer header, no dashboard
+session, its own rate limit) maps an `action` onto the same functions the dashboard itself uses:
+TTS actions call the same functions the `/playback` route does, and share `persistTtsQueueSettings()`
+(`queueSettings.ts`) with it so pausing from a remote survives a restart exactly like pausing from
+the dashboard does; chat-emote actions call into `chat-emotes/control.ts` (see below), the same
+functions the `chat-emote:settings` socket handler uses, so a remote change is saved and broadcast
+identically to a dashboard change. Only TTS actions are refused while the owner's TTS switch is
+off (`TTS_ACTIONS` in `remote.ts`) — an emote action still works regardless, since it's unrelated.
+`GET /tts/remote` (same token, no body) returns the same state read-only, for a Stream Deck's
+polling option, whose icon otherwise only updates on that button's own presses. Both verbs share
+one `authenticate()` (token only, now that the TTS gate is per-action) so they can never drift
+apart. The response always carries both TTS's own flat fields and a nested `emotes` object, so one
+poll can drive several buttons' icons.
+
+### Chat emote overlay control (`server/src/chat-emotes/control.ts`)
+
+One place applies a `ChatEmoteSettings` change, updates `canvasStore.chatEmoteSettings`, broadcasts
+`chat-emote:settings` to every dashboard and overlay, and saves it (debounced 300ms, so dragging a
+slider in the dashboard's Emotes tab saves once) — whether the change came from the dashboard's own
+socket event (a full, validated settings object) or from a remote-control action (one field at a
+time: on/off, flip direction, step size within 24–100, cycle through `CHAT_EMOTE_MOTIONS`). `io` is
+taken as a parameter rather than imported, so the socket handler's existing tests can keep
+injecting their own fake `io` and observing what it broadcasts.
 
 ## Client (`client/src`)
 
