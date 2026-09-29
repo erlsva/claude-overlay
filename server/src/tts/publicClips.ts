@@ -52,10 +52,13 @@ const limiter = rateLimit({
   message: { error: "Too many requests. Try again in a minute." },
 });
 
-/** Answers 503 and returns false while the owner has the public clips switched off. */
+/**
+ * Answers 503 and returns false while the owner has the public clips switched off. Independent of
+ * the TTS Studio switch: past clips stay browsable even while TTS is off, since that switch only
+ * stops new ones from being made, and this list is not generation.
+ */
 function listIsOn(res: Response): boolean {
-  const flags = getFeatureFlags();
-  if (flags.tts && flags.publicClips) return true;
+  if (getFeatureFlags().publicClips) return true;
   res.status(503).json({ error: "The public clip list is switched off.", disabled: true });
   return false;
 }

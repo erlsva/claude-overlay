@@ -39,14 +39,14 @@ async function get(query = "", path = "/clips") {
   }
 }
 
-test("the public clip list is off until the owner switches it on", async () => {
+test("the public clip list is off until the owner switches it on, independent of TTS itself", async () => {
   await saveFeatureFlags({ tts: true, scenes: false, publicClips: false });
   const off = await get();
   assert.equal(off.status, 503);
   assert.equal(off.body.disabled, true);
-  // Switching TTS itself off closes it too.
+  // Switching TTS off stops new clips being made, but past ones stay browsable.
   await saveFeatureFlags({ tts: false, scenes: false, publicClips: true });
-  assert.equal((await get()).status, 503);
+  assert.equal((await get()).status, 200);
 });
 
 test("it lists clips newest first and never shows who asked or where the audio is kept", async () => {
@@ -133,6 +133,10 @@ test("one clip can be opened by its address, on the same terms as the list", asy
   assert.equal((await get("", `/clips/${"e".repeat(32)}`)).status, 404);
   assert.equal((await get("", "/clips/not-an-id")).status, 400);
   assert.equal((await get("", `/clips/${"A".repeat(32)}`)).status, 400);
+
+  // TTS itself off does not close this either.
+  await saveFeatureFlags({ tts: false, scenes: false, publicClips: true });
+  assert.equal((await get("", `/clips/${id}`)).status, 200);
 });
 
 test("a clip's page carries its stored waveform, cleaned up, and the list never does", async () => {

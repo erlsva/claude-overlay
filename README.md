@@ -305,7 +305,8 @@ the app, and the fox emotes from `client/src/assets`.
   downloaded until Play is pressed.
 
 Both clip pages are **off until the owner switches on Public clip list** in the
-account menu, and they also need TTS to be on. They show the prompt, length, date
+account menu — independent of the TTS Studio switch, so past clips stay
+browsable even while TTS itself is off. They show the prompt, length, date
 and token, and never who asked for a clip or where its audio is stored. Deleting a
 clip removes it from the list and its page and kills its token. The endpoints are
 rate-limited, the list caps a page at 40 clips, and only those fields are returned.
