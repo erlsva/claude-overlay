@@ -118,6 +118,24 @@ export function createQueueGate(
       }
     },
 
+    /**
+     * Waits only for TTS to be resumed, ignoring the silence gap: for a clip played by hand from
+     * the dashboard, which never queues behind ordinary silence, but must still not jump the
+     * queue while TTS is paused — pausing holds everything, by hand or not.
+     */
+    async beforePlayIgnoringSilence(job: QueueJob): Promise<void> {
+      for (;;) {
+        if (job.cancelled()) throw new QueueCancelled();
+        if (!held) return;
+        if (pass) {
+          pass = false;
+          changed();
+          return;
+        }
+        await nextChange();
+      }
+    },
+
     /** Waits until `ready()` is true. Whoever changes what it looks at calls `nudge()`. */
     async waitUntil(job: QueueJob, ready: () => boolean): Promise<void> {
       for (;;) {

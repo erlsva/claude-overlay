@@ -73,10 +73,12 @@ itself is in memory. `generate.ts` holds the paid part (OpenAI, ElevenLabs, Disc
 owner's `tts` feature flag is a separate, harder switch: it stops the clip and clears the queue.
 
 **Play on overlay** from the dashboard (a typed prompt or a saved clip) is `submit({direct: true})`:
-it skips the pause and the silence gate and does not wait behind `makeChain`, but still only one
-clip plays at a time, via a `playerBusy` lock (`takePlayer`/`freePlayer` in `service.ts`) shared with
-the queued track, so it never cuts off a clip that is already playing. Only chat/reward/trigger
-requests go through the queue's pause and silence.
+it skips the silence gate and does not wait behind `makeChain`, so a saved clip's replay is never
+held up by other clips being made — but it still will not play while TTS is paused
+(`ttsQueue.beforePlayIgnoringSilence()` in `queue.ts`, used instead of `beforePlay()`, which also
+waits out the silence): pausing holds everything, by hand or not. Only one clip plays at a time
+either way, via a `playerBusy` lock (`takePlayer`/`freePlayer` in `service.ts`) shared with the
+queued track, so a direct play never cuts off a clip that is already playing.
 
 The overlay's **TTS icon** (`components/tts-emote/TtsEmote.tsx`) moves a single element every frame
 with `requestAnimationFrame`, not through React state. Its movement comes from

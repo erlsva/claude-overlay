@@ -191,7 +191,7 @@ test("waiting requests appear in the queue, and can be played next, removed, or 
   });
 });
 
-test("Play on overlay from the dashboard plays at once even while TTS is paused", async () => {
+test("Play on overlay from the dashboard waits like everything else while TTS is paused", async () => {
   await withServer(async (call) => {
     await call("POST", "/playback", { action: "hold" });
     const waiting = submit({
@@ -203,17 +203,27 @@ test("Play on overlay from the dashboard plays at once even while TTS is paused"
     const mine = await call("POST", "/generate", { prompt: `(TTS:${id})`, play: true });
     assert.equal(mine.status, 202);
     await sleep(100);
-    const jobs = (await call("GET", "/jobs")).body as Array<{ id: string; stage?: string }>;
-    const played = jobs.find((job) => job.id === mine.body.id) as any;
-    assert.equal(played.stage, "playing", "it went straight to playing, past the pause");
-    assert.equal(played.status, "complete");
+    const jobs = (await call("GET", "/jobs")).body as Array<{
+      id: string;
+      stage?: string;
+      status?: string;
+    }>;
+    const pressed = jobs.find((job) => job.id === mine.body.id);
+    assert.equal(pressed?.stage, "ready", "made ahead of time, but held back like everything else");
+    assert.notEqual(pressed?.status, "complete");
     const state = (await call("GET", "/state")).body;
-    assert.equal(state.playback.held, true, "TTS stays paused");
+    assert.equal(state.playback.active, false);
+    assert.equal(state.playback.held, true, "TTS is still paused");
     assert.deepEqual(
       state.queue.map((job: { id: string }) => job.id),
-      [waiting.id],
-      "and the request from chat is still waiting",
+      [waiting.id, mine.body.id],
+      "it waits alongside the request from chat, not ahead of it",
     );
+
+    await call("POST", "/playback", { action: "release" });
+    await sleep(150);
+    const after = (await call("GET", "/jobs")).body as Array<{ id: string; status?: string }>;
+    assert.equal(after.find((job) => job.id === mine.body.id)?.status, "complete");
   });
 });
 

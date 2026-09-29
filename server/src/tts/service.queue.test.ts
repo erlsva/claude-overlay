@@ -340,21 +340,30 @@ test("the dashboard is told when pausing or the queue changes", async () => {
   assert.equal(ttsQueue.isHeld(), false);
 });
 
-/** Pressed by hand in the dashboard: plays now, whether or not TTS is paused. */
+/** Pressed by hand in the dashboard: plays as soon as nothing else is, ignoring the silence. */
 const byHand = (n: number) =>
   submit({ prompt: token(n), sender: "streamer", owner: "test", play: true, direct: true });
 
-test("a clip played by hand from the dashboard plays at once while TTS is paused", async () => {
+test("a clip played by hand from the dashboard waits while TTS is paused, and plays once resumed", async () => {
   setTtsHeld(true);
   const waiting = [replay(1), replay(2)];
   await sleep(50);
-  const pressedAt = Date.now();
   const mine = byHand(3);
+  await sleep(150);
+  assert.deepEqual(order(), [], "pausing holds it too, not just the queue");
+  assert.equal(getTtsPlaybackState().active, false);
+  assert.equal(mine.job.waiting, true);
+  assert.equal(mine.job.message, "Made, waiting for TTS to be resumed");
+
+  const resumedAt = Date.now();
+  setTtsHeld(false);
   await mine.completion;
-  assert.deepEqual(order(), ["saved 3"], "it played, and the requests in the queue did not");
-  assert.ok(played[0].start - pressedAt < 100, "and it started straight away");
-  assert.equal(getTtsPlaybackState().waiting, 2, "the others are still waiting");
-  assert.equal(ttsQueue.isHeld(), true, "TTS is still paused");
+  assert.deepEqual(order(), ["saved 3"]);
+  assert.ok(
+    played[0].start - resumedAt < 100,
+    "plays as soon as TTS resumes, not queued behind anything",
+  );
+  assert.equal(getTtsPlaybackState().waiting, 2, "the others were never touched by it");
   assert.equal(waiting[0].job.stage, "ready");
 });
 
@@ -398,6 +407,17 @@ test("a clip played by hand can be removed while it waits for the clip that is p
   assert.equal(removeWaitingJob(mine.job.id), true);
   await Promise.all([first.completion, mine.completion]);
   assert.deepEqual(order(), ["saved 1"]);
+  assert.equal(mine.job.status, "cancelled");
+});
+
+test("a clip played by hand can be removed while it waits for TTS to be resumed", async () => {
+  setTtsHeld(true);
+  const mine = byHand(1);
+  await sleep(50);
+  assert.equal(removeWaitingJob(mine.job.id), true);
+  setTtsHeld(false);
+  await mine.completion;
+  assert.deepEqual(order(), [], "a mis-press can be cancelled before it ever plays");
   assert.equal(mine.job.status, "cancelled");
 });
 

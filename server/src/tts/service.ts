@@ -273,8 +273,9 @@ function freePlayer() {
 
 /**
  * The playing track: waits for the clip, for pausing to end and for the silence, then plays it. A
- * `direct` request skips the pause and the silence (it was started by hand, so it plays as soon
- * as no other clip is playing) and does not wait behind the requests in the queue.
+ * `direct` request (started by hand, from the dashboard) skips the silence and does not wait
+ * behind the requests in the queue, but still will not play while TTS is paused — pausing holds
+ * everything, by hand or not.
  */
 async function playWhenReady(
   job: TtsJob,
@@ -286,15 +287,14 @@ async function playWhenReady(
   let playbackFailed = false;
   try {
     const clip = await made;
-    // Held here while TTS is paused, and until there has been enough silence since the last clip.
-    // Time spent making the clip counts as silence.
-    if (!direct)
-      await waitOn(
-        job,
-        () => (ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips"),
-        ttsQueue.playWouldWait(),
-        () => ttsQueue.beforePlay(gateJob),
-      );
+    // Held here while TTS is paused, and (unless started by hand) until there has been enough
+    // silence since the last clip. Time spent making the clip counts as silence.
+    await waitOn(
+      job,
+      () => (ttsQueue.isHeld() ? "Made, waiting for TTS to be resumed" : "Waiting between clips"),
+      direct ? ttsQueue.isHeld() : ttsQueue.playWouldWait(),
+      () => (direct ? ttsQueue.beforePlayIgnoringSilence(gateJob) : ttsQueue.beforePlay(gateJob)),
+    );
     await takePlayer(gateJob);
     try {
       job.stage = "playing";
@@ -330,8 +330,8 @@ export function submit(input: {
   planId?: string;
   play: boolean;
   /**
-   * Started by hand from the dashboard: it plays as soon as no other clip is playing, whether or
-   * not TTS is paused, and without the silence, ahead of the requests waiting in the queue.
+   * Started by hand from the dashboard: it plays as soon as no other clip is playing and TTS is
+   * not paused, without the silence, ahead of the requests waiting in the queue.
    */
   direct?: boolean;
 }) {
