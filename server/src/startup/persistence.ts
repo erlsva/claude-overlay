@@ -1,6 +1,7 @@
 import {
   initializeChatEmoteSettingsStore,
   initializeFeatureFlagsStore,
+  initializeStudioDataStore,
   initializeTtsQueueSettings,
   initializeWhitelistStore,
 } from "../db/index.js";
@@ -32,6 +33,13 @@ export async function initializePersistence() {
   ttsQueue.setGapSeconds(queueSettings.gapSeconds);
   setTtsShowEmote(queueSettings.showEmote);
   setTtsShowPrompt(queueSettings.showPrompt);
+  // Scenes, presets, the soundboard and automations, loaded the same way; falls back to whatever
+  // the committed/local lowdb file already had if Postgres is unreachable at startup.
+  const studioData = await initializeStudioDataStore();
+  canvasStore.scenes = studioData.scenes;
+  canvasStore.presets = studioData.presets;
+  canvasStore.sounds = studioData.sounds;
+  canvasStore.triggers = studioData.triggers;
   const stored = await initializeChatEmoteSettingsStore().catch((error) => {
     console.error("Could not initialize persistent chat-emote settings", error);
     return undefined;

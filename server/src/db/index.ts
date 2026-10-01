@@ -63,6 +63,20 @@ let whitelistCache: WhitelistEntry[] = [...db.data.whitelist];
 const DEFAULT_FEATURE_FLAGS: FeatureFlags = { tts: true, scenes: false, publicClips: false };
 let featureFlagsCache: FeatureFlags = { ...DEFAULT_FEATURE_FLAGS, ...db.data.featureFlags };
 
+interface StudioData {
+  scenes: SavedScene[];
+  presets: ElementPreset[];
+  sounds: SoundboardItem[];
+  triggers: OverlayTrigger[];
+}
+
+let studioDataCache: StudioData = {
+  scenes: db.data.scenes,
+  presets: db.data.presets,
+  sounds: db.data.sounds,
+  triggers: db.data.triggers,
+};
+
 async function ensureAppSettingsTable(): Promise<void> {
   if (!postgres) return;
   await postgres.query(`CREATE TABLE IF NOT EXISTS app_settings (
@@ -161,13 +175,44 @@ export async function removeFromWhitelist(username: string): Promise<void> {
   }
 }
 
-export function getStudioData() {
-  return {
-    scenes: db.data.scenes,
-    presets: db.data.presets,
-    sounds: db.data.sounds,
-    triggers: db.data.triggers,
-  };
+export function getStudioData(): StudioData {
+  return studioDataCache;
+}
+
+/**
+ * Loads scenes, presets, the soundboard and automations from Postgres when configured, same
+ * pattern as feature flags and TTS queue settings. Without Postgres (or if it's unreachable at
+ * startup), whatever the committed/local lowdb file already has (read at module load) is kept as
+ * the starting point, same as before this existed.
+ */
+export async function initializeStudioDataStore(): Promise<StudioData> {
+  if (!postgres) return studioDataCache;
+  try {
+    const stored = (await loadStoredSetting("studio_data", "Studio data")) as
+      Partial<StudioData> | undefined;
+    const list = <T>(value: T[] | undefined) => (Array.isArray(value) ? value : []);
+    if (stored) {
+      studioDataCache = {
+        scenes: list(stored.scenes),
+        presets: list(stored.presets),
+        sounds: list(stored.sounds),
+        triggers: list(stored.triggers),
+      };
+    } else {
+      // First run with Postgres configured: seed it from whatever the lowdb file already has
+      // (the committed baseline, or anything saved locally), so nothing is silently lost.
+      await postgres.query(
+        "INSERT INTO app_settings (key, value) VALUES ('studio_data', $1::jsonb) ON CONFLICT (key) DO NOTHING",
+        [JSON.stringify(studioDataCache)],
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Studio data (scenes, presets, soundboard, automations) unavailable at startup",
+      error,
+    );
+  }
+  return studioDataCache;
 }
 
 export function getChatEmoteSettings(): ChatEmoteSettings | undefined {
@@ -318,12 +363,26 @@ export async function saveChatEmoteSettings(settings: ChatEmoteSettings): Promis
   await db.write();
 }
 
-export async function saveStudioData(
-  data: Partial<ReturnType<typeof getStudioData>>,
-): Promise<void> {
-  if (data.scenes) db.data.scenes = data.scenes;
-  if (data.presets) db.data.presets = data.presets;
-  if (data.sounds) db.data.sounds = data.sounds;
-  if (data.triggers) db.data.triggers = data.triggers;
+export async function saveStudioData(data: Partial<StudioData>): Promise<void> {
+  studioDataCache = {
+    scenes: data.scenes ?? studioDataCache.scenes,
+    presets: data.presets ?? studioDataCache.presets,
+    sounds: data.sounds ?? studioDataCache.sounds,
+    triggers: data.triggers ?? studioDataCache.triggers,
+  };
+  if (postgres) {
+    await ensureAppSettingsTable();
+    await postgres.query(
+      `INSERT INTO app_settings (key, value, updated_at)
+      VALUES ('studio_data', $1::jsonb, NOW())
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+      [JSON.stringify(studioDataCache)],
+    );
+    return;
+  }
+  db.data.scenes = studioDataCache.scenes;
+  db.data.presets = studioDataCache.presets;
+  db.data.sounds = studioDataCache.sounds;
+  db.data.triggers = studioDataCache.triggers;
   await db.write();
 }

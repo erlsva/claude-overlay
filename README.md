@@ -90,27 +90,29 @@ How the code is organised, how to add a feature, and the file-size rules are in
 
 The application intentionally uses more than one kind of state:
 
-| Data                                                    | Storage                                                                     | Survives a Render restart?                      |
-| ------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
-| Broadcaster OAuth tokens                                | Neon PostgreSQL, encrypted with AES-256-GCM                                 | Yes                                             |
-| Dashboard whitelist and admin roles                     | Neon PostgreSQL when `DATABASE_URL` is set                                  | Yes                                             |
-| Elements, drawings, cursor presence, history, playback  | Server memory                                                               | No                                              |
-| Chat emote settings, feature flags (TTS, Scenes, clips) | Neon PostgreSQL, `app_settings` table                                       | Yes                                             |
-| Soundboard, commands, scenes, presets                   | `DATA_DIR/db.json` through LowDB                                            | Only with a persistent disk                     |
-| Uploaded media                                          | `UPLOAD_DIR`                                                                | Only with a persistent disk/object storage      |
-| Shared media library (defaults)                         | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total) | Yes                                             |
-| Saved TTS metadata                                      | Neon PostgreSQL (local JSON fallback outside production)                    | Yes in production                               |
-| Saved TTS MP3 audio                                     | Discord webhook message attachments                                         | Yes while the webhook message remains available |
+| Data                                                    | Storage                                                                         | Survives a Render restart?                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Broadcaster OAuth tokens                                | Neon PostgreSQL, encrypted with AES-256-GCM                                     | Yes                                             |
+| Dashboard whitelist and admin roles                     | Neon PostgreSQL when `DATABASE_URL` is set                                      | Yes                                             |
+| Elements, drawings, cursor presence, history, playback  | Server memory                                                                   | No                                              |
+| Chat emote settings, feature flags (TTS, Scenes, clips) | Neon PostgreSQL, `app_settings` table                                           | Yes                                             |
+| Soundboard, commands, scenes, presets                   | Neon PostgreSQL, `app_settings` table (local LowDB fallback outside production) | Yes                                             |
+| Uploaded media                                          | `UPLOAD_DIR`                                                                    | Only with a persistent disk/object storage      |
+| Shared media library (defaults)                         | Neon PostgreSQL, `media_library` table (up to 25 MB per file, 300 MB total)     | Yes                                             |
+| Saved TTS metadata                                      | Neon PostgreSQL (local JSON fallback outside production)                        | Yes in production                               |
+| Saved TTS MP3 audio                                     | Discord webhook message attachments                                             | Yes while the webhook message remains available |
 
-On Render's free tier, the filesystem is ephemeral. Neon keeps authorization
-and whitelist records, but uploaded files and LowDB studio configuration can be
-lost when the service is replaced or restarted. Do not treat `/tmp` as durable
-storage.
+On Render's free tier, the filesystem is ephemeral. Neon keeps authorization,
+whitelist and studio (soundboard, commands, scenes, presets) records, but
+uploaded files are lost when the service is replaced or restarted. Do not
+treat `/tmp` as durable storage.
 
-`server/data/db.json` is committed to this (public) repository and is what the
-soundboard, commands, scenes and presets fall back to after a restart, so edit
-it there to change those defaults. It lists the dashboard whitelist and command
-names in the clear, and must never hold a token or secret.
+`server/data/db.json` is committed to this (public) repository. It is the
+LowDB fallback used outside production, and it seeds Neon's studio data the
+first time the server starts with `DATABASE_URL` set; after that, live edits
+are saved to Neon and persist across restarts, and this file is no longer
+read. It lists the dashboard whitelist and command names in the clear, and
+must never hold a token or secret.
 
 Feature flags are read from Neon when the server starts. If Neon is still waking
 up, the read is retried a few times; if it still cannot confirm what was saved,
