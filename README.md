@@ -193,7 +193,7 @@ Copy `server/.env.example` to `server/.env`. Never commit the populated file.
 | `TTS_ROBOT_AMOUNT`             | Optional            | Strength of the ring-modulated "robot voice" effect: `1` is the default, `2` is double, `off` skips it.                                                        |
 | `TTS_UNDERWATER_AMOUNT`        | Optional            | Strength of the "underwater voice" low-pass and pitch wobble: `1` is the default, `2` is double, `off` skips it.                                               |
 | `DISCORD_TTS_WEBHOOK_URL`      | For TTS save/replay | Private webhook whose message attachments hold saved MP3 clips.                                                                                                |
-| `FFMPEG_PATH`                  | Optional            | Explicit FFmpeg executable; otherwise `ffmpeg` must be available on `PATH`.                                                                                    |
+| `FFMPEG_PATH`                  | Optional            | Explicit FFmpeg executable. Otherwise the `ffmpeg-static` package's bundled binary is used automatically; only needed to override it with a system install.    |
 
 Generate independent secrets with Node.js:
 

@@ -1,8 +1,13 @@
 /** Running ffmpeg, and the final loudness filters every finished clip goes through. */
 
 import { spawn } from "node:child_process";
+import ffmpegStatic from "ffmpeg-static";
 
-export const ffmpeg = process.env.FFMPEG_PATH || "ffmpeg";
+// FFMPEG_PATH overrides everything, for a system install that should take priority. Otherwise,
+// the prebuilt binary this package downloads at install time — covering both Render's Linux
+// server and a Windows dev machine, neither of which has ffmpeg installed by default. Falls back
+// to a bare "ffmpeg" on PATH only if that download didn't produce a binary for this platform.
+export const ffmpeg = process.env.FFMPEG_PATH || ffmpegStatic || "ffmpeg";
 
 // Keep alerts present in a stream mix while retaining expressive dynamics and
 // a true-peak safety margin. The OBS volume control still defaults to 25%.
