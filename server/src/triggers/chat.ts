@@ -1,8 +1,26 @@
 import { getAppAccessToken, twitchClientId } from "../auth/twitch.js";
-import { getValidEventAuth } from "../twitch/eventAuthStore.js";
+import { getValidEventAuth, type StoredEventAuth } from "../twitch/eventAuthStore.js";
 import { CHATBOT_AUTH_KEY } from "../twitch/eventOAuth.js";
 import type { TriggerStep } from "../types.js";
 import { renderEventMessage, type TriggerEventPayload } from "./message.js";
+
+/**
+ * The broadcaster is only ever named as the recipient (`broadcaster_id`); the chatbot is always
+ * the one speaking (`sender_id`). Kept separate from `sendEventChatMessage` so this mapping — the
+ * one thing that must never accidentally send as the streamer's own account — is covered by a
+ * plain unit test, with no Twitch connection needed to exercise it.
+ */
+export function buildChatMessageRequest(
+  broadcasterAuth: Pick<StoredEventAuth, "twitchUserId">,
+  chatbotAuth: Pick<StoredEventAuth, "twitchUserId">,
+  message: string,
+) {
+  return {
+    broadcaster_id: broadcasterAuth.twitchUserId,
+    sender_id: chatbotAuth.twitchUserId,
+    message,
+  };
+}
 
 /**
  * Posts an automation's chat message to the event's channel, as the chatbot account. Sent with an
@@ -26,11 +44,13 @@ export async function sendEventChatMessage(step: TriggerStep, event: TriggerEven
       Authorization: `Bearer ${await getAppAccessToken()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      broadcaster_id: broadcasterAuth.twitchUserId,
-      sender_id: chatbotAuth.twitchUserId,
-      message: renderEventMessage(step.chatMessage, event),
-    }),
+    body: JSON.stringify(
+      buildChatMessageRequest(
+        broadcasterAuth,
+        chatbotAuth,
+        renderEventMessage(step.chatMessage, event),
+      ),
+    ),
   });
   if (!response.ok) {
     const detail = await response.text();
