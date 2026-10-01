@@ -47,7 +47,9 @@ function returnToDashboard(req: Request, res: Response, query: string) {
 }
 const chatbotLogin = (process.env.CHAT_BOT_USERNAME ?? "dankchapbot").trim().toLowerCase();
 
-export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any) => void) {
+export function createEventRoutes(
+  emitEvent: (type: TriggerEventType, event: any, options?: { ignoreCooldown?: boolean }) => number,
+) {
   const router = Router();
   router.get("/auth/events/start/:channel", (req, res) => {
     const channel = req.params.channel.toLowerCase() as EventChannel;
@@ -185,27 +187,33 @@ export function createEventRoutes(emitEvent: (type: TriggerEventType, event: any
       ].includes(type)
     )
       return res.status(400).json({ error: "Unsupported event" });
-    emitEvent(type, {
-      message: { text: "Test event" },
-      channel,
-      broadcaster_user_login: channel,
-      user_name: "Test Viewer",
-      from_broadcaster_user_name: "Test Raider",
-      simulated: true,
-      bits: type === "bits" ? 100 : undefined,
-      viewers: type === "raid" ? 25 : undefined,
-      cumulative_months: type === "subscribe" ? 12 : undefined,
-      duration_months: type === "subscribe" ? 1 : undefined,
-      total: type === "gift-subscribe" ? 5 : undefined,
-      reward: type === "channel-points" ? { title: "Test reward" } : undefined,
-      title: type === "prediction" ? "Will the streamer win this run?" : undefined,
-      moderator_user_name: type === "ban" || type === "timeout" ? "Test Moderator" : undefined,
-      reason: type === "ban" || type === "timeout" ? "Test moderation reason" : undefined,
-      is_permanent: type === "ban" ? true : type === "timeout" ? false : undefined,
-      banned_at: type === "ban" || type === "timeout" ? new Date().toISOString() : undefined,
-      ends_at: type === "timeout" ? new Date(Date.now() + 10 * 60_000).toISOString() : undefined,
-    });
-    res.json({ ok: true });
+    // A test is for trying things out while you set them up, so it ignores a trigger's own
+    // cooldown: a real cooldown must not make a second test look like it silently did nothing.
+    const ran = emitEvent(
+      type,
+      {
+        message: { text: "Test event" },
+        channel,
+        broadcaster_user_login: channel,
+        user_name: "Test Viewer",
+        from_broadcaster_user_name: "Test Raider",
+        simulated: true,
+        bits: type === "bits" ? 100 : undefined,
+        viewers: type === "raid" ? 25 : undefined,
+        cumulative_months: type === "subscribe" ? 12 : undefined,
+        duration_months: type === "subscribe" ? 1 : undefined,
+        total: type === "gift-subscribe" ? 5 : undefined,
+        reward: type === "channel-points" ? { title: "Test reward" } : undefined,
+        title: type === "prediction" ? "Will the streamer win this run?" : undefined,
+        moderator_user_name: type === "ban" || type === "timeout" ? "Test Moderator" : undefined,
+        reason: type === "ban" || type === "timeout" ? "Test moderation reason" : undefined,
+        is_permanent: type === "ban" ? true : type === "timeout" ? false : undefined,
+        banned_at: type === "ban" || type === "timeout" ? new Date().toISOString() : undefined,
+        ends_at: type === "timeout" ? new Date(Date.now() + 10 * 60_000).toISOString() : undefined,
+      },
+      { ignoreCooldown: true },
+    );
+    res.json({ ok: true, ran });
   });
   return router;
 }

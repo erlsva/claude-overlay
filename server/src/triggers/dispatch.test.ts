@@ -116,6 +116,24 @@ test("a trigger's cooldown holds until it passes", () => {
   );
 });
 
+test("runMatchingTriggers returns how many ran, for a caller that needs to know", () => {
+  canvasStore.triggers = [trigger("follow"), trigger("follow"), trigger("raid")];
+  assert.equal(runMatchingTriggers("follow", {}), 2);
+  assert.equal(runMatchingTriggers("bits", {}), 0, "nothing is set up for this event at all");
+});
+
+test("ignoreCooldown lets a test event run even while the real cooldown is still active", () => {
+  const cooling = trigger("follow", { cooldownSeconds: 60 });
+  canvasStore.triggers = [cooling];
+  assert.equal(runMatchingTriggers("follow", {}), 1, "the first run starts the cooldown");
+  assert.equal(runMatchingTriggers("follow", {}), 0, "a normal run respects it");
+  assert.equal(
+    runMatchingTriggers("follow", {}, { ignoreCooldown: true }),
+    1,
+    "a test run does not",
+  );
+});
+
 test("every matching trigger runs, and the activity feed records it", () => {
   assert.equal(ran([trigger("follow"), trigger("follow"), trigger("raid")], "follow", {}), 2);
   assert.equal(canvasStore.activity.length, 2);

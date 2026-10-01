@@ -151,9 +151,20 @@ export function useTwitchEvents(active: boolean) {
           headers: { ...authHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify({ type }),
         });
-        response.ok
-          ? toast.success(`Simulated ${type} event sent`)
-          : toast.error(`Could not simulate the ${type} event`);
+        if (!response.ok) {
+          toast.error(`Could not simulate the ${type} event`);
+          return;
+        }
+        const body = (await response.json().catch(() => ({}))) as { ran?: number };
+        // The simulated event reached the server either way; "ran" says whether anything was
+        // actually set up to react to it, which is the part that was invisible before.
+        body.ran
+          ? toast.success(
+              `Simulated ${type} event: ran ${body.ran} automation${body.ran === 1 ? "" : "s"}`,
+            )
+          : toast.info(
+              `Simulated ${type} event sent, but no automation reacted — check one is enabled for this event and this channel`,
+            );
       } catch {
         toast.error(`Could not reach the server to test the ${type} event`);
       }

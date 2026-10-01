@@ -5,8 +5,8 @@ import { configureTwitchEvents } from "../twitch/eventsub.js";
 
 /** Every Twitch event, from chat or EventSub, ends up here: chat emotes first, then automations. */
 export function startTwitchEvents() {
-  configureTwitchEvents((eventType, event) => {
+  configureTwitchEvents((eventType, event, options) => {
     if (eventType === "chat-command") spawnChatEmotes(event);
-    runMatchingTriggers(eventType, event);
+    return runMatchingTriggers(eventType, event, options);
   }, setTwitchConnected);
 }

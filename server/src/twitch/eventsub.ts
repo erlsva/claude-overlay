@@ -16,7 +16,11 @@ type ChatCommandEvent = {
   native_emotes?: Array<{ id: string; name: string; imageUrl: string; position: number }>;
   chatter_role?: ChatPermission;
 };
-type EventHandler = (type: TriggerEventType, event: ChatCommandEvent) => void;
+type EventHandler = (
+  type: TriggerEventType,
+  event: ChatCommandEvent,
+  options?: { ignoreCooldown?: boolean },
+) => number;
 
 let channel = getDefaultTwitchChannel();
 const allowedChannels = new Set(getConfiguredTwitchChannels());
@@ -25,8 +29,13 @@ let handler: EventHandler | null = null;
 let statusHandler: ((connected: boolean) => void) | null = null;
 let client: tmi.Client | null = null;
 
-export function emitTwitchEvent(type: TriggerEventType, event: ChatCommandEvent) {
-  handler?.(type, event);
+/** Returns how many automations actually ran for it. */
+export function emitTwitchEvent(
+  type: TriggerEventType,
+  event: ChatCommandEvent,
+  options?: { ignoreCooldown?: boolean },
+): number {
+  return handler?.(type, event, options) ?? 0;
 }
 
 /**

@@ -65,12 +65,22 @@ function triggerApplies(
 const errorSummary = (error: unknown) =>
   (error instanceof Error ? error.message : "Unknown error").replace(/\s+/g, " ").slice(0, 180);
 
-/** Runs every enabled trigger that matches the event and is not cooling down. */
-export function runMatchingTriggers(eventType: TriggerEventType, event: TriggerEventPayload) {
+/**
+ * Runs every enabled trigger that matches the event and is not cooling down. Returns how many ran,
+ * so a caller that cares (the "send a test event" button) can say whether anything happened at
+ * all, instead of leaving "it's either working or not" with no way to tell why not.
+ */
+export function runMatchingTriggers(
+  eventType: TriggerEventType,
+  event: TriggerEventPayload,
+  options: { ignoreCooldown?: boolean } = {},
+): number {
   const now = Date.now();
+  let ran = 0;
   for (const trigger of canvasStore.triggers) {
-    if ((triggerCooldowns.get(trigger.id) ?? 0) > now) continue;
+    if (!options.ignoreCooldown && (triggerCooldowns.get(trigger.id) ?? 0) > now) continue;
     if (!triggerApplies(trigger, eventType, event)) continue;
+    ran++;
     triggerCooldowns.set(trigger.id, now + trigger.cooldownSeconds * 1000);
     logActivity("Twitch", `ran trigger “${trigger.name}”`);
     const steps = trigger.steps?.length ? trigger.steps : [trigger];
@@ -78,4 +88,5 @@ export function runMatchingTriggers(eventType: TriggerEventType, event: TriggerE
       logActivity("Twitch", `trigger “${trigger.name}” failed: ${errorSummary(error)}`),
     );
   }
+  return ran;
 }
