@@ -138,6 +138,7 @@ export function ConnectionsSection({
             const hasLegacyChatAccess = status.scopes.includes("user:write:chat");
             const hasBanAccess = status.scopes.includes("channel:moderate");
             const hasPredictionAccess = status.scopes.includes("channel:read:predictions");
+            const hasBotBadgeAccess = status.scopes.includes("channel:bot");
             return (
               <div key={channel} className="connection-card">
                 <div className="connection-card__head">
@@ -174,6 +175,12 @@ export function ConnectionsSection({
                 {status.connected && hasBanAccess && !hasPredictionAccess && (
                   <p className="connection-card__note">
                     Reconnect this broadcaster once to enable prediction events.
+                  </p>
+                )}
+                {status.connected && hasPredictionAccess && !hasBotBadgeAccess && (
+                  <p className="connection-card__note">
+                    Reconnect this broadcaster once so the chatbot shows Twitch's official Bot badge
+                    here.
                   </p>
                 )}
                 <div className="connection-card__actions">

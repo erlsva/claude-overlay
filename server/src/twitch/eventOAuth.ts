@@ -19,6 +19,9 @@ export const EVENT_SCOPES = [
   "channel:read:hype_train",
   "channel:moderate",
   "channel:read:predictions",
+  // Lets the chatbot post in this channel with Twitch's official Bot badge, via an app access
+  // token instead of the chatbot's own user token — see server/src/triggers/chat.ts.
+  "channel:bot",
 ];
 export const CHATBOT_AUTH_KEY = "__chatbot__";
 export const CHATBOT_SCOPES = ["user:write:chat"];
