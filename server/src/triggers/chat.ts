@@ -23,10 +23,22 @@ export function buildChatMessageRequest(
 }
 
 /**
- * Posts an automation's chat message to the event's channel, as the chatbot account. Sent with an
- * app access token rather than the chatbot's own token: Twitch only shows its official Bot badge
- * next to messages sent that way, and only once the broadcaster has granted `channel:bot`.
+ * How a message can be sent. Twitch shows its official Bot badge only for an app access token, and
+ * only once both sides have granted for it: the broadcaster `channel:bot`, the chatbot `user:bot`
+ * (and `user:write:chat`). Until everyone has reconnected, the chatbot's own token still works, just
+ * without the badge. Null means the chatbot cannot send at all.
  */
+export function chatSendMode(
+  broadcasterScopes: string[],
+  chatbotScopes: string[],
+): "bot" | "user" | null {
+  if (!chatbotScopes.includes("user:write:chat")) return null;
+  return broadcasterScopes.includes("channel:bot") && chatbotScopes.includes("user:bot")
+    ? "bot"
+    : "user";
+}
+
+/** Posts an automation's chat message to the event's channel, as the chatbot account. */
 export async function sendEventChatMessage(step: TriggerStep, event: TriggerEventPayload) {
   const channel = String(event.channel ?? event.broadcaster_user_login ?? "").toLowerCase();
   const broadcasterAuth = channel ? await getValidEventAuth(channel) : null;
@@ -35,13 +47,14 @@ export async function sendEventChatMessage(step: TriggerStep, event: TriggerEven
     throw new Error(`No Twitch Events connection for ${channel || "this channel"}`);
   if (!chatbotAuth) throw new Error("The chatbot is not connected");
   if (!step.chatMessage) throw new Error("The chat message is empty");
-  if (!broadcasterAuth.scopes.includes("channel:bot"))
-    throw new Error(`${channel} must reconnect Events to grant the chat-bot permission`);
+  const mode = chatSendMode(broadcasterAuth.scopes, chatbotAuth.scopes);
+  if (!mode)
+    throw new Error(`${chatbotAuth.displayName} must reconnect to grant chat-message permission`);
   const response = await fetch("https://api.twitch.tv/helix/chat/messages", {
     method: "POST",
     headers: {
       "Client-Id": twitchClientId,
-      Authorization: `Bearer ${await getAppAccessToken()}`,
+      Authorization: `Bearer ${mode === "bot" ? await getAppAccessToken() : chatbotAuth.accessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(

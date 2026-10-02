@@ -108,6 +108,12 @@ export function ConnectionsSection({
                 Outgoing automation messages are sent by this account. Broadcaster tokens are never
                 used to write chat.
               </p>
+              {eventStatus.chatbot?.connected &&
+                !eventStatus.chatbot.scopes.includes("user:bot") && (
+                  <p className="connection-card__note">
+                    Reconnect the chatbot once so it can show Twitch's official Bot badge.
+                  </p>
+                )}
               <div className="connection-card__actions">
                 <button
                   className={`ui-button ui-button--compact${eventStatus.chatbot?.connected ? "" : " studio-primary"}`}

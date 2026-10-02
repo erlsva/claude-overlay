@@ -238,8 +238,10 @@ These are separate OAuth flows:
    dashboard. Other accounts are never asked. **Studio → Automations →
    Connections** still works for reconnecting by hand.
 3. **Chatbot connection** is completed once by the dedicated DankChapBot
-   account. It grants `user:write:chat`; configured messages use this account as
-   the sender and never use a broadcaster token to write chat.
+   account. It grants `user:write:chat` and `user:bot`; configured messages use
+   this account as the sender and never use a broadcaster token to write chat.
+   Twitch's Bot badge appears once the broadcaster has also granted `channel:bot`
+   (part of their Events connection); until then messages still send, without it.
 
 All access and refresh tokens are encrypted before being stored in PostgreSQL
 and are refreshed automatically.

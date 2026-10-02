@@ -24,7 +24,8 @@ export const EVENT_SCOPES = [
   "channel:bot",
 ];
 export const CHATBOT_AUTH_KEY = "__chatbot__";
-export const CHATBOT_SCOPES = ["user:write:chat"];
+// user:bot is what lets Twitch show the Bot badge when sending with an app access token.
+export const CHATBOT_SCOPES = ["user:write:chat", "user:bot"];
 export type AuthTarget = EventChannel | typeof CHATBOT_AUTH_KEY;
 
 export function getEventChannels(): EventChannel[] {
